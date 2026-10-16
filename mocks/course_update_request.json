@@ -1,0 +1,16 @@
+{
+  "stops": [
+    {
+      "placeId": "20745493",
+      "stayMinutes": 90
+    },
+    {
+      "placeId": "332674718",
+      "stayMinutes": 50
+    },
+    {
+      "placeId": "2091596191",
+      "stayMinutes": 60
+    }
+  ]
+}

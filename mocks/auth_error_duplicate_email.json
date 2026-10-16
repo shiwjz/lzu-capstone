@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "code": "DUPLICATE_EMAIL",
+  "message": "이미 사용 중인 이메일입니다.",
+  "data": null
+}

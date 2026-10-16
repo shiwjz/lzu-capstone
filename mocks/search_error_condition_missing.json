@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "code": "CONDITION_MISSING",
+  "message": "어느 지역에서 찾을까요? (성수·홍대·강남)",
+  "data": null
+}

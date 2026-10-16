@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "요청 성공",
+  "data": {
+    "shareCode": "7Hk2pQ",
+    "shareUrl": "https://example.com/share/7Hk2pQ",
+    "shareText": "[오디가] 2026-10-17 15:00 성수 코스\n1. 15:00 해피노래연습장\n2. 16:05 브레빌 카페앤스토어 성수\n3. 16:56 미루성수"
+  }
+}
