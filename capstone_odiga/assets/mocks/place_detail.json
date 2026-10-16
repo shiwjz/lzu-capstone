@@ -1,0 +1,115 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "요청 성공",
+  "data": {
+    "placeId": "780757764",
+    "name": "브레빌 카페앤스토어 성수",
+    "category": "CAFE",
+    "region": "SEONGSU",
+    "address": "서울 성동구 성수동2가 316-42",
+    "roadAddress": "서울 성동구 연무장길 39-7",
+    "phone": "02-2038-0184",
+    "lat": 37.5431717,
+    "lng": 127.0538051,
+    "kakaoCategory": "음식점 > 카페",
+    "placeUrl": "http://place.map.kakao.com/780757764",
+    "openingHours": null,
+    "tags": [
+      {
+        "tag": "공간·좌석",
+        "mentions": 5
+      },
+      {
+        "tag": "조용함",
+        "mentions": 8
+      },
+      {
+        "tag": "디저트",
+        "mentions": 9
+      }
+    ],
+    "congestionByHour": {
+      "date": "2026-10-17",
+      "dayType": "WEEKEND",
+      "basis": "ALL_DAY",
+      "hours": [
+        {
+          "hour": 9,
+          "level": "QUIET",
+          "percentile": 16
+        },
+        {
+          "hour": 10,
+          "level": "QUIET",
+          "percentile": 23
+        },
+        {
+          "hour": 11,
+          "level": "QUIET",
+          "percentile": 24
+        },
+        {
+          "hour": 12,
+          "level": "QUIET",
+          "percentile": 28
+        },
+        {
+          "hour": 13,
+          "level": "NORMAL",
+          "percentile": 34
+        },
+        {
+          "hour": 14,
+          "level": "NORMAL",
+          "percentile": 41
+        },
+        {
+          "hour": 15,
+          "level": "NORMAL",
+          "percentile": 38
+        },
+        {
+          "hour": 16,
+          "level": "QUIET",
+          "percentile": 30
+        },
+        {
+          "hour": 17,
+          "level": "NORMAL",
+          "percentile": 40
+        },
+        {
+          "hour": 18,
+          "level": "QUIET",
+          "percentile": 28
+        },
+        {
+          "hour": 19,
+          "level": "QUIET",
+          "percentile": 29
+        },
+        {
+          "hour": 20,
+          "level": "QUIET",
+          "percentile": 24
+        },
+        {
+          "hour": 21,
+          "level": "QUIET",
+          "percentile": 21
+        },
+        {
+          "hour": 22,
+          "level": "QUIET",
+          "percentile": 12
+        },
+        {
+          "hour": 23,
+          "level": "QUIET",
+          "percentile": 11
+        }
+      ]
+    }
+  }
+}

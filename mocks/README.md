@@ -23,5 +23,30 @@ python mocks/generate_mocks.py
 
 ## Flutter에서 쓰기 (@서예령)
 
-- `assets/mocks/`로 복사해서 API 대신 읽어서 사용
-- 실제 API도 같은 형식으로 오니까 나중에 읽는 부분만 바꾸면 됨
+- 이 폴더 JSON을 `capstone_odiga/assets/mocks/`에 복사해둠 (pubspec.yaml에 `- assets/mocks/` 한 줄 추가함)
+- JSON 다시 만들면 `assets/mocks/`에도 다시 복사하기
+- 읽는 코드는 `capstone_odiga/lib/api/`
+
+| 파일 | 내용 |
+| --- | --- |
+| `odiga_api.dart` | API 8개 목록 (화면은 이것만 보고 쓰기) |
+| `mock_odiga_api.dart` | 가짜 JSON 읽어서 진짜 응답처럼 돌려줌 |
+| `api_models.dart` | 서버 응답 모양 그대로 (`CourseDto`, `StopDto` 등) |
+| `api_codes.dart` | 코드값 ↔ 한글 (`RegionCode.seongsu.label` → 성수) |
+| `api_mappers.dart` | `CourseDto` → 화면용 `Course` 바꾸기 |
+
+```dart
+final api = MockOdigaApi();
+try {
+  final result = await api.search(SearchRequestDto(query: text, date: formatDate(day), startTime: formatTime(day)));
+  final cards = result.courses; // title, reason, stops, score
+} on ApiException catch (e) {
+  if (e.code == 'CONDITION_MISSING') { /* 지역 다시 묻기, e.message 그대로 보여주면 됨 */ }
+}
+```
+
+- 가짜라서 검색은 지역별로 하나씩만 (문장에 성수·홍대·강남 없으면 CONDITION_MISSING 에러)
+- 장소 상세·코스 수정·공유는 어떤 ID 넣어도 같은 JSON
+- 가입할 때 `taken@example.com` 넣으면 DUPLICATE_EMAIL 에러 → 에러 화면 확인용
+- 테스트: `flutter test test/api_mock_test.dart`
+- 9주차: 서버 붙이면 `HttpOdigaApi`만 새로 만들어서 `MockOdigaApi` 자리에 넣기 → 화면 코드는 그대로

@@ -58,6 +58,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/mocks/
   fonts:
     - family: Noto Sans KR
       fonts:

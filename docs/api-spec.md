@@ -12,6 +12,7 @@
 | 내 설정 | moods, crowdPreference, allergies, homeRegion | region, atmospheres, allergies | user_preference.atmosphere, user_allergy.allergy_name |
 | 장소 데이터 | 2,406곳 (가운데에서 최대 약 0.8km) | 1,795곳 (중심좌표 500m 안) | 최예린 collect_places.py |
 | 혼잡도·점수 | 가짜 값 | 혼잡도는 윤경 데이터(가짜 유동인구 기반), 점수·태그는 아직 가짜 | 이윤경 congestion_fake.csv |
+| 코스 제목·추천 이유 | 없음 | courses[]에 title, reason 추가 | 서예령 코스 카드 화면 |
 
 혼잡 선호(crowdPreference)는 따로 저장하지 않고 분위기 태그로 대신. 내 설정에 '조용함'이 있으면 QUIET, '활기'가 있으면 LIVELY로, 검색 문장에 따로 쓰면 문장을 따름. 그래서 DB 테이블은 지금 그대로 쓰면 됨.
 
@@ -110,6 +111,8 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 | stops[].congestion | 해당 장소 도착 시각 기준 혼잡도 (검색 시각 아님) |
 | stops[].walkMinutesFromPrev | 이전 장소에서 걷는 시간(분), 첫 장소는 null |
 | courses[].score | placeAvg·moveEfficiency·timeFit = 평균 장소 점수·이동 효율·시간 적합도, total = 0.70·0.20·0.10 가중합 |
+| courses[].title | 코스 카드 제목 (예: "성수 오후 노래방 코스"), 서버에서 생성 |
+| courses[].reason | 코스 추천 이유 한 줄 (예: "'조용함' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 6분"), 서버에서 생성 |
 
 **코스 안 장소 하나(stops[ ]) 예시** - 이름·좌표는 실제 수집 데이터, 혼잡도는 윤경 데이터, 점수는 가짜 값
 
@@ -206,6 +209,11 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 
 - 칸 3개(식사·카페·놀거리)를 시작 시각에 맞는 순서로 채우고, 총 3시간 ±30분 안에서 점수 가장 높은 조합 3개 선택
 - 숫자는 전부 초기값, LG 데이터 받은 뒤 조정
+- 구현: `capstone-backend/src/main/java/com/capstone/backend/course/` (`CourseGenerator`가 시작점, 숫자는 전부 `CourseRules`에)
+  - 같은 장소·점수 넣었을 때 `mocks/` 가짜 JSON 코스(성수·홍대·강남 3개씩 + 코스 수정·경고)와 결과 똑같은 거 확인함
+  - 규칙 바꾸면 `CourseRules` + 이 문서 + `mocks/generate_mocks.py` 같이 바꾸기
+  - 테스트: `./gradlew test --tests "com.capstone.backend.course.*"` (DB 없이 돌아감)
+  - 확인용 주소: 서버 켜고 `GET /api/dev/courses` → 가짜 점수로 코스 3개 JSON (기본값 = 성수 가짜 JSON이랑 같은 조건, 파라미터는 `DevCourseController` 주석 참고). /api/search 붙으면 지우기
 
 1. **칸별 후보:** 지역·알레르기·술집 시간 필터 통과한 장소 중 칸마다 점수 상위 10곳 (점수는 그 칸의 대략적인 도착 시각 기준)
 2. **조합:** 10 × 10 × 10 = 1,000개
@@ -230,6 +238,11 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 | CULTURE 문화 · ACTIVITY 액티비티 | 60 |
 | EXPERIENCE 체험 (원데이클래스 등) | 90 |
 | SHOPPING 쇼핑 · TOUR 관광 · NATURE 자연/휴식 | 40 |
+
+**코스 제목·추천 이유**
+
+- 제목: `{지역} {시간대} {놀거리 종류} 코스` (예: 성수 오후 노래방 코스). 시간대는 시작 시각 기준 오전(~11시)·점심(~14시)·오후(~17시)·저녁(~21시)·밤, 놀거리 종류는 카카오 카테고리에서 가져옴
+- 추천 이유: 분위기 태그 맞는 곳 수 · 혼잡 선호에 맞는 곳 수(조용한 곳이면 한산, 활기찬 곳이면 북적) · 총 도보 시간을 ` · `로 연결
 
 **칸 채우는 규칙**
 

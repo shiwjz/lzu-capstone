@@ -399,6 +399,8 @@
       {
         "courseId": "c_gangnam_1",
         "rank": 1,
+        "title": "강남 저녁 노래방 코스",
+        "reason": "'단체석' 후기 많은 곳 1곳 · 총 도보 10분",
         "startAt": "19:00",
         "endAt": "22:00",
         "totalMinutes": 180,
@@ -473,6 +475,8 @@
       {
         "courseId": "c_gangnam_2",
         "rank": 2,
+        "title": "강남 저녁 전시 코스",
+        "reason": "'단체석' 후기 많은 곳 1곳 · 총 도보 5분",
         "startAt": "19:00",
         "endAt": "21:55",
         "totalMinutes": 175,
@@ -547,6 +551,8 @@
       {
         "courseId": "c_gangnam_3",
         "rank": 3,
+        "title": "강남 저녁 노래방 코스",
+        "reason": "'단체석' 후기 많은 곳 1곳 · 총 도보 9분",
         "startAt": "19:00",
         "endAt": "21:59",
         "totalMinutes": 179,

@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "요청 성공",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9.mock.token",
+    "tokenType": "Bearer",
+    "expiresIn": 3600,
+    "user": {
+      "userId": 1,
+      "email": "test@example.com",
+      "region": "SEONGSU"
+    }
+  }
+}

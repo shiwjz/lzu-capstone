@@ -398,6 +398,8 @@
       {
         "courseId": "c_hongdae_1",
         "rank": 1,
+        "title": "홍대 저녁 보드게임 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 4분",
         "startAt": "19:00",
         "endAt": "21:54",
         "totalMinutes": 174,
@@ -472,6 +474,8 @@
       {
         "courseId": "c_hongdae_2",
         "rank": 2,
+        "title": "홍대 저녁 노래방 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 10분",
         "startAt": "19:00",
         "endAt": "22:00",
         "totalMinutes": 180,
@@ -546,6 +550,8 @@
       {
         "courseId": "c_hongdae_3",
         "rank": 3,
+        "title": "홍대 저녁 테마카페 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 5분",
         "startAt": "19:00",
         "endAt": "21:55",
         "totalMinutes": 175,

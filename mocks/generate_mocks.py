@@ -12,6 +12,10 @@
 
 - 태그, 사용자 요구·타깃 점수: 블로그·성연령 데이터 전이라 아직 가짜 값 (place_id 해시)
 - 거리·도보 시간·도착 시각·코스 조합: 코스 생성 규칙 v0.1대로 실제 계산
+
+출력
+- mocks/*.json                                 가짜 응답 JSON 15개
+- capstone-backend/src/main/resources/dev/     서버 테스트용 장소·혼잡도 (/api/dev/courses가 읽음)
 """
 import csv
 import hashlib
@@ -47,6 +51,7 @@ W_COURSE = {'placeAvg': 0.70, 'moveEfficiency': 0.20, 'timeFit': 0.10}
 BAR_FROM_HOUR = 18           # 술집은 18시 이후 도착일 때만
 NOISE_TOP = {'서비스,산업', '교육,학문', '의료,건강', '교통,수송', '부동산', '사회,공공기관'}
 THEME_CAFE_TO_PLAY = {'사주카페', '고양이카페', '애견카페', '라이브카페'}
+PLAY_LABEL = {'미술,공예': '공방', '화랑': '전시', '보드카페': '보드게임', '방탈출카페': '방탈출', '만화방': '만화카페'}   # 코스 제목용
 ALLERGY_EXCLUDE = {          # 알레르기 → 제외할 카카오 카테고리 단어 (초안)
     'SHELLFISH': ['해물', '조개', '게,대게', '랍스터'],
     'SEAFOOD': ['해물', '생선', '회', '초밥'],
@@ -244,6 +249,42 @@ def build_course(stops_in, cond, start):
             'stops': stops}
 
 
+def time_word(start):
+    hh = start // 60
+    return '오전' if hh < 11 else '점심' if hh < 14 else '오후' if hh < 17 else '저녁' if hh < 21 else '밤'
+
+
+def play_label(p):
+    """카카오 카테고리에서 놀거리 종류 이름 (예: 노래방, 방탈출카페, 화랑)"""
+    parts = p['kakaoCategory'].split(' > ')
+    i = min(2, len(parts) - 1)
+    if parts[i] == '테마카페' and len(parts) > i + 1:
+        i += 1
+    return PLAY_LABEL.get(parts[i], parts[i].replace(',', '·'))
+
+
+def course_text(course, cond, by_id):
+    """코스 제목·추천 이유 (규칙 기반)"""
+    stops = course['stops']
+    play = next((by_id[s['placeId']] for s in stops if s['slot'] == 'PLAY'), None)
+    region = REGION_LABEL[cond['region']]
+    when = time_word(to_min(course['startAt']))
+    title = f"{region} {when} {play_label(play)} 코스" if play else f"{region} {when} 코스"
+    parts = []
+    if cond['moods']:
+        mood = cond['moods'][0]
+        n = sum(1 for s in stops if mood in [t['tag'] for t in by_id[s['placeId']]['tags']])
+        if n:
+            parts.append(f"'{mood}' 후기 많은 곳 {n}곳")
+    levels = [s['congestion']['level'] for s in stops]
+    if cond['crowdPreference'] == 'QUIET':
+        parts.append(f"{len(stops)}곳 중 {levels.count('QUIET')}곳이 도착 시간에 한산")
+    elif cond['crowdPreference'] == 'LIVELY':
+        parts.append(f"{len(stops)}곳 중 {levels.count('BUSY')}곳이 도착 시간에 북적")
+    parts.append(f"총 도보 {course['totalWalkMinutes']}분")
+    return title, ' · '.join(parts)
+
+
 def warnings_of(course, cond):
     out = []
     if course['totalMinutes'] > TARGET_MIN + TOL_MIN:
@@ -289,9 +330,11 @@ def recommend(places, cond):
         used |= ids
         if len(chosen) == 3:
             break
+    by_id = {p['placeId']: p for p in places}
     for i, c in enumerate(chosen, 1):
         c['courseId'] = f"c_{cond['region'].lower()}_{i}"
         c['rank'] = i
+        c['title'], c['reason'] = course_text(c, cond, by_id)
     # 추천 장소 목록: 후보 전체에서 점수 상위 10곳
     seen, plist = set(), []
     for slot in order:
@@ -302,7 +345,7 @@ def recommend(places, cond):
     plist.sort(key=lambda x: -x['score']['total'])
     stats = {'order': order, 'candidates': {s: len(v) for s, v in cands.items()},
              'combos': math.prod(len(v) for v in cands.values()), 'passedTimeRule': passed}
-    return plist[:10], [ {k: c[k] for k in ['courseId', 'rank', 'startAt', 'endAt', 'totalMinutes',
+    return plist[:10], [ {k: c[k] for k in ['courseId', 'rank', 'title', 'reason', 'startAt', 'endAt', 'totalMinutes',
                           'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']} for c in chosen], stats
 
 
@@ -318,6 +361,35 @@ def error(code, message):
 def dump(out_dir, name, obj):
     with open(os.path.join(out_dir, name), 'w', encoding='utf-8') as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
+
+
+def dump_dev_data(root, places):
+    """서버 테스트용 주소(/api/dev/courses)가 읽는 파일 → capstone-backend/src/main/resources/dev/
+    - places.tsv: 정리 규칙 끝난 장소 (이 파일 순서 그대로 써야 가짜 JSON이랑 결과 같음)
+    - congestion.tsv: 셀·요일별 0~23시 혼잡도 (pct_same_time 기준, Q=한산 N=보통 B=혼잡 + 백분위)
+    """
+    out = os.path.join(root, 'capstone-backend', 'src', 'main', 'resources', 'dev')
+    if not os.path.isdir(os.path.dirname(out)):
+        return
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, 'places.tsv'), 'w', encoding='utf-8', newline='\n') as f:
+        f.write('placeId\tname\tregion\tcategory\tkakaoCategory\tlat\tlng\tcellId\ttags\n')
+        for p in places:
+            row = [p['placeId'], p['name'], p['region'], p['category'], p['kakaoCategory'],
+                   repr(p['lat']), repr(p['lng']), p['cellId'], '|'.join(t['tag'] for t in p['tags'])]
+            f.write('\t'.join(x.replace('\t', ' ') for x in row) + '\n')
+    cells = sorted({p['cellId'] for p in places})
+    with open(os.path.join(out, 'congestion.tsv'), 'w', encoding='utf-8', newline='\n') as f:
+        f.write('cellId\tdayType\th0..h23\n')
+        for c in cells:
+            for day in ('weekday', 'weekend'):
+                hours = []
+                for hr in range(24):
+                    r = CONG.get((c, day, hr))
+                    hours.append('-' if r is None else
+                                 LEVEL_CODE[r['level_same_time']][0] + str(round(float(r['pct_same_time']))))
+                f.write(f"{c}\t{day.upper()}\t{' '.join(hours)}\n")
+    print(f'서버 테스트용 데이터: 장소 {len(places)}곳, 셀 {len(cells)}개 → {out}')
 
 
 SCENARIOS = [
@@ -339,6 +411,7 @@ def main(root, out_dir):
     places = load(os.path.join(root, 'output', 'places.csv'))
     fallback = sum(1 for p in places if p['placeId'] not in CELL_OF)
     print(f'장소 {len(places)}곳, 셀 매칭 없어 가장 가까운 셀로 대신한 곳 {fallback}곳')
+    dump_dev_data(root, places)
     by_id = {p['placeId']: p for p in places}
     first = None
     for i, (fname, query, cond) in enumerate(SCENARIOS, 1):
@@ -379,7 +452,9 @@ def main(root, out_dir):
     req = {'stops': [{'placeId': q['placeId'], 'stayMinutes': st} for q, st in edited]}
     dump(out_dir, 'course_update_request.json', req)
     upd = build_course(edited, cond, to_min(cond['startTime']))
-    upd = {'courseId': c1['courseId'], 'rank': None, **{k: upd[k] for k in ['startAt', 'endAt', 'totalMinutes',
+    upd['title'], upd['reason'] = course_text(upd, cond, by_id)
+    upd = {'courseId': c1['courseId'], 'rank': None, 'title': upd['title'], 'reason': upd['reason'],
+           **{k: upd[k] for k in ['startAt', 'endAt', 'totalMinutes',
            'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']}, 'warnings': warnings_of(upd, cond)}
     dump(out_dir, 'course_update_response.json', wrap(upd))
 

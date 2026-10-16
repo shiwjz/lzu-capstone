@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "요청 성공",
+  "data": {
+    "region": "SEONGSU",
+    "atmospheres": [
+      "조용함",
+      "디저트"
+    ],
+    "allergies": [
+      "SHELLFISH"
+    ]
+  }
+}

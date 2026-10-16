@@ -398,6 +398,8 @@
       {
         "courseId": "c_seongsu_1",
         "rank": 1,
+        "title": "성수 오후 노래방 코스",
+        "reason": "'조용함' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 6분",
         "startAt": "15:00",
         "endAt": "17:56",
         "totalMinutes": 176,
@@ -472,6 +474,8 @@
       {
         "courseId": "c_seongsu_2",
         "rank": 2,
+        "title": "성수 오후 노래방 코스",
+        "reason": "'조용함' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 10분",
         "startAt": "15:00",
         "endAt": "18:00",
         "totalMinutes": 180,
@@ -546,6 +550,8 @@
       {
         "courseId": "c_seongsu_3",
         "rank": 3,
+        "title": "성수 오후 공방 코스",
+        "reason": "'조용함' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 3분",
         "startAt": "15:00",
         "endAt": "18:23",
         "totalMinutes": 203,
