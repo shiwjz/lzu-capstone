@@ -2,24 +2,28 @@ import 'package:flutter/foundation.dart';
 
 import '../data/mock_repository.dart';
 import '../models/domain.dart';
+import '../api/odiga_api.dart';
+import '../api/api_codes.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({MockRepository? repository})
-    : repository = repository ?? MockRepository() {
-    savedCourses.add(
-      this.repository
-          .recommend(conditions, preference)
-          .first
-          .copyWith(id: 'saved-seed'),
-    );
+  AppState({required this.repository}) {
+    preference = repository.initialPreference.copy();
+    final courses = repository.initialCourses;
+    if (courses.isNotEmpty) {
+      savedCourses.add(courses.first.copyWith(id: 'saved-seed'));
+      savedPlaceIds.addAll(courses.first.stops.take(2).map((s) => s.placeId));
+      conditions.start = courses.first.stops.first.arrival;
+    }
   }
+  static Future<AppState> load({OdigaApi? api}) async =>
+      AppState(repository: await MockRepository.load(api: api));
   final MockRepository repository;
   int tab = 0;
   String userName = '윤경';
   String groupName = '이번 주말 성수 모임';
   SearchConditions conditions = SearchConditions();
   UserPreference preference = UserPreference();
-  final savedPlaceIds = <String>{'성수-1', '홍대-0'};
+  final savedPlaceIds = <String>{};
   final savedCourses = <Course>[];
   final friends = <FriendProfile>[
     const FriendProfile('friend-1', '예민', '오늘은 감성 카페가 좋아요', ['카페', '디저트']),
@@ -43,6 +47,27 @@ class AppState extends ChangeNotifier {
   void setPreference(UserPreference value) {
     preference = value.copy();
     notifyListeners();
+  }
+
+  Future<void> savePreference(UserPreference value) async {
+    final saved = await repository.api.updatePreferences(
+      PreferencesDto(
+        region: RegionCode.parse(conditions.region).code,
+        atmospheres: value.moods.toList(),
+        allergies: value.allergies
+            .split(RegExp(r'[,\s]+'))
+            .where((s) => s.isNotEmpty)
+            .toList(),
+      ),
+    );
+    setPreference(
+      UserPreference(
+        categories: value.categories,
+        moods: saved.atmospheres.toSet(),
+        allergies: saved.allergies.join(', '),
+        dislikedFood: value.dislikedFood,
+      ),
+    );
   }
 
   void rename(String name) {

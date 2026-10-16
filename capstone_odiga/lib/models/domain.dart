@@ -20,7 +20,7 @@ class Place {
   final List<String> tags;
   // UI-only mock fields; these are not an agreed backend response contract.
   final String imageAsset, description;
-  final double rating;
+  final double? rating;
   Map<String, Object> toJson() => {
     'id': id,
     'kakaoPlaceId': kakaoPlaceId,
@@ -44,21 +44,25 @@ class Congestion {
     required this.hour,
     required this.value,
     required this.percentile,
+    this.reportedBand,
   });
   final String cellId;
   final bool weekend;
   final int hour;
 
-  /// Mock density index (0–100), not an occupancy percentage.
+  /// Chart height (0–100); API fixtures use their percentile here.
   final double value;
 
-  /// Relative percentile, distinct from the density index.
+  /// Relative percentile, not an occupancy percentage.
   final double percentile;
-  CongestionBand get band => value < 40
-      ? CongestionBand.quiet
-      : value < 70
-      ? CongestionBand.moderate
-      : CongestionBand.busy;
+  final CongestionBand? reportedBand;
+  CongestionBand get band =>
+      reportedBand ??
+      (value < 40
+          ? CongestionBand.quiet
+          : value < 70
+          ? CongestionBand.moderate
+          : CongestionBand.busy);
 }
 
 class CourseStop {
@@ -134,10 +138,12 @@ class SearchConditions {
     this.people = 2,
     this.mood = '조용한',
     this.excluded = '',
+    this.useSelectedRegion = true,
   }) : start = start ?? DateTime(2026, 10, 17, 12);
   String query, region, mood, excluded;
   DateTime start;
   int people;
+  bool useSelectedRegion;
   SearchConditions copy() => SearchConditions(
     query: query,
     region: region,
@@ -145,6 +151,7 @@ class SearchConditions {
     people: people,
     mood: mood,
     excluded: excluded,
+    useSelectedRegion: useSelectedRegion,
   );
 }
 

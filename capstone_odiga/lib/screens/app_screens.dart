@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/domain.dart';
+import '../api/odiga_api.dart';
 import '../state/app_state.dart';
 import '../widgets/odiga_widgets.dart';
 import '../widgets/prototype_map.dart';
@@ -64,7 +65,10 @@ Widget stackItems(List<Widget> items, {double gap = 12}) => Column(
 Widget panel(List<Widget> children, {bool lavender = false}) => Material(
   color: lavender ? OdigaTokens.lavender : Colors.white,
   borderRadius: BorderRadius.circular(20),
-  child: Padding(padding: const EdgeInsets.all(16), child: stackItems(children, gap: 8)),
+  child: Padding(
+    padding: const EdgeInsets.all(16),
+    child: stackItems(children, gap: 8),
+  ),
 );
 void toast(BuildContext context, String message) =>
     ScaffoldMessenger.of(context)

@@ -1,58 +1,110 @@
-/// 서버 모양(CourseDto) → 예령 화면용 모델(Course)로 바꾸기
-/// - 코스 카드·커스텀 화면이 지금 Course를 쓰고 있어서 이쪽으로 맞춤
-/// - 화면에서 장소 정보는 placeId로 찾는데, 지금 MockRepository 장소 ID랑 서버 장소 ID(카카오 ID)가 다름
-///   → 화면 연결은 9주차에 예령이랑 같이 (장소 목록도 검색 응답 places로 바꾸기)
-library;
-
 import '../models/domain.dart';
-import 'api_codes.dart';
 import 'api_models.dart';
 
-extension CourseDtoMapper on CourseDto {
-  /// date = 검색 조건 날짜 (conditions.date), region = 검색 조건 지역
-  Course toCourse({required DateTime date, required RegionCode region}) {
+/// Converts API-shaped fixtures to the presentation models.
+class ApiMappers {
+  static Course toCourse(CourseDto dto, ConditionsDto conditions) =>
+      course(dto.json, conditions.json);
+  static Place toPlace(PlaceDto dto, String regionCode) =>
+      place(dto.json, regionCode);
+  static String region(String code) =>
+      const {'SEONGSU': '성수', 'HONGDAE': '홍대', 'GANGNAM': '강남'}[code] ?? code;
+
+  static Place place(Map<String, dynamic> json, String regionCode) {
+    final category =
+        const {
+          'FOOD': '음식점',
+          'CAFE': '카페',
+          'CULTURE': '문화시설',
+          'ACTIVITY': '놀거리',
+          'EXPERIENCE': '체험',
+          'SHOPPING': '쇼핑',
+          'TOUR': '관광',
+          'NATURE': '자연/휴식',
+        }[json['category']] ??
+        json['category'] as String;
+    final id = json['placeId'] as String;
+    return Place(
+      id: id,
+      kakaoPlaceId: id,
+      name: json['name'] as String,
+      category: category,
+      region: region(json['region'] ?? regionCode),
+      latitude: (json['lat'] as num).toDouble(),
+      longitude: (json['lng'] as num).toDouble(),
+      // Fixtures expose no grid cell ID; this key only groups local snapshots.
+      cellId: 'fixture-place-$id',
+      tags: [
+        for (final tag in json['tags'] as List? ?? []) tag['tag'] as String,
+      ],
+      openingHours: json['openingHours'] as String? ?? '영업시간 정보 없음',
+      imageAsset: category == '음식점' ? 'assets/ba01c.png' : 'assets/756cc.png',
+      rating: null,
+      description:
+          json['reason'] as String? ?? json['address'] as String? ?? '',
+    );
+  }
+
+  static DateTime time(String date, String clock) =>
+      DateTime.parse('${date}T$clock:00');
+
+  static Course course(
+    Map<String, dynamic> json,
+    Map<String, dynamic> conditions,
+  ) {
+    final stops = json['stops'] as List;
+    final date = conditions['date'] as String;
+    var previous = time(date, json['startAt']);
     final result = <CourseStop>[];
-    var prev = _at(date, startAt);
     for (var i = 0; i < stops.length; i++) {
-      final s = stops[i];
-      final next = i + 1 < stops.length ? stops[i + 1] : null;
-      var arrival = _at(date, s.arriveAt);
-      // 자정 넘어서 00:xx가 되면 다음 날로
-      while (arrival.isBefore(prev)) {
+      final stop = stops[i];
+      var arrival = time(date, stop['arriveAt']);
+      while (arrival.isBefore(previous)) {
         arrival = arrival.add(const Duration(days: 1));
       }
-      prev = arrival;
+      previous = arrival;
+      final next = i + 1 < stops.length ? stops[i + 1] : null;
       result.add(
         CourseStop(
-          id: '$courseId-${s.order}',
-          placeId: s.placeId,
-          order: s.order,
+          id: '${json['courseId']}-stop-$i',
+          placeId: stop['placeId'],
+          order: stop['order'],
           arrival: arrival,
-          stayMinutes: s.stayMinutes,
-          travelMinutesToNext: next?.walkMinutesFromPrev ?? 0,
-          distanceMetersToNext: (next?.distanceMetersFromPrev ?? 0).toDouble(),
+          stayMinutes: stop['stayMinutes'],
+          travelMinutesToNext:
+              (next?['walkMinutesFromPrev'] as num?)?.toInt() ?? 0,
+          distanceMetersToNext:
+              (next?['distanceMetersFromPrev'] as num?)?.toDouble() ?? 0,
         ),
       );
     }
+    final label = region(conditions['region']);
     return Course(
-      id: courseId,
-      title: title,
-      region: region.label,
+      id: json['courseId'],
+      title: json['title'] as String? ?? '$label 추천 코스 ${json['rank']}',
+      region: label,
       stops: result,
-      reason: reason,
-      matchScore: (score.total * 100).round(),
+      reason:
+          json['reason'] as String? ??
+          '지역별 예시 코스 · ${conditions['date']} ${json['startAt']} 기준',
+      matchScore: ((json['score']['total'] as num) * 100).round(),
     );
   }
-}
 
-/// 'HH:mm' → 그 날짜의 DateTime
-DateTime _at(DateTime date, String hhmm) {
-  final parts = hhmm.split(':');
-  return DateTime(
-    date.year,
-    date.month,
-    date.day,
-    int.parse(parts[0]),
-    int.parse(parts[1]),
+  static Congestion congestion(
+    String id,
+    Map<String, dynamic> json,
+    DateTime visit,
+  ) => Congestion(
+    cellId: 'fixture-place-$id',
+    weekend: visit.weekday >= DateTime.saturday,
+    hour: visit.hour,
+    value: (json['percentile'] as num).toDouble(),
+    percentile: (json['percentile'] as num).toDouble(),
+    reportedBand: switch (json['level']) {
+      'QUIET' => CongestionBand.quiet,
+      'BUSY' => CongestionBand.busy,
+      _ => CongestionBand.moderate,
+    },
   );
 }

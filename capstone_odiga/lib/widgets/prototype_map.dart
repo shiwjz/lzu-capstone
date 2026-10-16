@@ -159,9 +159,15 @@ class PrototypeMap extends StatelessWidget {
                     Positioned(
                       left: 74,
                       top: 121,
-                      child: SizedBox(width: 244, height: 188,
-                        child: OverflowBox(maxWidth: 254.5, maxHeight: 198.5,
-                          child: svg('3a9c4.svg', 254.5, 198.5))),
+                      child: SizedBox(
+                        width: 244,
+                        height: 188,
+                        child: OverflowBox(
+                          maxWidth: 254.5,
+                          maxHeight: 198.5,
+                          child: svg('3a9c4.svg', 254.5, 198.5),
+                        ),
+                      ),
                     )
                   else if (course != null)
                     Positioned.fill(

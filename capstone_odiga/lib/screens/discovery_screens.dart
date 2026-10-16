@@ -16,13 +16,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void search() {
-    final conditions = widget.app.conditions.copy()..query = query.text.trim();
+    final conditions = widget.app.conditions.copy()
+      ..query = query.text.trim()
+      ..useSelectedRegion = false;
     if (conditions.query.contains('홍대') || conditions.query.contains('연남')) {
       conditions.region = '홍대';
     }
     if (conditions.query.contains('성수') || conditions.query.contains('서울숲')) {
       conditions.region = '성수';
     }
+    if (conditions.query.contains('강남')) conditions.region = '강남';
     final people = RegExp(r'(\d+)명').firstMatch(conditions.query);
     if (people != null) conditions.people = int.parse(people[1]!).clamp(1, 12);
     if (conditions.query.contains('저녁')) {
@@ -149,6 +152,7 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
           items: [
             '성수',
             '홍대',
+            '강남',
           ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
           onChanged: (v) => setState(() => draft.region = v!),
         ),
@@ -193,13 +197,14 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
           ),
         ),
         label(
-          '예시 지원 지역: 성수·홍대 · 실제 AI 분석은 연결 전입니다.',
+          '예시 지원 지역: 성수·홍대·강남 · 지역별 고정 샘플을 표시합니다.',
           size: 11,
           color: OdigaTokens.muted,
         ),
       ]),
       action('수정 조건으로 바로 추천', () {
         draft.query = query.text.trim();
+        draft.useSelectedRegion = true;
         draft.excluded = excluded.text.trim();
         widget.app.setConditions(draft);
         Navigator.pushReplacement(
@@ -282,149 +287,205 @@ class PlaceDetailScreen extends StatefulWidget {
 
 class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   late DateTime visit = widget.app.conditions.start;
+  late Future<Place> detail = widget.app.repository.loadPlace(
+    widget.place.id,
+    visit,
+  );
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: widget.app,
-    builder: (_, child) {
-      final p = widget.place;
-      final congestion = widget.app.repository.congestion(p.id, visit);
-      return AppFrame(
-        app: widget.app,
-        title: p.name,
-        subtitle: '${p.category} · ★ ${p.rating}',
-        child: stackItems([
-          PlaceImage(
-            image: AssetImage(p.imageAsset),
-            width: double.infinity,
-            height: 148,
-          ),
-          label(
-            '서울 · ${p.region} · ${p.openingHours}',
-            size: 11,
-            color: OdigaTokens.muted,
-          ),
-          panel([
-            label(
-              '${dateText(visit)} ${clockText(visit)}',
-              size: 11,
-              color: OdigaTokens.brand,
-            ),
-            label(
-              '예상 지역 혼잡도 · ${level(congestion).label}',
-              size: 18,
-              bold: true,
-              color: level(congestion).color,
-            ),
-            label(
-              '임시 혼잡 지수 ${congestion.value.round()} / 100',
-              size: 11,
-              color: OdigaTokens.muted,
-            ),
-          ], lavender: true),
-          panel([
-            label('시간대별 예상 혼잡도', bold: true),
-            SizedBox(
-              height: 120,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(6, (i) {
-                  final time = DateTime(
-                    visit.year,
-                    visit.month,
-                    visit.day,
-                    12 + i,
-                  );
-                  final c = widget.app.repository.congestion(p.id, time);
-                  return Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => visit = time),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            width: 22,
-                            height: c.value,
-                            decoration: BoxDecoration(
-                              color: level(c).color,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          label(
-                            '${12 + i}시',
-                            size: 11,
-                            color: OdigaTokens.muted,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-            label(
-              '막대를 누르면 방문 시간의 혼잡도를 볼 수 있어요.',
-              size: 11,
-              color: OdigaTokens.muted,
-            ),
-          ]),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: p.tags
-                .map((t) => OdigaTag(label: '#$t', selected: true))
-                .toList(),
-          ),
-          Row(
+  Widget build(BuildContext context) => FutureBuilder<Place>(
+    future: detail,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return AppFrame(
+          app: widget.app,
+          title: '장소 상세',
+          child: Column(
             children: [
-              Expanded(
-                child: action(
-                  widget.app.savedPlaceIds.contains(p.id) ? '저장됨' : '저장',
-                  () => widget.app.togglePlace(p.id),
-                  secondary: true,
-                ),
+              Text(
+                snapshot.error is ApiException
+                    ? (snapshot.error as ApiException).message
+                    : '장소 정보를 불러오지 못했어요.',
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: action('코스에 추가', () {
-                  final course = widget.app.repository.recalculate(
-                    Course(
-                      id: 'custom-${DateTime.now().microsecondsSinceEpoch}',
-                      title: '${p.region} 나만의 코스',
-                      region: p.region,
-                      stops: [
-                        CourseStop(
-                          id: 'custom-stop',
-                          placeId: p.id,
-                          order: 1,
-                          arrival: visit,
-                          stayMinutes: 50,
-                        ),
-                      ],
-                    ),
-                  );
-                  openPage(
-                    context,
-                    CourseEditorScreen(app: widget.app, initial: course),
-                    '/course/edit',
+              TextButton(
+                onPressed: () => setState(() {
+                  detail = widget.app.repository.loadPlace(
+                    widget.place.id,
+                    visit,
                   );
                 }),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: action(
-                  '지도 보기',
-                  () => openPage(
-                    context,
-                    NearbyScreen(app: widget.app, initial: p),
-                    '/nearby/${p.id}',
-                  ),
-                  secondary: true,
-                ),
+                child: const Text('다시 시도'),
               ),
             ],
           ),
-        ]),
+        );
+      }
+      if (!snapshot.hasData) {
+        return AppFrame(
+          app: widget.app,
+          title: '장소 상세',
+          child: const Center(child: CircularProgressIndicator()),
+        );
+      }
+      return AnimatedBuilder(
+        animation: widget.app,
+        builder: (_, child) {
+          final p = snapshot.data!;
+          final hasHourly = widget.app.repository.hasHourlyCongestion(p.id);
+          final congestion = widget.app.repository.congestion(
+            p.id,
+            visit,
+            detail: hasHourly,
+          );
+          return AppFrame(
+            app: widget.app,
+            title: p.name,
+            subtitle: p.rating == null
+                ? p.category
+                : '${p.category} · ★ ${p.rating}',
+            child: stackItems([
+              if (p.id != widget.place.id)
+                label('현재는 선택한 장소와 관계없이 고정된 예시 상세를 표시합니다.', size: 11),
+              PlaceImage(
+                image: AssetImage(p.imageAsset),
+                width: double.infinity,
+                height: 148,
+              ),
+              label(
+                '서울 · ${p.region} · ${p.openingHours}',
+                size: 11,
+                color: OdigaTokens.muted,
+              ),
+              panel([
+                label(
+                  '${dateText(visit)} ${clockText(visit)}',
+                  size: 11,
+                  color: OdigaTokens.brand,
+                ),
+                label(
+                  '예시 지역 혼잡도 · ${level(congestion).label}',
+                  size: 18,
+                  bold: true,
+                  color: level(congestion).color,
+                ),
+                label(
+                  '샘플 ${congestion.weekend ? '주말' : '평일'} ${congestion.hour}시 · 백분위 ${congestion.percentile.round()}',
+                  size: 11,
+                  color: OdigaTokens.muted,
+                ),
+              ], lavender: true),
+              if (hasHourly)
+                panel([
+                  label('시간대별 예시 혼잡도 · 하루 전체 비교', bold: true),
+                  SizedBox(
+                    height: 120,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: List.generate(6, (i) {
+                        final time = DateTime(
+                          visit.year,
+                          visit.month,
+                          visit.day,
+                          12 + i,
+                        );
+                        final c = widget.app.repository.congestion(
+                          p.id,
+                          time,
+                          detail: true,
+                        );
+                        return Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => visit = time),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Container(
+                                  width: 22,
+                                  height: c.value,
+                                  decoration: BoxDecoration(
+                                    color: level(c).color,
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                label(
+                                  '${12 + i}시',
+                                  size: 11,
+                                  color: OdigaTokens.muted,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                  label(
+                    '막대를 누르면 방문 시간의 혼잡도를 볼 수 있어요.',
+                    size: 11,
+                    color: OdigaTokens.muted,
+                  ),
+                ])
+              else
+                panel([label('이 장소의 시간대별 혼잡도 샘플은 아직 없어요.', size: 11)]),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: p.tags
+                    .map((t) => OdigaTag(label: '#$t', selected: true))
+                    .toList(),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: action(
+                      widget.app.savedPlaceIds.contains(p.id) ? '저장됨' : '저장',
+                      () => widget.app.togglePlace(p.id),
+                      secondary: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: action('코스에 추가', () {
+                      final course = widget.app.repository.recalculate(
+                        Course(
+                          id: 'custom-${DateTime.now().microsecondsSinceEpoch}',
+                          title: '${p.region} 나만의 코스',
+                          region: p.region,
+                          stops: [
+                            CourseStop(
+                              id: 'custom-stop',
+                              placeId: p.id,
+                              order: 1,
+                              arrival: visit,
+                              stayMinutes: 50,
+                            ),
+                          ],
+                        ),
+                      );
+                      openPage(
+                        context,
+                        CourseEditorScreen(app: widget.app, initial: course),
+                        '/course/edit',
+                      );
+                    }),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: action(
+                      '지도 보기',
+                      () => openPage(
+                        context,
+                        NearbyScreen(app: widget.app, initial: p),
+                        '/nearby/${p.id}',
+                      ),
+                      secondary: true,
+                    ),
+                  ),
+                ],
+              ),
+            ]),
+          );
+        },
       );
     },
   );

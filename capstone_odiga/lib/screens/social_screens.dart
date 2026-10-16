@@ -481,6 +481,7 @@ class PreferencesScreen extends StatefulWidget {
 }
 
 class _PreferencesScreenState extends State<PreferencesScreen> {
+  bool saving = false;
   late final draft = widget.app.preference.copy();
   late final allergies = TextEditingController(text: draft.allergies);
   late final disliked = TextEditingController(text: draft.dislikedFood);
@@ -545,13 +546,26 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
           color: OdigaTokens.muted,
         ),
       ], lavender: true),
-      action('선호도 저장', () {
-        draft.allergies = allergies.text.trim();
-        draft.dislikedFood = disliked.text.trim();
-        widget.app.setPreference(draft);
-        Navigator.pop(context);
-        toast(context, '선호도를 저장했습니다.');
-      }),
+      action(
+        saving ? '저장 중…' : '선호도 저장',
+        saving
+            ? null
+            : () async {
+                draft.allergies = allergies.text.trim();
+                draft.dislikedFood = disliked.text.trim();
+                setState(() => saving = true);
+                try {
+                  await widget.app.savePreference(draft);
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                  toast(context, '선호도를 저장했습니다.');
+                } on ApiException catch (e) {
+                  if (context.mounted) toast(context, e.message);
+                } finally {
+                  if (mounted) setState(() => saving = false);
+                }
+              },
+      ),
     ]),
   );
 }
