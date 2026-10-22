@@ -9,6 +9,7 @@ CELL = 50
 cells = pd.read_csv("grid_cells.csv")
 valid_ids = set(cells["cell_id"])
 places = pd.read_csv(PLACE_FILE, encoding="utf-8-sig")
+places["region"] = places["region"].replace({"성수": "SEONGSU", "홍대": "HONGDAE", "강남": "GANGNAM"})
 
 def find_cell(row):
     x, y = to_m.transform(row["longitude"], row["latitude"])

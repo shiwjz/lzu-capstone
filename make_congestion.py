@@ -14,7 +14,7 @@ cong = (pop.groupby(["cell_id", "day_type", "hour"])["total"].mean()
 cong["avg_pop"] = cong["avg_pop"].round(1)
 
 def to_level(pct):
-    return pd.cut(pct, [0, 30, 70, 100], labels=["한산", "보통", "혼잡"], include_lowest=True)
+    return pd.cut(pct, [0, 30, 70, 100], labels=["QUIET", "NORMAL", "BUSY"], include_lowest=True)
 
 # 추천 점수용: 같은 지역·같은 요일유형·같은 시간대 안에서 순위
 cong["pct_same_time"] = (cong.groupby(["region", "day_type", "hour"])["avg_pop"]
