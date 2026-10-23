@@ -123,12 +123,14 @@ class AppFrame extends StatelessWidget {
     this.subtitle = '',
     this.scroll = true,
     this.showBack = true,
+    this.mapBackground = false,
   });
   final AppState app;
   final Widget child;
   final String? title;
   final String subtitle;
   final bool scroll, showBack;
+  final bool mapBackground;
   @override
   Widget build(BuildContext context) => ColoredBox(
     color: const Color(0xFFECE8F3),
@@ -138,6 +140,7 @@ class AppFrame extends StatelessWidget {
         child: Scaffold(
           backgroundColor: OdigaTokens.background,
           body: SafeArea(
+            top: !mapBackground,
             bottom: false,
             child: Column(
               children: [

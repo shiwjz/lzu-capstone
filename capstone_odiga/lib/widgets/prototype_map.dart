@@ -15,12 +15,14 @@ class PrototypeMap extends StatelessWidget {
     this.places,
     this.region = '성수',
     this.home = false,
+    this.homeSearch,
   });
   final AppState app;
   final Course? course;
   final List<Place>? places;
   final String region;
   final bool home;
+  final Widget? homeSearch;
   final ValueChanged<Place> onPlace;
   static const positions = [
     Offset(310, 105),
@@ -40,84 +42,7 @@ class PrototypeMap extends StatelessWidget {
         places ??
         app.repository.places.where((p) => p.region == region).toList();
     if (home) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: AspectRatio(
-          aspectRatio: 350 / 506,
-          child: FittedBox(
-            fit: BoxFit.fill,
-            child: SizedBox(
-              width: 350,
-              height: 506,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Image.asset('assets/23d0a.png', fit: BoxFit.cover),
-                  ),
-                  Positioned(
-                    left: 145,
-                    top: 223,
-                    child: svg('f16f2.svg', 60, 60),
-                  ),
-                  Positioned(
-                    left: 167,
-                    top: 245,
-                    child: svg('85a2f.svg', 16, 16),
-                  ),
-                  Positioned(left: 134, top: 276, child: _pill('현재 내 위치')),
-                  Positioned(
-                    left: 12,
-                    top: 12,
-                    child: _pill('내 주변 · 음식점 · 카페 · 놀거리'),
-                  ),
-                  Positioned(right: 12, top: 12, child: _location(context)),
-                  for (var i = 0; i < items.length && i < 6; i++)
-                    Positioned(
-                      left: [66.0, 239.0, 96.0, 273.0, 42.0, 196.0][i],
-                      top: [134.0, 181.0, 351.0, 376.0, 421.0, 88.0][i],
-                      child: GestureDetector(
-                        onTap: () => onPlace(items[i]),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: OdigaTokens.brand,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 3,
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: svg(
-                                items[i].category == '카페'
-                                    ? '542bf.svg'
-                                    : items[i].category == '음식점'
-                                    ? '9d91f.svg'
-                                    : '7ff54.svg',
-                                23,
-                                23,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            _pill(items[i].category),
-                          ],
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    left: 10,
-                    bottom: 10,
-                    child: _pill('지도 미리보기', small: true),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
+      return _HomeMap(places: items, onPlace: onPlace, search: homeSearch);
     }
     final points = items
         .map(
@@ -249,6 +174,260 @@ class PrototypeMap extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
     ),
     child: Text(text, style: OdigaTokens.text(small ? 9 : 11)),
+  );
+}
+
+/// Figma 26:5. Only the map artwork scales; the controls keep their touch size.
+class _HomeMap extends StatelessWidget {
+  const _HomeMap({required this.places, required this.onPlace, this.search});
+  final List<Place> places;
+  final ValueChanged<Place> onPlace;
+  final Widget? search;
+
+  static const _markers = [
+    (category: '음식점', position: Offset(86, 270)),
+    (category: '카페', position: Offset(259, 317)),
+    (category: '놀거리', position: Offset(116, 487)),
+    (category: '음식점', position: Offset(293, 512)),
+    (category: '카페', position: Offset(62, 557)),
+    (category: '음식점', position: Offset(216, 224)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    // Match each design marker to a distinct fixture of the same category.
+    final remaining = [...places];
+    final markers = <({Place place, Offset position})>[];
+    for (final marker in _markers) {
+      final index = remaining.indexWhere((p) => p.category == marker.category);
+      if (index >= 0) {
+        markers.add((
+          place: remaining.removeAt(index),
+          position: marker.position,
+        ));
+      }
+    }
+    final searchTop = (MediaQuery.paddingOf(context).top + 12).clamp(
+      52.0,
+      double.infinity,
+    );
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ClipRect(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: 390,
+                height: 748,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Image.asset('assets/23d0a.png', fit: BoxFit.cover),
+                    ),
+                    const Positioned.fill(
+                      child: ColoredBox(color: Color(0x0BFFFFFF)),
+                    ),
+                    Positioned(
+                      left: 165,
+                      top: 360,
+                      child: SvgPicture.asset(
+                        'assets/f16f2.svg',
+                        width: 60,
+                        height: 60,
+                      ),
+                    ),
+                    Positioned(
+                      left: 187,
+                      top: 382,
+                      child: SvgPicture.asset(
+                        'assets/85a2f.svg',
+                        width: 16,
+                        height: 16,
+                      ),
+                    ),
+                    const Positioned(
+                      left: 154,
+                      top: 413,
+                      child: _HomeMapLabel(
+                        '현재 내 위치',
+                        width: 82,
+                        height: 29,
+                        color: OdigaTokens.brand,
+                      ),
+                    ),
+                    for (final marker in markers)
+                      Positioned(
+                        left: marker.position.dx - 5,
+                        top: marker.position.dy,
+                        child: NearbyCategoryMarker(
+                          place: marker.place,
+                          onTap: () => onPlace(marker.place),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (search != null)
+          Positioned(left: 20, right: 20, top: searchTop, child: search!),
+        Positioned(
+          left: 20,
+          right: 12,
+          top: searchTop + 66,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    width: 225,
+                    height: 32,
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      '내 주변 · 음식점 · 카페 · 놀거리',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: OdigaTokens.text(11),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Material(
+                  color: Colors.white,
+                  elevation: 3,
+                  shadowColor: const Color(0x24292933),
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('현재 위치는 성수의 예시 위치입니다.')),
+                    ),
+                    child: Semantics(
+                      label: '현재 위치로 이동',
+                      button: true,
+                      child: SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: Center(
+                          child: SvgPicture.asset(
+                            'assets/f6032.svg',
+                            width: 20,
+                            height: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Positioned(
+          left: 10,
+          bottom: 0,
+          child: _HomeMapLabel(
+            '100 m',
+            width: 55,
+            height: 20,
+            radius: 5,
+            color: OdigaTokens.muted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Category pin and label share one action and the same place data.
+class NearbyCategoryMarker extends StatelessWidget {
+  const NearbyCategoryMarker({
+    super.key,
+    required this.place,
+    required this.onTap,
+  });
+  final Place place;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: '${place.category} · ${place.name}',
+    button: true,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 5),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: OdigaTokens.brand,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+              ),
+              alignment: Alignment.center,
+              child: SvgPicture.asset(
+                'assets/${switch (place.category) {
+                  '음식점' => '9d91f.svg',
+                  '카페' => '542bf.svg',
+                  _ => '7ff54.svg',
+                }}',
+                width: 23,
+                height: 23,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          _HomeMapLabel(
+            place.category,
+            width: place.category == '음식점' ? 54 : 46,
+            height: 24,
+            radius: 12,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _HomeMapLabel extends StatelessWidget {
+  const _HomeMapLabel(
+    this.text, {
+    required this.width,
+    required this.height,
+    this.radius = 14,
+    this.color = OdigaTokens.ink,
+  });
+  final String text;
+  final double width, height, radius;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: height,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(radius),
+    ),
+    child: Text(text, style: OdigaTokens.text(11, color: color)),
   );
 }
 

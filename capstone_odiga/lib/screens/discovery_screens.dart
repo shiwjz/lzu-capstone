@@ -48,49 +48,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) => AppFrame(
     app: widget.app,
-    title: '오디가',
-    subtitle: '현재 위치 · 내 주변을 둘러보세요',
     showBack: false,
-    child: stackItems([
-      Row(
-        children: [
-          Expanded(
-            child: OdigaSearchField(
-              controller: query,
-              hint: '지금 내 주변에서 가고 싶은 곳은?',
-              onSubmitted: (_) => search(),
-            ),
-          ),
-          IconButton(
-            tooltip: '추천 검색',
-            onPressed: search,
-            icon: const Icon(Icons.arrow_forward, color: OdigaTokens.brand),
-          ),
-        ],
+    mapBackground: true,
+    scroll: false,
+    child: PrototypeMap(
+      app: widget.app,
+      home: true,
+      homeSearch: OdigaSearchField(
+        controller: query,
+        hint: '지금 내 주변에서 가고 싶은 곳은?',
+        onSubmitted: (_) => search(),
       ),
-      InkWell(
-        onTap: () =>
-            openPage(context, ConditionsScreen(app: widget.app), '/conditions'),
-        child: panel([
-          Row(
-            children: [
-              Expanded(child: label('조건 · 카테고리', bold: true)),
-              label('선택 입력 · 펼치기 ⌄', size: 11, color: OdigaTokens.muted),
-            ],
-          ),
-        ]),
+      onPlace: (p) => openPage(
+        context,
+        NearbyScreen(app: widget.app, initial: p),
+        '/nearby/${p.id}',
       ),
-      PrototypeMap(
-        app: widget.app,
-        home: true,
-        onPlace: (p) => openPage(
-          context,
-          NearbyScreen(app: widget.app, initial: p),
-          '/nearby/${p.id}',
-        ),
-      ),
-      label('임시 데이터로 체험하는 프로토타입', size: 11, color: OdigaTokens.muted),
-    ], gap: 8),
+    ),
   );
 }
 
