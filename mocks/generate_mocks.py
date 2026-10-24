@@ -1,21 +1,24 @@
-"""오디가 가짜 응답 JSON 생성 (API 명세 v0.2 기준) - 김예민
+"""오디가 가짜 응답 JSON + 서버 데이터 생성 (API 명세 v0.3 기준) - 김예민
 
 실행: 저장소 맨 위 폴더에서  python mocks/generate_mocks.py
+(장소·셀·혼잡도 파일이 바뀌면 다시 실행)
 
 입력 파일
-- output/places.csv      최예린  카카오 장소 (이름·좌표·주소 그대로 사용)
-- places_with_cell.csv   이윤경  장소 → 50m 셀 매칭 (셀 없으면 가장 가까운 셀로 대체)
+- output/places.csv      최예린  카카오 장소 (분류 보정·영어 코드 끝난 것 그대로 사용)
 - grid_cells.csv         이윤경  50m 셀 목록
-- congestion_fake.csv    이윤경  셀·요일·시간별 혼잡도 (가짜 유동인구 기반)
+- cell_congestion.csv    이윤경  셀·요일·시간별 혼잡도 (가짜 유동인구 기반)
     · 검색·코스 혼잡도: pct_same_time / level_same_time (같은 시간끼리 비교)
     · 장소 상세 시간대 그래프: pct_all_day / level_all_day (하루 전체 비교)
+- 셀 번호는 윤경 match_places.py랑 같은 방식(EPSG:5179 좌표 ÷ 50m)으로 직접 계산
+  → places_with_cell.csv가 예전 장소 기준이어도 새 장소까지 전부 셀 붙음 (윤경 파일이랑 1,784곳 일치 확인)
 
 - 태그, 사용자 요구·타깃 점수: 블로그·성연령 데이터 전이라 아직 가짜 값 (place_id 해시)
-- 거리·도보 시간·도착 시각·코스 조합: 코스 생성 규칙 v0.1대로 실제 계산
+- 거리·도보 시간·도착 시각·코스 조합: 코스 생성 규칙대로 실제 계산
+- SNACK(베이커리·아이스크림 등)은 코스 칸에 안 넣음. 장소 추천·코스에 직접 추가만 가능
 
 출력
-- mocks/*.json                                 가짜 응답 JSON 15개
-- capstone-backend/src/main/resources/dev/     서버 테스트용 장소·혼잡도 (/api/dev/courses가 읽음)
+- mocks/*.json                                   가짜 응답 JSON 15개
+- capstone-backend/src/main/resources/data/      서버가 읽는 장소·혼잡도 (places.tsv, congestion.tsv)
 """
 import csv
 import hashlib
@@ -28,19 +31,19 @@ import sys
 # ---------------- 코드표 (명세 '공통 규칙'과 동일) ----------------
 REGION_CODE = {'성수': 'SEONGSU', '홍대': 'HONGDAE', '강남': 'GANGNAM'}
 REGION_LABEL = {v: k for k, v in REGION_CODE.items()}
-CAT_CODE = {'음식': 'FOOD', '카페': 'CAFE', '문화': 'CULTURE', '액티비티': 'ACTIVITY',
-            '체험': 'EXPERIENCE', '쇼핑': 'SHOPPING', '관광': 'TOUR', '자연/휴식': 'NATURE'}
 PLAY_CATS = ['CULTURE', 'ACTIVITY', 'EXPERIENCE', 'SHOPPING', 'TOUR', 'NATURE']
 LEVEL_LABEL = {'QUIET': '한산해요', 'NORMAL': '보통이에요', 'BUSY': '붐벼요'}
-LEVEL_CODE = {'한산': 'QUIET', '보통': 'NORMAL', '혼잡': 'BUSY'}          # 윤경 CSV 값 → API 코드
-GRID_REGION = {'SS': 'SEONGSU', 'HD': 'HONGDAE', 'GN': 'GANGNAM'}
-CONG = {}       # (cell_id, 'weekday'/'weekend', hour) → 혼잡도 행
-CELL_OF = {}    # place_id → cell_id
+LEVEL_CODE = {'한산': 'QUIET', '보통': 'NORMAL', '혼잡': 'BUSY',
+              'QUIET': 'QUIET', 'NORMAL': 'NORMAL', 'BUSY': 'BUSY'}      # 예전 한글 값도 읽히게
+GRID_REGION = {'SS': 'SEONGSU', 'HD': 'HONGDAE', 'GN': 'GANGNAM',
+               'SEONGSU': 'SEONGSU', 'HONGDAE': 'HONGDAE', 'GANGNAM': 'GANGNAM'}
+CONG = {}       # (cell_id, 'WEEKDAY'/'WEEKEND', hour) → 혼잡도 행
 CELLS = []      # (cell_id, region, lat, lng)
+CELL_IDS = set()
 
 # ---------------- 코스 생성 규칙 v0.1 (초기값) ----------------
 STAY_MIN = {'FOOD': 60, 'CAFE': 50, 'CULTURE': 60, 'ACTIVITY': 60, 'EXPERIENCE': 90,
-            'SHOPPING': 40, 'TOUR': 40, 'NATURE': 40}
+            'SHOPPING': 40, 'TOUR': 40, 'NATURE': 40, 'SNACK': 30}
 WALK_M_PER_MIN = 67          # 걷는 속도 4km/h
 DETOUR = 1.3                 # 직선거리 → 실제 걷는 거리 보정
 TARGET_MIN, TOL_MIN = 180, 30  # 총 3시간 ±30분
@@ -49,8 +52,8 @@ TOP_K = 10                   # 칸별 후보 수
 W_PLACE = {'request': 0.45, 'target': 0.30, 'congestion': 0.25}
 W_COURSE = {'placeAvg': 0.70, 'moveEfficiency': 0.20, 'timeFit': 0.10}
 BAR_FROM_HOUR = 18           # 술집은 18시 이후 도착일 때만
-NOISE_TOP = {'서비스,산업', '교육,학문', '의료,건강', '교통,수송', '부동산', '사회,공공기관'}
-THEME_CAFE_TO_PLAY = {'사주카페', '고양이카페', '애견카페', '라이브카페'}
+# 조용한 곳 원하면 놀거리 칸에서 빼는 시끄러운 곳 (노래방 문제 대책, 카카오 카테고리·이름 기준)
+NOISY_PLAY = ['노래방', '노래연습장', '코인노래', '멀티방', '오락실', 'PC방', '볼링', '당구', '클럽', 'VR', '사격']
 PLAY_LABEL = {'미술,공예': '공방', '화랑': '전시', '보드카페': '보드게임', '방탈출카페': '방탈출', '만화방': '만화카페'}   # 코스 제목용
 ALLERGY_EXCLUDE = {          # 알레르기 → 제외할 카카오 카테고리 단어 (초안)
     'SHELLFISH': ['해물', '조개', '게,대게', '랍스터'],
@@ -75,7 +78,8 @@ def h(*parts):
 
 
 def slot_of(cat):
-    return {'FOOD': 'MEAL', 'CAFE': 'CAFE'}.get(cat, 'PLAY')
+    # SNACK은 코스 생성엔 안 쓰지만, 코스에 직접 추가하면 카페 칸으로 표시
+    return {'FOOD': 'MEAL', 'CAFE': 'CAFE', 'SNACK': 'CAFE'}.get(cat, 'PLAY')
 
 
 def hm(minutes):
@@ -114,14 +118,14 @@ def slot_order(start):
 
 # ---------------- 가짜 장소 속성 ----------------
 def tags_of(p):
-    pool = TAG_POOL['PLAY' if slot_of(p['category']) == 'PLAY' else p['category']]
+    pool = TAG_POOL[{'MEAL': 'FOOD', 'CAFE': 'CAFE', 'PLAY': 'PLAY'}[slot_of(p['category'])]]
     picked = sorted(pool, key=lambda t: h(p['placeId'], 'tag', t))[:3]
     return [{'tag': t, 'mentions': 2 + int(h(p['placeId'], 'm', t) * 9)} for t in picked]
 
 
 def congestion(p, day_type, hour, basis='same_time'):
     """혼잡도 조회. basis = same_time(추천 점수용) / all_day(시간대 그래프용)"""
-    row = CONG[(p['cellId'], day_type.lower(), hour % 24)]
+    row = CONG[(p['cellId'], day_type.upper(), hour % 24)]
     return {'hour': hour % 24, 'level': LEVEL_CODE[row[f'level_{basis}']],
             'percentile': round(float(row[f'pct_{basis}']))}
 
@@ -160,31 +164,47 @@ def load(csv_path):
     rows = []
     with open(csv_path, encoding='utf-8-sig', newline='') as f:
         for r in csv.DictReader(f):
-            p = {'placeId': r['place_id'], 'region': REGION_CODE[r['region']],
-                 'category': CAT_CODE[r['category']], 'name': r['name'],
-                 'address': r['address'], 'roadAddress': r['road_address'] or None,
+            p = {'placeId': r['place_id'], 'region': r['region'], 'category': r['category'],
+                 'name': r['name'], 'address': r['address'], 'roadAddress': r['road_address'] or None,
                  'phone': r['phone'] or None, 'lat': round(float(r['latitude']), 7),
                  'lng': round(float(r['longitude']), 7), 'kakaoCategory': r['kakao_category'],
                  'placeUrl': r['place_url'], 'searchKeyword': r['search_keyword'] or None}
-            # 데이터 정리 규칙 v0.1
-            top = p['kakaoCategory'].split(' > ')[0]
-            if top in NOISE_TOP or '키즈카페' in p['kakaoCategory']:   # 공간대여·학원·주차장·키즈카페 제외
-                continue
-            if p['category'] == 'CAFE' and p['kakaoCategory'].startswith('가정,생활 > 여가시설'):
-                p['category'] = 'ACTIVITY'             # 보드게임·만화카페는 놀거리로
-            parts = p['kakaoCategory'].split(' > ')
-            if p['category'] == 'CAFE' and '테마카페' in parts:
-                sub = parts[parts.index('테마카페') + 1] if parts[-1] != '테마카페' else None
-                if sub is None or sub in THEME_CAFE_TO_PLAY:
-                    p['category'] = 'ACTIVITY'         # 방탈출·사주·동물카페는 놀거리로
-            p['cellId'] = CELL_OF.get(p['placeId']) or nearest_cell(p)
+            p['cellId'] = cell_of(float(r['latitude']), float(r['longitude'])) or nearest_cell(p)
             p['tags'] = tags_of(p)
             rows.append(p)
     return rows
 
 
+def tm5179(lat, lng):
+    """위경도 → EPSG:5179(UTM-K) 좌표(m). 윤경 match_places.py의 pyproj 변환이랑 같은 값"""
+    a, f = 6378137.0, 1 / 298.257222101
+    e2 = f * (2 - f)
+    ep2 = e2 / (1 - e2)
+    k0, lat0, lng0, fe, fn = 0.9996, math.radians(38), math.radians(127.5), 1000000, 2000000
+
+    def arc(phi):
+        return a * ((1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256) * phi
+                    - (3 * e2 / 8 + 3 * e2 ** 2 / 32 + 45 * e2 ** 3 / 1024) * math.sin(2 * phi)
+                    + (15 * e2 ** 2 / 256 + 45 * e2 ** 3 / 1024) * math.sin(4 * phi)
+                    - (35 * e2 ** 3 / 3072) * math.sin(6 * phi))
+    phi, lam = math.radians(lat), math.radians(lng)
+    n = a / math.sqrt(1 - e2 * math.sin(phi) ** 2)
+    t, c = math.tan(phi) ** 2, ep2 * math.cos(phi) ** 2
+    A = (lam - lng0) * math.cos(phi)
+    x = fe + k0 * n * (A + (1 - t + c) * A ** 3 / 6 + (5 - 18 * t + t * t + 72 * c - 58 * ep2) * A ** 5 / 120)
+    y = fn + k0 * (arc(phi) - arc(lat0) + n * math.tan(phi) * (
+        A * A / 2 + (5 - t + 9 * c + 4 * c * c) * A ** 4 / 24 + (61 - 58 * t + t * t + 600 * c - 330 * ep2) * A ** 6 / 720))
+    return x, y
+
+
+def cell_of(lat, lng):
+    x, y = tm5179(lat, lng)
+    cid = f"{math.floor(x / 50)}_{math.floor(y / 50)}"
+    return cid if cid in CELL_IDS else None
+
+
 def nearest_cell(p):
-    """셀 매칭 없는 장소(500m 경계 근처 등)는 같은 지역에서 가장 가까운 셀로 대체"""
+    """셀 목록 밖(500m 경계)이면 같은 지역에서 가장 가까운 셀로 대체"""
     same = [c for c in CELLS if c[1] == p['region']]
     return min(same, key=lambda c: dist_m(p, {'lat': c[2], 'lng': c[3]}))[0]
 
@@ -193,13 +213,10 @@ def load_team_data(root):
     with open(os.path.join(root, 'grid_cells.csv'), encoding='utf-8-sig', newline='') as f:
         for r in csv.DictReader(f):
             CELLS.append((r['cell_id'], GRID_REGION[r['region']], float(r['center_lat']), float(r['center_lon'])))
-    with open(os.path.join(root, 'places_with_cell.csv'), encoding='utf-8-sig', newline='') as f:
+            CELL_IDS.add(r['cell_id'])
+    with open(os.path.join(root, 'cell_congestion.csv'), encoding='utf-8-sig', newline='') as f:
         for r in csv.DictReader(f):
-            if r['cell_id']:
-                CELL_OF[r['place_id']] = r['cell_id']
-    with open(os.path.join(root, 'congestion_fake.csv'), encoding='utf-8-sig', newline='') as f:
-        for r in csv.DictReader(f):
-            CONG[(r['cell_id'], r['day_type'], int(r['hour']))] = r
+            CONG[(r['cell_id'], r['day_type'].upper(), int(r['hour']))] = r
 
 
 def allowed(p, cond, arrive_hour):
@@ -208,11 +225,22 @@ def allowed(p, cond, arrive_hour):
     if '술집' in p['kakaoCategory'] and arrive_hour < BAR_FROM_HOUR:
         return False
     if p['category'] == 'FOOD' and ('간식' in p['kakaoCategory'] or '구내식당' in p['kakaoCategory']):
-        return False                                   # 베이커리·아이스크림·구내식당은 식사 칸 제외
+        return False                                   # 혹시 남은 간식·구내식당은 식사 칸 제외
+    if wants_quiet(cond) and slot_of(p['category']) == 'PLAY' and is_noisy(p):
+        return False                                   # 조용한 곳 원하면 노래방·오락실 등 제외
     for code in cond['allergies']:
         if any(w in p['kakaoCategory'] for w in ALLERGY_EXCLUDE.get(code, [])):
             return False
     return True
+
+
+def wants_quiet(cond):
+    return cond['crowdPreference'] == 'QUIET' or '조용함' in cond['moods']
+
+
+def is_noisy(p):
+    text = p['kakaoCategory'] + ' ' + p['name']
+    return any(w in text for w in NOISY_PLAY)
 
 
 # ---------------- 코스 계산 ----------------
@@ -363,45 +391,57 @@ def dump(out_dir, name, obj):
         json.dump(obj, f, ensure_ascii=False, indent=2)
 
 
-def dump_dev_data(root, places):
-    """서버 테스트용 주소(/api/dev/courses)가 읽는 파일 → capstone-backend/src/main/resources/dev/
-    - places.tsv: 정리 규칙 끝난 장소 (이 파일 순서 그대로 써야 가짜 JSON이랑 결과 같음)
-    - congestion.tsv: 셀·요일별 0~23시 혼잡도 (pct_same_time 기준, Q=한산 N=보통 B=혼잡 + 백분위)
+def dump_server_data(root, places):
+    """서버가 읽는 파일 → capstone-backend/src/main/resources/data/
+    - places.tsv: 장소 + 셀 번호 + 가짜 태그 (이 파일 순서 그대로 써야 가짜 JSON이랑 결과 같음)
+    - congestion.tsv: 셀·요일별 0~23시 혼잡도 두 줄 (sameTime = 같은 시간끼리 비교, allDay = 하루 전체 비교)
+      값 형식: Q25 = 한산 25%, N = 보통, B = 혼잡, - = 없음
+    - 정헌 ERD 확정되면 이 파일 대신 DB 테이블에서 읽기로 교체
     """
-    out = os.path.join(root, 'capstone-backend', 'src', 'main', 'resources', 'dev')
+    out = os.path.join(root, 'capstone-backend', 'src', 'main', 'resources', 'data')
     if not os.path.isdir(os.path.dirname(out)):
         return
     os.makedirs(out, exist_ok=True)
+    cols = ['placeId', 'name', 'region', 'category', 'kakaoCategory', 'lat', 'lng', 'cellId', 'tags',
+            'address', 'roadAddress', 'phone', 'placeUrl']
     with open(os.path.join(out, 'places.tsv'), 'w', encoding='utf-8', newline='\n') as f:
-        f.write('placeId\tname\tregion\tcategory\tkakaoCategory\tlat\tlng\tcellId\ttags\n')
+        f.write('\t'.join(cols) + '\n')
         for p in places:
             row = [p['placeId'], p['name'], p['region'], p['category'], p['kakaoCategory'],
-                   repr(p['lat']), repr(p['lng']), p['cellId'], '|'.join(t['tag'] for t in p['tags'])]
+                   repr(p['lat']), repr(p['lng']), p['cellId'],
+                   '|'.join(f"{t['tag']}:{t['mentions']}" for t in p['tags']),
+                   p['address'] or '', p['roadAddress'] or '', p['phone'] or '', p['placeUrl'] or '']
             f.write('\t'.join(x.replace('\t', ' ') for x in row) + '\n')
     cells = sorted({p['cellId'] for p in places})
     with open(os.path.join(out, 'congestion.tsv'), 'w', encoding='utf-8', newline='\n') as f:
-        f.write('cellId\tdayType\th0..h23\n')
+        f.write('cellId\tdayType\tsameTime(h0..h23)\tallDay(h0..h23)\n')
         for c in cells:
-            for day in ('weekday', 'weekend'):
-                hours = []
-                for hr in range(24):
-                    r = CONG.get((c, day, hr))
-                    hours.append('-' if r is None else
-                                 LEVEL_CODE[r['level_same_time']][0] + str(round(float(r['pct_same_time']))))
-                f.write(f"{c}\t{day.upper()}\t{' '.join(hours)}\n")
-    print(f'서버 테스트용 데이터: 장소 {len(places)}곳, 셀 {len(cells)}개 → {out}')
+            for day in ('WEEKDAY', 'WEEKEND'):
+                cols2 = []
+                for basis in ('same_time', 'all_day'):
+                    hours = []
+                    for hr in range(24):
+                        r = CONG.get((c, day, hr))
+                        hours.append('-' if r is None else
+                                     LEVEL_CODE[r[f'level_{basis}']][0] + str(round(float(r[f'pct_{basis}']))))
+                    cols2.append(' '.join(hours))
+                f.write(f"{c}\t{day}\t{cols2[0]}\t{cols2[1]}\n")
+    print(f'서버 데이터: 장소 {len(places)}곳, 셀 {len(cells)}개 → {out}')
 
 
 SCENARIOS = [
     ('search_seongsu_weekend_quiet.json', '토요일 오후 3시에 성수에서 친구랑 조용한 카페 가고 저녁도 먹고 싶어',
      {'region': 'SEONGSU', 'date': '2026-10-17', 'dayType': 'WEEKEND', 'startTime': '15:00', 'partySize': 2,
-      'categories': ['CAFE', 'FOOD'], 'moods': ['조용함'], 'crowdPreference': 'QUIET', 'allergies': []}),
+      'categories': ['CAFE', 'FOOD'], 'moods': ['조용함'], 'crowdPreference': 'QUIET', 'allergies': [],
+      'gender': None, 'ageGroup': None, 'companionType': 'FRIEND', 'excludedFoods': []}),
     ('search_hongdae_weekend_lively.json', '토요일 저녁 7시 홍대에서 남자친구랑 신나게 놀 수 있는 사람 많은 곳',
      {'region': 'HONGDAE', 'date': '2026-10-17', 'dayType': 'WEEKEND', 'startTime': '19:00', 'partySize': 2,
-      'categories': ['FOOD', 'ACTIVITY'], 'moods': ['데이트'], 'crowdPreference': 'LIVELY', 'allergies': []}),
+      'categories': ['FOOD', 'ACTIVITY'], 'moods': ['데이트'], 'crowdPreference': 'LIVELY', 'allergies': [],
+      'gender': None, 'ageGroup': None, 'companionType': 'COUPLE', 'excludedFoods': []}),
     ('search_gangnam_weekday_group.json', '금요일 저녁 7시 강남역 근처에서 회사 동기 4명 모임, 한 명이 갑각류 알레르기 있어',
      {'region': 'GANGNAM', 'date': '2026-10-16', 'dayType': 'WEEKDAY', 'startTime': '19:00', 'partySize': 4,
-      'categories': ['FOOD'], 'moods': ['단체석'], 'crowdPreference': 'DEFAULT', 'allergies': ['SHELLFISH']}),
+      'categories': ['FOOD'], 'moods': ['단체석'], 'crowdPreference': 'DEFAULT', 'allergies': ['SHELLFISH'],
+      'gender': None, 'ageGroup': None, 'companionType': 'COWORKER', 'excludedFoods': []}),
 ]
 
 
@@ -409,9 +449,9 @@ def main(root, out_dir):
     os.makedirs(out_dir, exist_ok=True)
     load_team_data(root)
     places = load(os.path.join(root, 'output', 'places.csv'))
-    fallback = sum(1 for p in places if p['placeId'] not in CELL_OF)
-    print(f'장소 {len(places)}곳, 셀 매칭 없어 가장 가까운 셀로 대신한 곳 {fallback}곳')
-    dump_dev_data(root, places)
+    fallback = sum(1 for p in places if cell_of(p['lat'], p['lng']) is None)
+    print(f'장소 {len(places)}곳, 셀 목록 밖이라 가장 가까운 셀로 대신한 곳 {fallback}곳')
+    dump_server_data(root, places)
     by_id = {p['placeId']: p for p in places}
     first = None
     for i, (fname, query, cond) in enumerate(SCENARIOS, 1):
@@ -446,9 +486,15 @@ def main(root, out_dir):
     dump(out_dir, 'place_detail.json', wrap(detail))
 
     # 코스 수정 예시: 1번 체류 90분으로 늘리고 2번 카페를 다른 카페로 교체
+    # 경고 2개(TOTAL_TIME_OVER·BUSY_AT_ARRIVAL)가 다 나오게: 도착 시각에 붐비는 카페로 교체 (앱 경고 화면 확인용)
+    first = by_id[c1['stops'][0]['placeId']]
+    used = {s['placeId'] for s in c1['stops']}
+    def busy_on_arrival(x):
+        arrive = to_min(cond['startTime']) + 90 + walk_min(round(dist_m(first, x)))
+        return congestion(x, cond['dayType'], arrive // 60)['level'] == 'BUSY'
     alt = next(x for x in places if x['region'] == cond['region'] and x['category'] == 'CAFE'
-               and x['placeId'] not in {s['placeId'] for s in c1['stops']} and '조용함' in [t['tag'] for t in x['tags']])
-    edited = [(by_id[c1['stops'][0]['placeId']], 90), (alt, 50), (by_id[c1['stops'][2]['placeId']], 60)]
+               and x['placeId'] not in used and busy_on_arrival(x))
+    edited = [(first, 90), (alt, 50), (by_id[c1['stops'][2]['placeId']], 60)]
     req = {'stops': [{'placeId': q['placeId'], 'stayMinutes': st} for q, st in edited]}
     dump(out_dir, 'course_update_request.json', req)
     upd = build_course(edited, cond, to_min(cond['startTime']))

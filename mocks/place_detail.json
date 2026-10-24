@@ -3,30 +3,30 @@
   "code": "SUCCESS",
   "message": "요청 성공",
   "data": {
-    "placeId": "780757764",
-    "name": "브레빌 카페앤스토어 성수",
+    "placeId": "196139841",
+    "name": "휴먼 메이드 서울 카페 바이 블루보틀 커피",
     "category": "CAFE",
     "region": "SEONGSU",
-    "address": "서울 성동구 성수동2가 316-42",
-    "roadAddress": "서울 성동구 연무장길 39-7",
-    "phone": "02-2038-0184",
-    "lat": 37.5431717,
-    "lng": 127.0538051,
-    "kakaoCategory": "음식점 > 카페",
-    "placeUrl": "http://place.map.kakao.com/780757764",
+    "address": "서울 성동구 성수동2가 333-94",
+    "roadAddress": "서울 성동구 성수이로7길 39",
+    "phone": "1533-6906",
+    "lat": 37.5425331,
+    "lng": 127.0532332,
+    "kakaoCategory": "음식점 > 카페 > 커피전문점 > 블루보틀",
+    "placeUrl": "http://place.map.kakao.com/196139841",
     "openingHours": null,
     "tags": [
       {
-        "tag": "공간·좌석",
-        "mentions": 5
+        "tag": "데이트",
+        "mentions": 4
+      },
+      {
+        "tag": "사진·인테리어",
+        "mentions": 7
       },
       {
         "tag": "조용함",
-        "mentions": 8
-      },
-      {
-        "tag": "디저트",
-        "mentions": 9
+        "mentions": 10
       }
     ],
     "congestionByHour": {
@@ -37,77 +37,77 @@
         {
           "hour": 9,
           "level": "QUIET",
-          "percentile": 16
+          "percentile": 20
         },
         {
           "hour": 10,
           "level": "QUIET",
-          "percentile": 23
-        },
-        {
-          "hour": 11,
-          "level": "QUIET",
           "percentile": 24
         },
         {
+          "hour": 11,
+          "level": "NORMAL",
+          "percentile": 31
+        },
+        {
           "hour": 12,
-          "level": "QUIET",
-          "percentile": 28
-        },
-        {
-          "hour": 13,
-          "level": "NORMAL",
-          "percentile": 34
-        },
-        {
-          "hour": 14,
-          "level": "NORMAL",
-          "percentile": 41
-        },
-        {
-          "hour": 15,
-          "level": "NORMAL",
-          "percentile": 38
-        },
-        {
-          "hour": 16,
-          "level": "QUIET",
-          "percentile": 30
-        },
-        {
-          "hour": 17,
           "level": "NORMAL",
           "percentile": 40
         },
         {
+          "hour": 13,
+          "level": "NORMAL",
+          "percentile": 47
+        },
+        {
+          "hour": 14,
+          "level": "NORMAL",
+          "percentile": 52
+        },
+        {
+          "hour": 15,
+          "level": "NORMAL",
+          "percentile": 51
+        },
+        {
+          "hour": 16,
+          "level": "NORMAL",
+          "percentile": 52
+        },
+        {
+          "hour": 17,
+          "level": "NORMAL",
+          "percentile": 50
+        },
+        {
           "hour": 18,
-          "level": "QUIET",
-          "percentile": 28
+          "level": "NORMAL",
+          "percentile": 49
         },
         {
           "hour": 19,
-          "level": "QUIET",
-          "percentile": 29
+          "level": "NORMAL",
+          "percentile": 37
         },
         {
           "hour": 20,
           "level": "QUIET",
-          "percentile": 24
+          "percentile": 28
         },
         {
           "hour": 21,
           "level": "QUIET",
-          "percentile": 21
+          "percentile": 19
         },
         {
           "hour": 22,
           "level": "QUIET",
-          "percentile": 12
+          "percentile": 14
         },
         {
           "hour": 23,
           "level": "QUIET",
-          "percentile": 11
+          "percentile": 10
         }
       ]
     }

@@ -21,74 +21,41 @@
       "allergies": [
         "SHELLFISH"
       ],
+      "gender": null,
+      "ageGroup": null,
+      "companionType": "COWORKER",
+      "excludedFoods": [],
       "extractedBy": "GEMINI"
     },
     "places": [
       {
-        "placeId": "1131298228",
-        "name": "포차주식시장 강남점",
+        "placeId": "194854751",
+        "name": "닭갈비전",
         "category": "FOOD",
         "region": "GANGNAM",
-        "address": "서울 서초구 서초대로77길 41",
-        "lat": 37.501254,
-        "lng": 127.0250023,
-        "phone": "02-595-8020",
-        "placeUrl": "http://place.map.kakao.com/1131298228",
+        "address": "서울 서초구 서초대로73길 54",
+        "lat": 37.5019967,
+        "lng": 127.0240367,
+        "phone": "02-537-1568",
+        "placeUrl": "http://place.map.kakao.com/194854751",
         "tags": [
           {
-            "tag": "데이트",
+            "tag": "단체석",
             "mentions": 8
           },
           {
-            "tag": "웨이팅",
-            "mentions": 10
-          },
-          {
-            "tag": "단체석",
-            "mentions": 5
-          }
-        ],
-        "congestion": {
-          "hour": 19,
-          "level": "NORMAL",
-          "percentile": 44
-        },
-        "score": {
-          "total": 0.98,
-          "request": 1.0,
-          "target": 0.94,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
-      },
-      {
-        "placeId": "2099955647",
-        "name": "빨간의자집",
-        "category": "FOOD",
-        "region": "GANGNAM",
-        "address": "서울 강남구 테헤란로1길 28-13",
-        "lat": 37.5006162,
-        "lng": 127.028483,
-        "phone": "02-554-5351",
-        "placeUrl": "http://place.map.kakao.com/2099955647",
-        "tags": [
-          {
             "tag": "혼밥",
-            "mentions": 5
-          },
-          {
-            "tag": "단체석",
             "mentions": 3
           },
           {
-            "tag": "분위기",
-            "mentions": 3
+            "tag": "가성비",
+            "mentions": 8
           }
         ],
         "congestion": {
           "hour": 19,
           "level": "NORMAL",
-          "percentile": 66
+          "percentile": 47
         },
         "score": {
           "total": 0.97,
@@ -99,64 +66,27 @@
         "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
       },
       {
-        "placeId": "8279464",
-        "name": "딘타이펑 강남점",
+        "placeId": "1931383675",
+        "name": "영자양꼬치",
         "category": "FOOD",
         "region": "GANGNAM",
-        "address": "서울 서초구 서초대로73길 12",
-        "lat": 37.4985185,
-        "lng": 127.0256177,
-        "phone": "02-534-2783",
-        "placeUrl": "http://place.map.kakao.com/8279464",
+        "address": "서울 서초구 서운로 226",
+        "lat": 37.5032134,
+        "lng": 127.0219121,
+        "phone": "070-7755-2977",
+        "placeUrl": "http://place.map.kakao.com/1931383675",
         "tags": [
           {
+            "tag": "가성비",
+            "mentions": 8
+          },
+          {
             "tag": "단체석",
-            "mentions": 3
-          },
-          {
-            "tag": "혼밥",
-            "mentions": 5
-          },
-          {
-            "tag": "분위기",
             "mentions": 2
-          }
-        ],
-        "congestion": {
-          "hour": 19,
-          "level": "NORMAL",
-          "percentile": 59
-        },
-        "score": {
-          "total": 0.97,
-          "request": 0.98,
-          "target": 0.92,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
-      },
-      {
-        "placeId": "19175443",
-        "name": "뮤즈온",
-        "category": "FOOD",
-        "region": "GANGNAM",
-        "address": "서울 강남구 봉은사로4길 24",
-        "lat": 37.5032855,
-        "lng": 127.0264392,
-        "phone": "02-514-4541",
-        "placeUrl": "http://place.map.kakao.com/19175443",
-        "tags": [
+          },
           {
             "tag": "분위기",
-            "mentions": 6
-          },
-          {
-            "tag": "혼밥",
-            "mentions": 7
-          },
-          {
-            "tag": "단체석",
-            "mentions": 4
+            "mentions": 8
           }
         ],
         "congestion": {
@@ -165,109 +95,294 @@
           "percentile": 53
         },
         "score": {
-          "total": 0.97,
-          "request": 0.98,
-          "target": 0.94,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
-      },
-      {
-        "placeId": "1665040674",
-        "name": "중경마라탕 강남1호점",
-        "category": "FOOD",
-        "region": "GANGNAM",
-        "address": "서울 강남구 테헤란로1길 44",
-        "lat": 37.5012428,
-        "lng": 127.0270922,
-        "phone": null,
-        "placeUrl": "http://place.map.kakao.com/1665040674",
-        "tags": [
-          {
-            "tag": "가성비",
-            "mentions": 4
-          },
-          {
-            "tag": "혼밥",
-            "mentions": 5
-          },
-          {
-            "tag": "단체석",
-            "mentions": 2
-          }
-        ],
-        "congestion": {
-          "hour": 19,
-          "level": "NORMAL",
-          "percentile": 57
-        },
-        "score": {
           "total": 0.96,
-          "request": 0.95,
-          "target": 0.93,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
-      },
-      {
-        "placeId": "1278777910",
-        "name": "그레이트후카바 강남",
-        "category": "FOOD",
-        "region": "GANGNAM",
-        "address": "서울 서초구 서초대로77길 37",
-        "lat": 37.5009945,
-        "lng": 127.025104,
-        "phone": "02-6247-0808",
-        "placeUrl": "http://place.map.kakao.com/1278777910",
-        "tags": [
-          {
-            "tag": "웨이팅",
-            "mentions": 8
-          },
-          {
-            "tag": "단체석",
-            "mentions": 7
-          },
-          {
-            "tag": "분위기",
-            "mentions": 8
-          }
-        ],
-        "congestion": {
-          "hour": 19,
-          "level": "NORMAL",
-          "percentile": 45
-        },
-        "score": {
-          "total": 0.95,
-          "request": 0.96,
+          "request": 0.98,
           "target": 0.89,
           "congestion": 1.0
         },
         "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
       },
       {
-        "placeId": "21440993",
-        "name": "더막창스 강남본점",
+        "placeId": "1694968202",
+        "name": "디엠",
         "category": "FOOD",
         "region": "GANGNAM",
-        "address": "서울 서초구 서초대로77길 37",
-        "lat": 37.5008945,
-        "lng": 127.0250338,
-        "phone": "02-533-8592",
-        "placeUrl": "http://place.map.kakao.com/21440993",
+        "address": "서울 서초구 서초대로77길 58",
+        "lat": 37.5025715,
+        "lng": 127.0243185,
+        "phone": null,
+        "placeUrl": "http://place.map.kakao.com/1694968202",
         "tags": [
+          {
+            "tag": "데이트",
+            "mentions": 9
+          },
+          {
+            "tag": "단체석",
+            "mentions": 10
+          },
+          {
+            "tag": "가성비",
+            "mentions": 4
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "NORMAL",
+          "percentile": 66
+        },
+        "score": {
+          "total": 0.96,
+          "request": 0.97,
+          "target": 0.93,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
+      },
+      {
+        "placeId": "1541881378",
+        "name": "유라멘 강남역삼신논현역CGV점심저녁",
+        "category": "FOOD",
+        "region": "GANGNAM",
+        "address": "서울 강남구 봉은사로4길 32",
+        "lat": 37.5027656,
+        "lng": 127.0266573,
+        "phone": "0503-7153-1040",
+        "placeUrl": "http://place.map.kakao.com/1541881378",
+        "tags": [
+          {
+            "tag": "단체석",
+            "mentions": 10
+          },
+          {
+            "tag": "혼밥",
+            "mentions": 3
+          },
+          {
+            "tag": "데이트",
+            "mentions": 3
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "NORMAL",
+          "percentile": 55
+        },
+        "score": {
+          "total": 0.96,
+          "request": 0.96,
+          "target": 0.93,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
+      },
+      {
+        "placeId": "584934177",
+        "name": "스아게 강남점",
+        "category": "FOOD",
+        "region": "GANGNAM",
+        "address": "서울 강남구 봉은사로4길 29",
+        "lat": 37.5029692,
+        "lng": 127.0268485,
+        "phone": null,
+        "placeUrl": "http://place.map.kakao.com/584934177",
+        "tags": [
+          {
+            "tag": "데이트",
+            "mentions": 2
+          },
+          {
+            "tag": "단체석",
+            "mentions": 5
+          },
+          {
+            "tag": "웨이팅",
+            "mentions": 4
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "NORMAL",
+          "percentile": 50
+        },
+        "score": {
+          "total": 0.96,
+          "request": 0.94,
+          "target": 0.94,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
+      },
+      {
+        "placeId": "2121791662",
+        "name": "세광양대창 강남역중앙점",
+        "category": "FOOD",
+        "region": "GANGNAM",
+        "address": "서울 강남구 강남대로94길 14",
+        "lat": 37.4992881,
+        "lng": 127.0285718,
+        "phone": "02-555-5717",
+        "placeUrl": "http://place.map.kakao.com/2121791662",
+        "tags": [
+          {
+            "tag": "단체석",
+            "mentions": 6
+          },
+          {
+            "tag": "분위기",
+            "mentions": 10
+          },
+          {
+            "tag": "웨이팅",
+            "mentions": 6
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "NORMAL",
+          "percentile": 40
+        },
+        "score": {
+          "total": 0.95,
+          "request": 0.98,
+          "target": 0.87,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
+      },
+      {
+        "placeId": "785573131",
+        "name": "일편등심 강남",
+        "category": "FOOD",
+        "region": "GANGNAM",
+        "address": "서울 강남구 테헤란로1길 20",
+        "lat": 37.4995974,
+        "lng": 127.0278199,
+        "phone": "070-8657-4158",
+        "placeUrl": "http://place.map.kakao.com/785573131",
+        "tags": [
+          {
+            "tag": "혼밥",
+            "mentions": 9
+          },
+          {
+            "tag": "단체석",
+            "mentions": 8
+          },
+          {
+            "tag": "분위기",
+            "mentions": 6
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "NORMAL",
+          "percentile": 52
+        },
+        "score": {
+          "total": 0.95,
+          "request": 0.97,
+          "target": 0.89,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
+      },
+      {
+        "placeId": "949809557",
+        "name": "일미포차",
+        "category": "FOOD",
+        "region": "GANGNAM",
+        "address": "서울 강남구 강남대로96길 15",
+        "lat": 37.5000496,
+        "lng": 127.0282328,
+        "phone": "02-561-9222",
+        "placeUrl": "http://place.map.kakao.com/949809557",
+        "tags": [
+          {
+            "tag": "단체석",
+            "mentions": 7
+          },
+          {
+            "tag": "데이트",
+            "mentions": 10
+          },
+          {
+            "tag": "웨이팅",
+            "mentions": 10
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "NORMAL",
+          "percentile": 54
+        },
+        "score": {
+          "total": 0.95,
+          "request": 0.97,
+          "target": 0.88,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
+      },
+      {
+        "placeId": "414004575",
+        "name": "탁심케밥",
+        "category": "FOOD",
+        "region": "GANGNAM",
+        "address": "서울 서초구 서초대로77길 58",
+        "lat": 37.5025372,
+        "lng": 127.0243694,
+        "phone": "02-794-1761",
+        "placeUrl": "http://place.map.kakao.com/414004575",
+        "tags": [
+          {
+            "tag": "데이트",
+            "mentions": 6
+          },
           {
             "tag": "분위기",
             "mentions": 9
           },
           {
             "tag": "단체석",
-            "mentions": 7
+            "mentions": 9
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "NORMAL",
+          "percentile": 66
+        },
+        "score": {
+          "total": 0.95,
+          "request": 0.92,
+          "target": 0.95,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
+      },
+      {
+        "placeId": "1697798595",
+        "name": "어반버거",
+        "category": "FOOD",
+        "region": "GANGNAM",
+        "address": "서울 서초구 사평대로57길 11",
+        "lat": 37.5048269,
+        "lng": 127.0231996,
+        "phone": null,
+        "placeUrl": "http://place.map.kakao.com/1697798595",
+        "tags": [
+          {
+            "tag": "웨이팅",
+            "mentions": 5
+          },
+          {
+            "tag": "단체석",
+            "mentions": 6
           },
           {
             "tag": "혼밥",
-            "mentions": 6
+            "mentions": 5
           }
         ],
         "congestion": {
@@ -277,119 +392,8 @@
         },
         "score": {
           "total": 0.95,
-          "request": 0.95,
-          "target": 0.93,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
-      },
-      {
-        "placeId": "522257484",
-        "name": "신전떡볶이 서초점",
-        "category": "FOOD",
-        "region": "GANGNAM",
-        "address": "서울 서초구 서운로 207",
-        "lat": 37.5015196,
-        "lng": 127.0217532,
-        "phone": "02-522-5353",
-        "placeUrl": "http://place.map.kakao.com/522257484",
-        "tags": [
-          {
-            "tag": "데이트",
-            "mentions": 10
-          },
-          {
-            "tag": "혼밥",
-            "mentions": 5
-          },
-          {
-            "tag": "단체석",
-            "mentions": 4
-          }
-        ],
-        "congestion": {
-          "hour": 19,
-          "level": "NORMAL",
-          "percentile": 58
-        },
-        "score": {
-          "total": 0.95,
-          "request": 0.95,
+          "request": 0.94,
           "target": 0.92,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
-      },
-      {
-        "placeId": "1195778492",
-        "name": "장터 순대국 감자탕",
-        "category": "FOOD",
-        "region": "GANGNAM",
-        "address": "서울 강남구 테헤란로7길 22",
-        "lat": 37.500722,
-        "lng": 127.0307686,
-        "phone": "02-539-4010",
-        "placeUrl": "http://place.map.kakao.com/1195778492",
-        "tags": [
-          {
-            "tag": "데이트",
-            "mentions": 10
-          },
-          {
-            "tag": "단체석",
-            "mentions": 9
-          },
-          {
-            "tag": "가성비",
-            "mentions": 7
-          }
-        ],
-        "congestion": {
-          "hour": 19,
-          "level": "NORMAL",
-          "percentile": 30
-        },
-        "score": {
-          "total": 0.95,
-          "request": 0.99,
-          "target": 0.84,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
-      },
-      {
-        "placeId": "487714466",
-        "name": "나폴리회관",
-        "category": "FOOD",
-        "region": "GANGNAM",
-        "address": "서울 강남구 테헤란로5길 24",
-        "lat": 37.5002223,
-        "lng": 127.029132,
-        "phone": "02-538-5067",
-        "placeUrl": "http://place.map.kakao.com/487714466",
-        "tags": [
-          {
-            "tag": "가성비",
-            "mentions": 4
-          },
-          {
-            "tag": "분위기",
-            "mentions": 5
-          },
-          {
-            "tag": "단체석",
-            "mentions": 7
-          }
-        ],
-        "congestion": {
-          "hour": 19,
-          "level": "NORMAL",
-          "percentile": 62
-        },
-        "score": {
-          "total": 0.95,
-          "request": 0.96,
-          "target": 0.88,
           "congestion": 1.0
         },
         "reason": "블로그 후기에서 '단체석' 언급이 많고, 평일 19시 주변이 보통이에요"
@@ -399,92 +403,16 @@
       {
         "courseId": "c_gangnam_1",
         "rank": 1,
-        "title": "강남 저녁 노래방 코스",
-        "reason": "'단체석' 후기 많은 곳 1곳 · 총 도보 10분",
-        "startAt": "19:00",
-        "endAt": "22:00",
-        "totalMinutes": 180,
-        "totalWalkMinutes": 10,
-        "totalDistanceMeters": 464,
-        "score": {
-          "total": 0.85,
-          "placeAvg": 0.85,
-          "moveEfficiency": 0.75,
-          "timeFit": 1.0
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "MEAL",
-            "placeId": "1131298228",
-            "name": "포차주식시장 강남점",
-            "category": "FOOD",
-            "lat": 37.501254,
-            "lng": 127.0250023,
-            "arriveAt": "19:00",
-            "leaveAt": "20:00",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 44
-            },
-            "placeScore": 0.98
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "1233664289",
-            "name": "뉴욕러브베이글 강남본점",
-            "category": "CAFE",
-            "lat": 37.5026097,
-            "lng": 127.0265442,
-            "arriveAt": "20:04",
-            "leaveAt": "20:54",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 4,
-            "distanceMetersFromPrev": 203,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 39
-            },
-            "placeScore": 0.78
-          },
-          {
-            "order": 3,
-            "slot": "PLAY",
-            "placeId": "372992819",
-            "name": "라라코인노래연습장",
-            "category": "ACTIVITY",
-            "lat": 37.5003849,
-            "lng": 127.0274707,
-            "arriveAt": "21:00",
-            "leaveAt": "22:00",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 6,
-            "distanceMetersFromPrev": 261,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 30
-            },
-            "placeScore": 0.8
-          }
-        ]
-      },
-      {
-        "courseId": "c_gangnam_2",
-        "rank": 2,
-        "title": "강남 저녁 전시 코스",
+        "title": "강남 저녁 방탈출 코스",
         "reason": "'단체석' 후기 많은 곳 1곳 · 총 도보 5분",
         "startAt": "19:00",
         "endAt": "21:55",
         "totalMinutes": 175,
         "totalWalkMinutes": 5,
-        "totalDistanceMeters": 211,
+        "totalDistanceMeters": 187,
         "score": {
           "total": 0.85,
-          "placeAvg": 0.85,
+          "placeAvg": 0.84,
           "moveEfficiency": 0.88,
           "timeFit": 0.83
         },
@@ -492,11 +420,11 @@
           {
             "order": 1,
             "slot": "MEAL",
-            "placeId": "2099955647",
-            "name": "빨간의자집",
+            "placeId": "1541881378",
+            "name": "유라멘 강남역삼신논현역CGV점심저녁",
             "category": "FOOD",
-            "lat": 37.5006162,
-            "lng": 127.028483,
+            "lat": 37.5027656,
+            "lng": 127.0266573,
             "arriveAt": "19:00",
             "leaveAt": "20:00",
             "stayMinutes": 60,
@@ -504,60 +432,136 @@
             "distanceMetersFromPrev": null,
             "congestion": {
               "level": "NORMAL",
-              "percentile": 66
+              "percentile": 55
+            },
+            "placeScore": 0.96
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "1906849665",
+            "name": "벙커616",
+            "category": "CAFE",
+            "lat": 37.5035006,
+            "lng": 127.0275499,
+            "arriveAt": "20:03",
+            "leaveAt": "20:53",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 3,
+            "distanceMetersFromPrev": 113,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 68
+            },
+            "placeScore": 0.79
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "1376948749",
+            "name": "포인트나인 강남점",
+            "category": "ACTIVITY",
+            "lat": 37.5034283,
+            "lng": 127.0283868,
+            "arriveAt": "20:55",
+            "leaveAt": "21:55",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 2,
+            "distanceMetersFromPrev": 74,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 40
+            },
+            "placeScore": 0.78
+          }
+        ]
+      },
+      {
+        "courseId": "c_gangnam_2",
+        "rank": 2,
+        "title": "강남 저녁 오락실 코스",
+        "reason": "'단체석' 후기 많은 곳 1곳 · 총 도보 10분",
+        "startAt": "19:00",
+        "endAt": "22:00",
+        "totalMinutes": 180,
+        "totalWalkMinutes": 10,
+        "totalDistanceMeters": 474,
+        "score": {
+          "total": 0.84,
+          "placeAvg": 0.84,
+          "moveEfficiency": 0.75,
+          "timeFit": 1.0
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "194854751",
+            "name": "닭갈비전",
+            "category": "FOOD",
+            "lat": 37.5019967,
+            "lng": 127.0240367,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 47
             },
             "placeScore": 0.97
           },
           {
             "order": 2,
             "slot": "CAFE",
-            "placeId": "421613171",
-            "name": "커피나인 강남역2호점",
+            "placeId": "2135547001",
+            "name": "카페온화 강남점",
             "category": "CAFE",
-            "lat": 37.4997232,
-            "lng": 127.0290413,
-            "arriveAt": "20:03",
-            "leaveAt": "20:53",
+            "lat": 37.5024393,
+            "lng": 127.0271107,
+            "arriveAt": "20:06",
+            "leaveAt": "20:56",
             "stayMinutes": 50,
-            "walkMinutesFromPrev": 3,
-            "distanceMetersFromPrev": 111,
+            "walkMinutesFromPrev": 6,
+            "distanceMetersFromPrev": 276,
             "congestion": {
               "level": "NORMAL",
-              "percentile": 32
+              "percentile": 46
             },
             "placeScore": 0.78
           },
           {
             "order": 3,
             "slot": "PLAY",
-            "placeId": "1894251295",
-            "name": "마테리오 갤러리",
-            "category": "CULTURE",
-            "lat": 37.500626,
-            "lng": 127.0290337,
-            "arriveAt": "20:55",
-            "leaveAt": "21:55",
+            "placeId": "982612731",
+            "name": "짱오락실 강남대로점",
+            "category": "ACTIVITY",
+            "lat": 37.5006924,
+            "lng": 127.0266668,
+            "arriveAt": "21:00",
+            "leaveAt": "22:00",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 2,
-            "distanceMetersFromPrev": 100,
+            "walkMinutesFromPrev": 4,
+            "distanceMetersFromPrev": 198,
             "congestion": {
               "level": "NORMAL",
-              "percentile": 67
+              "percentile": 58
             },
-            "placeScore": 0.79
+            "placeScore": 0.78
           }
         ]
       },
       {
         "courseId": "c_gangnam_3",
         "rank": 3,
-        "title": "강남 저녁 노래방 코스",
+        "title": "강남 저녁 만화카페 코스",
         "reason": "'단체석' 후기 많은 곳 1곳 · 총 도보 9분",
         "startAt": "19:00",
         "endAt": "21:59",
         "totalMinutes": 179,
         "totalWalkMinutes": 9,
-        "totalDistanceMeters": 438,
+        "totalDistanceMeters": 455,
         "score": {
           "total": 0.84,
           "placeAvg": 0.84,
@@ -568,11 +572,11 @@
           {
             "order": 1,
             "slot": "MEAL",
-            "placeId": "8279464",
-            "name": "딘타이펑 강남점",
+            "placeId": "584934177",
+            "name": "스아게 강남점",
             "category": "FOOD",
-            "lat": 37.4985185,
-            "lng": 127.0256177,
+            "lat": 37.5029692,
+            "lng": 127.0268485,
             "arriveAt": "19:00",
             "leaveAt": "20:00",
             "stayMinutes": 60,
@@ -580,47 +584,47 @@
             "distanceMetersFromPrev": null,
             "congestion": {
               "level": "NORMAL",
-              "percentile": 59
+              "percentile": 50
             },
-            "placeScore": 0.97
+            "placeScore": 0.96
           },
           {
             "order": 2,
             "slot": "CAFE",
-            "placeId": "25736467",
-            "name": "할리스 강남역점",
+            "placeId": "1233664289",
+            "name": "뉴욕러브베이글 강남본점",
             "category": "CAFE",
-            "lat": 37.4987162,
-            "lng": 127.0277743,
-            "arriveAt": "20:04",
-            "leaveAt": "20:54",
+            "lat": 37.5026097,
+            "lng": 127.0265442,
+            "arriveAt": "20:01",
+            "leaveAt": "20:51",
             "stayMinutes": 50,
-            "walkMinutesFromPrev": 4,
-            "distanceMetersFromPrev": 192,
+            "walkMinutesFromPrev": 1,
+            "distanceMetersFromPrev": 48,
             "congestion": {
               "level": "NORMAL",
-              "percentile": 52
+              "percentile": 49
             },
             "placeScore": 0.78
           },
           {
             "order": 3,
             "slot": "PLAY",
-            "placeId": "1180198968",
-            "name": "악쓰는하마코인노래연습장",
+            "placeId": "1596177563",
+            "name": "만화카페도도 강남점",
             "category": "ACTIVITY",
-            "lat": 37.5008967,
-            "lng": 127.0272775,
+            "lat": 37.4994124,
+            "lng": 127.0287867,
             "arriveAt": "20:59",
             "leaveAt": "21:59",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 5,
-            "distanceMetersFromPrev": 246,
+            "walkMinutesFromPrev": 8,
+            "distanceMetersFromPrev": 407,
             "congestion": {
               "level": "NORMAL",
-              "percentile": 54
+              "percentile": 41
             },
-            "placeScore": 0.78
+            "placeScore": 0.77
           }
         ]
       }

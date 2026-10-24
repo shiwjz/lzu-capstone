@@ -37,11 +37,15 @@ public final class CourseRules {
     // 카테고리별 체류 시간 초기값(분)
     private static final Map<String, Integer> STAY_MINUTES = Map.of(
             "FOOD", 60, "CAFE", 50, "CULTURE", 60, "ACTIVITY", 60,
-            "EXPERIENCE", 90, "SHOPPING", 40, "TOUR", 40, "NATURE", 40);
+            "EXPERIENCE", 90, "SHOPPING", 40, "TOUR", 40, "NATURE", 40, "SNACK", 30);
 
     // 후보 고를 때 쓰는 칸별 대략 체류 시간
     private static final Map<Slot, Integer> NOMINAL_STAY = Map.of(
             Slot.MEAL, 60, Slot.CAFE, 50, Slot.PLAY, 60);
+
+    // 조용한 곳 원하면 놀거리 칸에서 빼는 곳 (카카오 카테고리·이름 기준, '조용한데 노래방' 문제 대책)
+    private static final List<String> NOISY_PLAY = List.of(
+            "노래방", "노래연습장", "코인노래", "멀티방", "오락실", "PC방", "볼링", "당구", "클럽", "VR", "사격");
 
     // 알레르기 → 제외할 카카오 카테고리 단어 (초안, 나머지 알레르기는 블로그 메뉴 경고로 보완)
     private static final Map<String, List<String>> ALLERGY_EXCLUDE = Map.of(
@@ -79,6 +83,12 @@ public final class CourseRules {
             }
         }
         return true;
+    }
+
+    /** 시끄러운 놀거리인지 (노래방·오락실 등) */
+    public static boolean isNoisy(CoursePlace place) {
+        String text = place.kakaoCategory() + " " + place.name();
+        return NOISY_PLAY.stream().anyMatch(text::contains);
     }
 
     /** 혼잡도 적합도 (이윤경 확정 전 초안) */
