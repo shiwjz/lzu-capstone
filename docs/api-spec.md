@@ -10,7 +10,9 @@
 | 검색 조건 필드 | region ~ allergies | + gender, ageGroup, companionType, excludedFoods | 피그마 04 조건 화면, 타깃 점수(성·연령)에 필요 |
 | 검색 요청 | query, date, startTime, region | + conditions (조건 화면에서 고친 값 그대로 보내면 문장 분석 건너뜀) | 피그마 '수정 조건으로 바로 추천' |
 | 장소 목록 | 없음 | GET /api/places?region=&category= 추가 | 피그마 01·02 홈 '내 주변 장소' |
-| 저장 코스·저장한 장소 | 없음 | API 모양만 정함, 로그인 붙은 뒤 구현 | 피그마 09·17 |
+| 저장 코스·저장한 장소 | 없음 | GET·POST·DELETE /api/users/me/courses, /api/users/me/places (10/24 구현) | 피그마 09·17 |
+| 회원·내 설정 | 가짜 JSON만 | 회원가입·로그인·내 설정 서버에서 동작, 로그인하고 검색하면 내 설정 자동 반영 | 9주차 정헌 할 일 중 ERD·배포 빼고 예민이 가져감 |
+| 없는 주소 | 500 INTERNAL_SERVER_ERROR | 404 NOT_READY | 앱이 '준비 중'으로 처리 |
 | 카테고리 | 8개 | + SNACK 간식 (베이커리·아이스크림 등, 코스 칸에는 안 넣음) | 최예린 8주차 분류 보정 |
 | 코스 규칙 | - | 조용한 곳 원하면 놀거리 칸에서 노래방·오락실·PC방 등 제외 | '조용한데 노래방 추천' 문제 |
 | 장소 데이터 | 1,795곳 (분류 보정은 가짜 JSON에서만) | 3,306곳, 분류 보정·영어 코드는 최예린 수집 단계에서 끝남 | 최예린 collect_places.py |
@@ -24,8 +26,8 @@
 | GET /api/places, GET /api/places/{placeId} | ✅ 동작. 지금은 resources/data 파일에서 읽음 → ERD 확정 후 DB | 김예민 (9주차에 가져옴) |
 | PUT /api/courses/{courseId} | ✅ 동작. 코스는 서버 메모리에 저장 (서버 끄면 사라짐) → ERD 확정 후 DB | 김예민 |
 | POST /api/courses/{courseId}/share, GET /api/share/{shareCode} | ✅ 동작 | 김예민 |
-| POST /api/auth/signup, /api/auth/login, GET·PUT /api/users/me/preferences | ⬜ 아직 | 성정헌 |
-| 저장 코스·저장한 장소 | ⬜ 로그인 붙은 뒤 | 성정헌 · 김예민 |
+| POST /api/auth/signup, /api/auth/login, GET·PUT /api/users/me/preferences | ✅ 동작. 회원·내 설정은 DB(users, user_preference, user_allergy) | 김예민 (정헌 대신, 테이블은 정헌) |
+| 저장 코스·저장한 장소 GET·POST·DELETE /api/users/me/courses, /api/users/me/places | ✅ 동작. 지금은 서버 메모리 (서버 끄면 사라짐) → ERD 확정 후 DB | 김예민 |
 
 ## v0.2에서 바뀐 점
 
@@ -76,18 +78,19 @@
 | USER_NOT_FOUND | 404 | 없는 사용자 | 있음 |
 | DUPLICATE_EMAIL | 409 | 이미 가입된 이메일 | 있음 |
 | INTERNAL_SERVER_ERROR | 500 | 그 밖의 서버 오류 | 있음 |
-| UNAUTHORIZED | 401 | 토큰이 없거나 만료됨 (로그인 필요한 API만) | 추가 필요 |
-| LOGIN_FAILED | 401 | 이메일 또는 비밀번호 틀림 | 추가 필요 |
-| PLACE_NOT_FOUND · COURSE_NOT_FOUND · SHARE_NOT_FOUND | 404 | 없는 장소·코스·공유 코드 | 추가 필요 |
-| CONDITION_MISSING | 422 | 문장에서 지역처럼 꼭 필요한 조건을 못 찾음 → 앱에서 다시 물어보기 | 추가 필요 |
-| AI_UNAVAILABLE | 503 | Gemini 오류 + 규칙 기반 예비 처리도 실패 | 추가 필요 |
+| UNAUTHORIZED | 401 | 토큰이 없거나 만료됨 (로그인 필요한 API만) | 있음 (9주차) |
+| LOGIN_FAILED | 401 | 이메일 또는 비밀번호 틀림 | 있음 (9주차) |
+| PLACE_NOT_FOUND · COURSE_NOT_FOUND · SHARE_NOT_FOUND | 404 | 없는 장소·코스·공유 코드 | 있음 (9주차) |
+| CONDITION_MISSING | 422 | 문장에서 지역처럼 꼭 필요한 조건을 못 찾음 → 앱에서 다시 물어보기 | 있음 (9주차) |
+| AI_UNAVAILABLE | 503 | Gemini 오류 + 규칙 기반 예비 처리도 실패 | 있음 (9주차) |
+| NOT_READY | 404 | 서버에 없는 주소 (예전엔 500) | 있음 (9주차) |
 
-- '추가 필요'는 ErrorCode에 같은 형식으로 추가 부탁 (@성정헌)
+- 9주차에 ErrorCode에 전부 추가함. 검색·장소·코스 API(`search/`, `place/`)는 아직 자체 ApiException으로 같은 코드·HTTP 상태를 내보냄 → 응답 JSON은 똑같음
 - 조건에 맞는 코스가 없는 건 에러 아님 → `courses: []` + 안내 문구(`notice`) 반환
 
 ## API 목록
 
-MVP API 8개 + v0.3 추가 1개(장소 목록). 저장 코스는 로그인 붙은 뒤.
+MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소). 회원가입·로그인·내 설정은 9주차에 예민이 만듦 (원래 정헌, 정헌은 ERD·배포).
 
 | 기능 | 메서드·경로 | 로그인 | 백엔드 담당 | 쓰는 화면 |
 | --- | --- | --- | --- | --- |
@@ -97,11 +100,11 @@ MVP API 8개 + v0.3 추가 1개(장소 목록). 저장 코스는 로그인 붙�
 | 코스 수정 | PUT /api/courses/{courseId} | 선택 | 김예민 | 커스텀 |
 | 공유 만들기 | POST /api/courses/{courseId}/share | 선택 | 김예민 | 공유 |
 | 공유 코스 보기 | GET /api/share/{shareCode} | 불필요 | 김예민 | 공유 링크로 연 화면 |
-| 회원가입 | POST /api/auth/signup | 불필요 | 성정헌 | 로그인 |
-| 로그인 | POST /api/auth/login | 불필요 | 성정헌 | 로그인 |
-| 내 설정 보기·수정 | GET·PUT /api/users/me/preferences | 필요 | 성정헌 | 마이페이지 |
-| 저장 코스 (예정) | GET·POST /api/users/me/courses, DELETE /api/users/me/courses/{courseId} | 필요 | 성정헌 · 김예민 | 저장 코스 |
-| 저장한 장소 (예정) | GET·POST /api/users/me/places, DELETE /api/users/me/places/{placeId} | 필요 | 성정헌 | 저장한 장소 |
+| 회원가입 | POST /api/auth/signup | 불필요 | 김예민 (원래 성정헌, 9주차 변경) | 로그인 |
+| 로그인 | POST /api/auth/login | 불필요 | 김예민 (원래 성정헌, 9주차 변경) | 로그인 |
+| 내 설정 보기·수정 | GET·PUT /api/users/me/preferences | 필요 | 김예민 (원래 성정헌, 9주차 변경) | 마이페이지 |
+| 저장 코스 | GET·POST /api/users/me/courses, DELETE /api/users/me/courses/{courseId} | 필요 | 김예민 | 저장 코스 |
+| 저장한 장소 | GET·POST /api/users/me/places, DELETE /api/users/me/places/{placeId} | 필요 | 김예민 | 저장한 장소 |
 
 ## 검색·추천 POST /api/search
 
@@ -231,7 +234,13 @@ MVP API 8개 + v0.3 추가 1개(장소 목록). 저장 코스는 로그인 붙�
 | GET /api/users/me/preferences | 없음 | region, atmospheres, allergies | users.region, user_preference, user_allergy | preferences.json |
 | PUT /api/users/me/preferences | GET 응답과 같은 형식 | 저장된 값 | 위와 같음 (목록은 지우고 다시 저장) | preferences.json |
 
-- 비밀번호는 BCrypt로 암호화해서 password_hash에 저장. 현재 build.gradle에 암호화·JWT 라이브러리 없음 → 추가 필요 (spring-security-crypto, jjwt 등)
+- 비밀번호는 BCrypt로 암호화해서 password_hash에 저장 (build.gradle에 spring-security-crypto 추가)
+- 로그인 토큰: JWT(HS256), 1시간. jjwt 대신 자바 기본 HMAC으로 직접 만듦 (`auth/JwtProvider`). 토큰 안에는 사용자 번호·시각만
+- 토큰 비밀키: `odiga.jwt.secret`, 로컬은 기본값으로 켜짐. **배포 서버는 `JWT_SECRET` 환경변수에 32자 이상 새 값** (@성정헌, 깃허브에 올리지 않기)
+- 이메일은 공백 빼고 소문자로 저장. 로그인 실패는 이메일이 없든 비번이 틀리든 똑같이 LOGIN_FAILED
+- 회원가입 성공은 HTTP 201, 형식 틀림(이메일 모양·비번 8자 미만·지역 코드)은 INVALID_INPUT 400
+- 내 설정 PUT 검사: region은 지역 코드 또는 null, atmospheres는 공백·중복 빼고 최대 10개·각 30자, allergies는 아래 코드 6개만
+- 로그인하고 검색(토큰 넣고 POST /api/search): 문장에 지역 없으면 내 설정 지역, 분위기 없으면 내 설정 분위기(혼잡 선호도 따라감), 알레르기는 항상 합침. 조건 화면에서 직접 고친 조건(conditions)이면 알레르기만 합침. 토큰이 틀리거나 만료면 그냥 비로그인 검색
 - region은 지역 코드(SEONGSU 등)로 저장
 - atmospheres는 블로그 태그 사전의 태그 이름 그대로(조용함, 디저트, 사진·인테리어, 데이트, 단체석 등) user_preference.atmosphere에 한 줄씩 저장. 태그 목록은 최예린 확정
 - allergies는 아래 코드 그대로 user_allergy.allergy_name에 저장
@@ -246,6 +255,24 @@ MVP API 8개 + v0.3 추가 1개(장소 목록). 저장 코스는 로그인 붙�
 | WHEAT | 밀·글루텐 | 블로그 메뉴 언급 시 경고만 |
 
 - 카카오에 메뉴 정보가 없어서 음식점 종류로 거를 수 있는 건 갑각류·해산물뿐 → 나머지는 블로그 메뉴 경고로 보완 (최예린)
+
+## 저장 코스·저장한 장소 (v0.3, 로그인 필요)
+
+| API | 요청 | 응답 data |
+| --- | --- | --- |
+| GET /api/users/me/courses | 없음 | courses[] (최근 저장 순) |
+| POST /api/users/me/courses | `{ "courseId": "c_1_1" }` (검색·코스 수정으로 받은 courseId) | 저장한 코스 한 개 |
+| DELETE /api/users/me/courses/{courseId} | 없음 | courseId, deleted: true |
+| GET /api/users/me/places | 없음 | places[] (최근 저장 순) |
+| POST /api/users/me/places | `{ "placeId": "780757764" }` | 저장한 장소 한 개 |
+| DELETE /api/users/me/places/{placeId} | 없음 | placeId, deleted: true |
+
+- 저장 코스 한 개: `courseId`, `savedAt`, `conditions`(검색 조건 전체), `course`(검색 응답 courses[]와 같은 모양)
+- 저장한 장소 한 개: 장소 목록 API랑 같은 기본 정보(placeId, name, category, region, address, lat, lng, tags) + `savedAt`
+- 코스는 저장한 순간 그대로 복사 (공유랑 같음) → 나중에 원본 코스를 고쳐도 저장본은 그대로. 고친 걸 저장하려면 다시 POST (맨 위로 올라감)
+- 같은 장소 두 번 저장해도 하나 (처음 저장 시각 유지)
+- 없는 courseId·placeId: COURSE_NOT_FOUND·PLACE_NOT_FOUND 404, 저장 안 한 걸 지우면 똑같이 404
+- 지금은 서버 메모리 (서버 끄면 사라짐, 회원 정보는 DB라 남음) → ERD에 saved_course, saved_place 생기면 `user/SavedStore`만 DB로
 
 ## 코스 생성 규칙 v0.1
 

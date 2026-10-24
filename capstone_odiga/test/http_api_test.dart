@@ -103,6 +103,18 @@ void main() {
     await expectLater(down.getShare('x'), _apiError('NETWORK_ERROR'));
 
     final notReady = api((_) async => http.Response('{"status":404,"error":"Not Found"}', 404));
-    await expectLater(notReady.getPreferences(), _apiError('NOT_READY'));
+    await expectLater(
+      notReady.signup(const SignupRequestDto(email: 'a@b.c', password: '12345678', region: 'SEONGSU')),
+      _apiError('NOT_READY'),
+    );
+  });
+
+  test('내 설정 API 아직 없으면 앱 안 기본값으로 (앱 안 멈춤)', () async {
+    final client = api((_) async => http.Response('{"status":404,"error":"Not Found"}', 404));
+    expect((await client.getPreferences()).region, 'SEONGSU');
+    await client.updatePreferences(
+      PreferencesDto(region: 'HONGDAE', atmospheres: const ['데이트'], allergies: const []),
+    );
+    expect((await client.getPreferences()).region, 'HONGDAE');
   });
 }

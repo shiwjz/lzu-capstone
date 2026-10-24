@@ -119,6 +119,27 @@ class SearchServiceTest {
     }
 
     @Test
+    @DisplayName("로그인: 문장에 지역·분위기 없으면 내 설정으로, 알레르기는 합치기, 문장 지역이 우선")
+    void myPreferences() {
+        SearchService.MyPreferences my = new SearchService.MyPreferences("SEONGSU", List.of("조용함"), List.of("SHELLFISH"));
+        Map<?, ?> cond = (Map<?, ?>) service().search(query("토요일 오후 3시에 카페 가고 싶어"), my).get("conditions");
+        assertEquals("SEONGSU", cond.get("region"));
+        assertEquals(List.of("조용함"), cond.get("atmospheres"));
+        assertEquals("QUIET", cond.get("crowdPreference"));
+        assertEquals(List.of("SHELLFISH"), cond.get("allergies"));
+
+        Map<?, ?> hongdae = (Map<?, ?>) service().search(
+                query("토요일 저녁 7시 홍대에서 남자친구랑 신나게 놀 수 있는 사람 많은 곳"), my).get("conditions");
+        assertEquals("HONGDAE", hongdae.get("region"));
+        assertEquals(List.of("데이트"), hongdae.get("atmospheres"));
+        assertEquals("LIVELY", hongdae.get("crowdPreference"));
+        assertEquals(List.of("SHELLFISH"), hongdae.get("allergies"));
+
+        // 로그인 안 하면 예전처럼 지역 다시 물어봄
+        assertEquals("CONDITION_MISSING", expectError(() -> service().search(query("토요일 오후 3시에 카페 가고 싶어"))).code());
+    }
+
+    @Test
     @DisplayName("제외 음식: 고기 빼면 식사 칸에 고깃집 없음")
     void excludedFoods() {
         SearchConditions c = new SearchConditions("HONGDAE", "2026-10-17", null, "19:00", 2, List.of(), List.of(),

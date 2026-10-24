@@ -43,4 +43,9 @@ public class User {
         this.passwordHash = passwordHash;
         this.region = region;
     }
+
+    // 내 설정에서 지역 바꿀 때 (예민 9주차)
+    public void changeRegion(String region) {
+        this.region = region;
+    }
 }

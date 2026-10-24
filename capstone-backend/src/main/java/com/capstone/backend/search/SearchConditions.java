@@ -5,6 +5,7 @@ import com.capstone.backend.course.CourseRules;
 import com.capstone.backend.course.CrowdPreference;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,26 @@ public record SearchConditions(
     public SearchConditions withRegion(String newRegion) {
         return new SearchConditions(newRegion, date, dayType, startTime, partySize, categories, atmospheres,
                 crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy);
+    }
+
+    /**
+     * 로그인했을 때 내 설정 넣기 (명세 '회원 API': 문장이랑 다르면 문장 우선, 알레르기는 항상 추가) - 9주차
+     * - 지역: 문장·조건에 없을 때만 내 설정 지역 → 지역 없는 문장도 CONDITION_MISSING 안 나옴 (지역 버튼 값은 이후에 덮어씀)
+     * - 분위기: 문장에 분위기가 하나도 없을 때만 내 설정 분위기, 이때 혼잡 선호도 분위기 기준으로 다시 ('조용함' → QUIET)
+     * - 알레르기: 문장 + 내 설정 합치기
+     */
+    public SearchConditions withPreferences(String myRegion, List<String> myAtmospheres, List<String> myAllergies) {
+        String newRegion = region != null ? region : myRegion;
+        List<String> moods = atmospheres;
+        String crowd = crowdPreference;
+        if ((moods == null || moods.isEmpty()) && myAtmospheres != null && !myAtmospheres.isEmpty()) {
+            moods = List.copyOf(myAtmospheres);
+            if (crowd == null || crowd.equals("DEFAULT")) crowd = null;   // withDefaults에서 분위기 보고 다시 정함
+        }
+        LinkedHashSet<String> allAllergies = new LinkedHashSet<>(allergies == null ? List.of() : allergies);
+        if (myAllergies != null) allAllergies.addAll(myAllergies);
+        return new SearchConditions(newRegion, date, dayType, startTime, partySize, categories, moods, crowd,
+                List.copyOf(allAllergies), gender, ageGroup, companionType, excludedFoods, extractedBy);
     }
 
     /** 빈 값 채우기: 인원 2명, 목록은 빈 목록, 혼잡 선호는 분위기 태그로 ('조용함' → QUIET, '활기' → LIVELY) */

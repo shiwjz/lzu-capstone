@@ -98,7 +98,16 @@ public class SearchService {
 
     // ---------- 검색 ----------
 
+    /** 로그인한 사용자의 내 설정 (검색 조건에 넣을 것만) */
+    public record MyPreferences(String region, List<String> atmospheres, List<String> allergies) {
+    }
+
     public Map<String, Object> search(SearchRequest req) {
+        return search(req, null);
+    }
+
+    /** my: 로그인했으면 내 설정, 아니면 null */
+    public Map<String, Object> search(SearchRequest req, MyPreferences my) {
         if (req == null || ((req.query() == null || req.query().isBlank()) && req.conditions() == null)) {
             throw ApiException.invalid("검색 문장(query)을 입력해 주세요.");
         }
@@ -106,6 +115,12 @@ public class SearchService {
         SearchConditions c = req.conditions() != null
                 ? withExtractedBy(req.conditions(), "USER")
                 : extractor.extract(req.query(), now);
+        if (my != null) {
+            // 조건 화면에서 직접 고친 조건(USER)이면 알레르기만 더하고, 문장이면 빈 칸을 내 설정으로
+            c = req.conditions() != null
+                    ? c.withPreferences(null, null, my.allergies())
+                    : c.withPreferences(my.region(), my.atmospheres(), my.allergies());
+        }
 
         // 선택기 값 우선
         if (req.region() != null) c = c.withRegion(req.region());

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'api/http_odiga_api.dart';
 import 'screens/app_screens.dart';
 import 'state/app_state.dart';
 import 'widgets/odiga_widgets.dart';
@@ -17,7 +18,9 @@ class _MyAppState extends State<MyApp> {
   late Future<AppState> loading = load();
   AppState? app;
   Future<AppState> load() async {
-    final state = await (widget.loadState ?? AppState.load)();
+    // 서버 주소 넣고 실행하면 진짜 서버, 안 넣으면 가짜 JSON (예민)
+    final state =
+        await (widget.loadState ?? () => AppState.load(api: defaultOdigaApi()))();
     if (mounted) {
       app = state;
     } else {

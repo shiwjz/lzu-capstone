@@ -138,20 +138,36 @@ class HttpOdigaApi implements OdigaApi {
     return result;
   }
 
-  @override
-  Future<PreferencesDto> getPreferences() async => PreferencesDto.fromJson(
-    await _send('GET', '/api/users/me/preferences'),
-  );
+  /// 내 설정: 서버 API 붙기 전(정헌 작업 중)에는 실패하면 앱 안에만 저장
+  /// → 내 설정 때문에 홈 화면이 안 뜨는 일 없게
+  /// - 없는 주소가 크롬에선 CORS(NETWORK_ERROR), 서버 공통 에러처리에선 500으로 와서 에러 종류 안 가림
+  /// - @성정헌 회원·내 설정 API 붙으면 NOT_READY·UNAUTHORIZED만 받게 다시 좁히기
+  PreferencesDto? _localPreferences;
+
+  static bool _notReady(ApiException e) => true;
 
   @override
-  Future<PreferencesDto> updatePreferences(PreferencesDto preferences) async =>
-      PreferencesDto.fromJson(
-        await _send(
-          'PUT',
-          '/api/users/me/preferences',
-          body: preferences.toJson(),
-        ),
+  Future<PreferencesDto> getPreferences() async {
+    try {
+      return PreferencesDto.fromJson(await _send('GET', '/api/users/me/preferences'));
+    } on ApiException catch (e) {
+      if (!_notReady(e)) rethrow;
+      return _localPreferences ??=
+          PreferencesDto(region: 'SEONGSU', atmospheres: const [], allergies: const []);
+    }
+  }
+
+  @override
+  Future<PreferencesDto> updatePreferences(PreferencesDto preferences) async {
+    try {
+      return PreferencesDto.fromJson(
+        await _send('PUT', '/api/users/me/preferences', body: preferences.toJson()),
       );
+    } on ApiException catch (e) {
+      if (!_notReady(e)) rethrow;
+      return _localPreferences = preferences;
+    }
+  }
 }
 
 /// 실행할 때 서버 주소 넣으면 진짜 서버, 안 넣으면 가짜 JSON
