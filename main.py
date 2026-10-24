@@ -5,9 +5,9 @@ to_m = Transformer.from_crs("EPSG:4326", "EPSG:5179", always_xy=True)
 to_deg = Transformer.from_crs("EPSG:5179", "EPSG:4326", always_xy=True)
 
 REGIONS = {
-    "SS": ("성수", 37.544045, 127.0504),
-    "HD": ("홍대·연남", 37.5565, 126.9225),
-    "GN": ("강남", 37.501196, 127.02603),
+    "SEONGSU": ("성수", 37.544045, 127.0504),
+    "HONGDAE": ("홍대·연남", 37.5565, 126.9225),
+    "GANGNAM": ("강남", 37.501196, 127.02603),
 }
 CELL, R = 50, 500
 
