@@ -1,104 +1,145 @@
 import 'dart:math' as math;
 
-import '../models/domain.dart';
+import 'package:flutter/services.dart';
 
-/// All records are fixtures. Kakao IDs explicitly identify mock records.
+import '../models/domain.dart';
+import '../api/api_codes.dart';
+import '../api/api_mappers.dart';
+import '../api/mock_odiga_api.dart';
+import '../api/odiga_api.dart';
+
+/// Local API fixtures. Python and the source CSV files are not needed at runtime.
 class MockRepository {
-  MockRepository() {
-    for (final region in ['성수', '홍대']) {
-      final lat = region == '성수' ? 37.5445 : 37.5560;
-      final lng = region == '성수' ? 127.0557 : 126.9235;
-      final names = region == '성수'
-          ? [
-              '성수 작은 식탁',
-              '카페 온도 성수',
-              '서울숲 산책',
-              '성수 소품상점',
-              '성수 아트스페이스',
-              '성수 디저트룸',
-            ]
-          : [
-              '홍대 작은 식탁',
-              '연남 온도 카페',
-              '경의선숲길 산책',
-              '홍대 보드게임',
-              '연남 전시공간',
-              '홍대 디저트룸',
-            ];
-      for (var i = 0; i < names.length; i++) {
-        final category = ['음식점', '카페', '놀거리', '놀거리', '문화시설', '카페'][i];
-        places.add(
-          Place(
-            id: '$region-$i',
-            kakaoPlaceId: 'mock-kakao-$region-$i',
-            name: names[i],
-            category: category,
-            region: region,
-            latitude: lat - i * .0011,
-            longitude: lng - i * .0014,
-            cellId: 'mock-cell-$region-$i',
-            tags: i == 0
-                ? ['한식', '친구 모임']
-                : i == 2
-                ? ['조용한', '산책', '사진']
-                : ['조용한', '디저트', '사진'],
-            openingHours: i == 2 ? '상시 개방' : '11:00–22:00',
-            imageAsset: i == 0
-                ? 'assets/ba01c.png'
-                : i == 2
-                ? 'assets/5788c.png'
-                : 'assets/756cc.png',
-            rating: [4.7, 4.8, 4.9, 4.6, 4.7, 4.5][i],
-            description: [
-              '따뜻한 한 끼와 함께 시작해요',
-              '디저트와 조용한 분위기',
-              '여유롭게 걷기 좋은 산책길',
-              '친구들과 구경하기 좋은 곳',
-              '사진과 전시를 함께 즐겨요',
-              '달콤한 디저트로 마무리',
-            ][i],
+  MockRepository._(this.api);
+  final OdigaApi api;
+
+  static Future<MockRepository> load({
+    AssetBundle? bundle,
+    OdigaApi? api,
+  }) async {
+    final client = api ?? MockOdigaApi(bundle: bundle);
+    final repository = MockRepository._(client);
+    final results = await Future.wait<ApiDto>([
+      client.search(const SearchRequestDto(query: '성수')),
+      client.search(const SearchRequestDto(query: '홍대')),
+      client.search(const SearchRequestDto(query: '강남')),
+      client.getPlace('780757764'),
+      client.getPreferences(),
+    ]);
+    final responses = results.map((r) => r.json).toList();
+    final byId = <String, Place>{};
+    for (final data in responses.take(3)) {
+      final conditions = data['conditions'] as Map<String, dynamic>;
+      final regionCode = conditions['region'] as String;
+      final date = conditions['date'] as String;
+      final courses = <Course>[];
+      for (final json in data['places'] as List) {
+        final place = ApiMappers.place(json, regionCode);
+        byId[place.id] = place;
+        repository._record(
+          place.id,
+          json['congestion'],
+          ApiMappers.time(
+            date,
+            '${(json['congestion']['hour'] as int).toString().padLeft(2, '0')}:00',
           ),
         );
-        for (final weekend in [false, true]) {
-          for (var hour = 0; hour < 24; hour++) {
-            final value = (18 + ((hour * 11 + i * 17) % 57) + (weekend ? 9 : 0))
-                .toDouble();
-            congestionRecords.add(
-              Congestion(
-                cellId: 'mock-cell-$region-$i',
-                weekend: weekend,
-                hour: hour,
-                value: value,
-                percentile: (value * .91 + 3).clamp(0, 100),
-              ),
-            );
-          }
+      }
+      for (final json in data['courses'] as List) {
+        final course = ApiMappers.course(json, conditions);
+        courses.add(course);
+        final stops = json['stops'] as List;
+        for (var i = 0; i < stops.length; i++) {
+          final stop = stops[i];
+          final id = stop['placeId'] as String;
+          byId.putIfAbsent(id, () => ApiMappers.place(stop, regionCode));
+          repository._record(id, stop['congestion'], course.stops[i].arrival);
         }
       }
+      repository._courses[ApiMappers.region(regionCode)] = courses;
     }
+    final detail = responses[3];
+    final detailPlace = ApiMappers.place(detail, detail['region']);
+    // Preserve the search explanation when enriching a place with its detail.
+    byId[detailPlace.id] = ApiMappers.place({
+      ...detail,
+      'reason': byId[detailPlace.id]?.description ?? '',
+    }, detail['region']);
+    final hourly = detail['congestionByHour'];
+    for (final hour in hourly['hours'] as List) {
+      repository._detailRecords.add(
+        ApiMappers.congestion(
+          detailPlace.id,
+          hour,
+          ApiMappers.time(
+            hourly['date'],
+            '${(hour['hour'] as int).toString().padLeft(2, '0')}:00',
+          ),
+        ),
+      );
+    }
+    repository.places.addAll(byId.values);
+    final prefs = responses[4];
+    repository.initialPreference = UserPreference(
+      moods: Set<String>.from(prefs['atmospheres']),
+      allergies: (prefs['allergies'] as List).join(', '),
+    );
+    return repository;
   }
+
   final List<Place> places = [];
   final List<Congestion> congestionRecords = [];
-  Place place(String id) => places.firstWhere((p) => p.id == id);
-  Congestion congestion(String placeId, DateTime visit) {
-    final cellId = place(placeId).cellId;
-    return congestionRecords.firstWhere(
+  final List<Congestion> _detailRecords = [];
+  final Map<String, List<Course>> _courses = {};
+  late final UserPreference initialPreference;
+  List<Course> get initialCourses => List.unmodifiable(_courses['성수'] ?? []);
+
+  void _record(String id, Map<String, dynamic> json, DateTime visit) {
+    congestionRecords.removeWhere(
       (c) =>
-          c.cellId == cellId &&
+          c.cellId == 'fixture-place-$id' &&
           c.hour == visit.hour &&
           c.weekend == (visit.weekday >= DateTime.saturday),
     );
+    congestionRecords.add(ApiMappers.congestion(id, json, visit));
   }
 
-  List<Place> search(SearchConditions c) {
-    final excluded = c.excluded
-        .split(RegExp(r'[,\s]+'))
-        .where((s) => s.isNotEmpty)
+  Place place(String id) => places.firstWhere((p) => p.id == id);
+
+  bool hasHourlyCongestion(String placeId) =>
+      _detailRecords.any((c) => c.cellId == place(placeId).cellId);
+
+  /// Sparse fixtures: reuse the closest supplied hour, preferring the same day type.
+  /// This is a sample snapshot, not a prediction for the requested visit date.
+  Congestion congestion(String placeId, DateTime visit, {bool detail = false}) {
+    final cell = place(placeId).cellId;
+    var records = (detail ? _detailRecords : congestionRecords)
+        .where((c) => c.cellId == cell)
         .toList();
+    if (records.isEmpty && detail) return congestion(placeId, visit);
+    if (records.isEmpty) throw StateError('No congestion fixture for $placeId');
+    final sameDay = records
+        .where((c) => c.weekend == (visit.weekday >= DateTime.saturday))
+        .toList();
+    if (sameDay.isNotEmpty) records = sameDay;
+    records.sort(
+      (a, b) =>
+          (a.hour - visit.hour).abs().compareTo((b.hour - visit.hour).abs()),
+    );
+    return records.first;
+  }
+
+  Future<List<Place>> search(SearchConditions conditions) async =>
+      _matchingPlaces(conditions);
+
+  List<Place> _matchingPlaces(SearchConditions conditions) {
+    final excluded = conditions.excluded
+        .split(RegExp(r'[,\s]+'))
+        .where((s) => s.isNotEmpty);
     return places
         .where(
           (p) =>
-              p.region == c.region &&
+              p.region == conditions.region &&
               !excluded.any(
                 (word) =>
                     p.name.contains(word) ||
@@ -107,6 +148,133 @@ class MockRepository {
               ),
         )
         .toList();
+  }
+
+  /// Returns the region's fixed API response; preferences do not regenerate fixtures.
+  Future<List<Course>> recommend(
+    SearchConditions conditions,
+    UserPreference preference, {
+    bool group = false,
+  }) async {
+    final response = await api.search(
+      SearchRequestDto(
+        query: conditions.query,
+        date: formatDate(conditions.start),
+        startTime: formatTime(conditions.start),
+        region: conditions.useSelectedRegion
+            ? RegionCode.parse(conditions.region).code
+            : null,
+      ),
+    );
+    _rememberSearch(response);
+    // The response's extracted region, rather than a stale screen selection, wins.
+    final filteredConditions = conditions.copy()
+      ..region = ApiMappers.region(response.conditions.region);
+    final responseAllowed = (await search(filteredConditions))
+        .map((p) => p.id)
+        .toSet();
+    return response.courses
+        .map((c) => ApiMappers.toCourse(c, response.conditions))
+        .where((c) => c.stops.every((s) => responseAllowed.contains(s.placeId)))
+        .toList();
+  }
+
+  void _rememberSearch(SearchResultDto response) {
+    for (final p in response.places) {
+      _putPlace(ApiMappers.toPlace(p, response.conditions.region));
+      if (p.congestion != null) {
+        _record(
+          p.placeId,
+          p.congestion!.json,
+          ApiMappers.time(
+            response.conditions.date,
+            '${p.congestion!.hour.toString().padLeft(2, '0')}:00',
+          ),
+        );
+      }
+    }
+    for (final dto in response.courses) {
+      _rememberCourse(dto, response.conditions);
+    }
+  }
+
+  void _putPlace(Place value) {
+    final index = places.indexWhere((p) => p.id == value.id);
+    if (index == -1) {
+      places.add(value);
+    } else {
+      places[index] = value;
+    }
+  }
+
+  Course _rememberCourse(CourseDto dto, ConditionsDto conditions) {
+    final course = ApiMappers.toCourse(dto, conditions);
+    final stops = dto.stops;
+    for (var i = 0; i < stops.length; i++) {
+      if (!places.any((p) => p.id == stops[i].placeId)) {
+        _putPlace(ApiMappers.toPlace(stops[i], conditions.region));
+      }
+      _record(
+        stops[i].placeId,
+        stops[i].congestion!.json,
+        course.stops[i].arrival,
+      );
+    }
+    return course;
+  }
+
+  Future<Place> loadPlace(String id, DateTime date) async {
+    final dto = await api.getPlace(id, date: formatDate(date));
+    final value = ApiMappers.toPlace(dto, dto.region!);
+    _putPlace(value);
+    final hourly = dto.congestionByHour;
+    _detailRecords.removeWhere((c) => c.cellId == value.cellId);
+    for (final hour in hourly.hours) {
+      _detailRecords.add(
+        ApiMappers.congestion(
+          value.id,
+          hour.json,
+          ApiMappers.time(
+            hourly.date,
+            '${hour.hour.toString().padLeft(2, '0')}:00',
+          ),
+        ),
+      );
+    }
+    return value;
+  }
+
+  Future<({Course course, List<WarningDto> warnings})> updateCourse(
+    Course draft,
+  ) async {
+    final dto = await api.updateCourse(
+      draft.id,
+      CourseUpdateRequestDto(
+        startTime: draft.stops.isEmpty
+            ? null
+            : formatTime(draft.stops.first.arrival),
+        stops: [
+          for (final s in draft.stops)
+            StopInputDto(placeId: s.placeId, stayMinutes: s.stayMinutes),
+        ],
+      ),
+    );
+    final source =
+        _courses.values
+            .expand((c) => c)
+            .where((c) => c.id == dto.courseId)
+            .firstOrNull ??
+        draft;
+    final conditions = ConditionsDto.fromJson({
+      'region': RegionCode.parse(source.region).code,
+      'date': formatDate(source.stops.firstOrNull?.arrival ?? DateTime.now()),
+    });
+    return (course: _rememberCourse(dto, conditions), warnings: dto.warnings);
+  }
+
+  Future<Course> loadSharedCourse(String shareCode) async {
+    final dto = await api.getShare(shareCode);
+    return _rememberCourse(dto.course, dto.conditions);
   }
 
   /// Straight-line distance multiplied by a mock walking detour factor.
@@ -143,60 +311,5 @@ class MockRepository {
       arrival = arrival.add(Duration(minutes: old.stayMinutes + travel));
     }
     return course.copyWith(stops: stops);
-  }
-
-  List<Course> recommend(
-    SearchConditions c,
-    UserPreference preference, {
-    bool group = false,
-  }) {
-    final candidates = search(c);
-    if (candidates.isEmpty) return [];
-    candidates.sort((a, b) {
-      int score(Place p) =>
-          (p.tags.contains(c.mood) ? 4 : 0) +
-          (preference.categories.contains(p.category) ? 2 : 0);
-      return score(b).compareTo(score(a));
-    });
-    final results = <Course>[];
-    for (var rank = 0; rank < math.min(3, candidates.length); rank++) {
-      final selection = List.generate(
-        math.min(3, candidates.length),
-        (i) => candidates[(i + rank) % candidates.length],
-      );
-      if (rank == 0 && c.excluded.isEmpty) {
-        selection.setAll(0, [
-          place('${c.region}-0'),
-          place('${c.region}-1'),
-          place('${c.region}-2'),
-        ]);
-      }
-      final id = '${group ? 'group' : 'personal'}-${c.region}-$rank';
-      results.add(
-        recalculate(
-          Course(
-            id: id,
-            title: ['${c.region}의 쉼표', '${c.region} 한 바퀴', '골목의 여유'][rank],
-            region: c.region,
-            reason: group
-                ? '${c.people}명의 취향과 짧은 동선을 고려했어요'
-                : '${c.mood} 분위기와 산책을 함께 즐겨요',
-            matchScore: 96 - rank * 7,
-            stops: [
-              for (var i = 0; i < selection.length; i++)
-                CourseStop(
-                  id: '$id-stop-$i',
-                  placeId: selection[i].id,
-                  order: i + 1,
-                  arrival: c.start,
-                  stayMinutes: selection[i].category == '놀거리' ? 55 : 50,
-                ),
-            ],
-          ),
-          start: c.start,
-        ),
-      );
-    }
-    return results;
   }
 }

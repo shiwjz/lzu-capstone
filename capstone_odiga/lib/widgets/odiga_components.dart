@@ -309,7 +309,7 @@ class PlaceCard extends StatelessWidget {
     this.onTap,
   });
   final String title, category, description;
-  final double rating;
+  final double? rating;
   final CongestionLevel level;
   final ImageProvider image;
   final VoidCallback? onTap;
@@ -331,7 +331,9 @@ class PlaceCard extends StatelessWidget {
                   _text(title, 18, weight: FontWeight.w700),
                   const SizedBox(height: 8),
                   _text(
-                    '$category   ★ ${rating.toStringAsFixed(1)}',
+                    rating == null
+                        ? category
+                        : '$category   ★ ${rating!.toStringAsFixed(1)}',
                     11,
                     color: OdigaTokens.muted,
                   ),
