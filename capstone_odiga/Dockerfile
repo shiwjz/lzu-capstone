@@ -9,16 +9,25 @@ RUN git clone --depth 1 --branch 3.47.8 \
 
 ENV PATH="/opt/flutter/bin:${PATH}"
 
+# Flutter를 일반 사용자 권한으로 실행하도록 설정
+RUN useradd -m -s /bin/bash flutteruser \
+    && chown -R flutteruser:flutteruser /opt/flutter \
+    && mkdir -p /app \
+    && chown -R flutteruser:flutteruser /app
+
+USER flutteruser
+
 RUN flutter --version
 
 WORKDIR /app
-COPY . .
+
+COPY --chown=flutteruser:flutteruser . .
 
 RUN flutter config --enable-web
 RUN flutter pub get
 RUN flutter build web --release
 
-FROM nginx:alpine
+FROM nginx:alpines
 
 COPY --from=build /app/build/web /usr/share/nginx/html
 
