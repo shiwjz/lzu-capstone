@@ -13,16 +13,20 @@ class PrototypeMap extends StatelessWidget {
     required this.onPlace,
     this.course,
     this.places,
+    this.homeCategories,
     this.region = '성수',
     this.home = false,
     this.homeSearch,
+    this.homeInfo,
   });
   final AppState app;
   final Course? course;
   final List<Place>? places;
+  final Set<String>? homeCategories;
   final String region;
   final bool home;
   final Widget? homeSearch;
+  final VoidCallback? homeInfo;
   final ValueChanged<Place> onPlace;
   static const positions = [
     Offset(310, 105),
@@ -42,7 +46,13 @@ class PrototypeMap extends StatelessWidget {
         places ??
         app.repository.places.where((p) => p.region == region).toList();
     if (home) {
-      return _HomeMap(places: items, onPlace: onPlace, search: homeSearch);
+      return _HomeMap(
+        places: items,
+        categories: homeCategories,
+        info: homeInfo,
+        onPlace: onPlace,
+        search: homeSearch,
+      );
     }
     final points = items
         .map(
@@ -100,19 +110,11 @@ class PrototypeMap extends StatelessWidget {
                     ),
                   for (var i = 0; i < items.length; i++)
                     Positioned(
-                      left: points[i].dx - 17,
-                      top: points[i].dy - 20,
-                      child: OdigaMapPin(
-                        level:
-                            CongestionLevel.values[app.repository
-                                .congestion(
-                                  items[i].id,
-                                  course?.stops[i].arrival ??
-                                      app.conditions.start,
-                                )
-                                .band
-                                .index],
-                        label: course == null ? '●' : '${i + 1}',
+                      left: points[i].dx - 22,
+                      top: points[i].dy - 24,
+                      child: CourseCategoryMapPin(
+                        category: items[i].category,
+                        visitOrder: course == null ? null : i + 1,
                         onTap: () => onPlace(items[i]),
                       ),
                     ),
@@ -179,9 +181,17 @@ class PrototypeMap extends StatelessWidget {
 
 /// Figma 26:5. Only the map artwork scales; the controls keep their touch size.
 class _HomeMap extends StatelessWidget {
-  const _HomeMap({required this.places, required this.onPlace, this.search});
+  const _HomeMap({
+    required this.places,
+    required this.onPlace,
+    this.categories,
+    this.info,
+    this.search,
+  });
   final List<Place> places;
   final ValueChanged<Place> onPlace;
+  final Set<String>? categories;
+  final VoidCallback? info;
   final Widget? search;
 
   static const _markers = [
@@ -191,12 +201,19 @@ class _HomeMap extends StatelessWidget {
     (category: '음식점', position: Offset(293, 512)),
     (category: '카페', position: Offset(62, 557)),
     (category: '음식점', position: Offset(216, 224)),
+    (category: '문화시설', position: Offset(318, 424)),
   ];
 
   @override
   Widget build(BuildContext context) {
     // Match each design marker to a distinct fixture of the same category.
-    final remaining = [...places];
+    final visiblePlaces = categories == null
+        ? places
+        : places.where((p) => categories!.contains(p.category)).toList();
+    final categorySummary = categories == null || categories!.isEmpty
+        ? '음식점 · 카페 · 놀거리'
+        : categories!.join(' · ');
+    final remaining = [...visiblePlaces];
     final markers = <({Place place, Offset position})>[];
     for (final marker in _markers) {
       final index = remaining.indexWhere((p) => p.category == marker.category);
@@ -293,7 +310,7 @@ class _HomeMap extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      '내 주변 · 음식점 · 카페 · 놀거리',
+                      '내 주변 · $categorySummary',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: OdigaTokens.text(11),
@@ -302,6 +319,30 @@ class _HomeMap extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
+              if (info != null) ...[
+                Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: info,
+                    child: Semantics(
+                      label: '추천 점수 계산 기준',
+                      button: true,
+                      child: const SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 18,
+                          color: OdigaTokens.brand,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Material(

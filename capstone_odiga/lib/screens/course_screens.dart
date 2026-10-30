@@ -19,6 +19,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   bool get expanded => widget.expanded;
   Object? _requestKey;
   Future<List<Course>>? _request;
+  int _selectedCourseIndex = 0;
 
   Future<List<Course>> recommendations() {
     final c = app.conditions;
@@ -40,6 +41,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     );
     if (_requestKey != key) {
       _requestKey = key;
+      _selectedCourseIndex = 0;
       _request = app.repository.recommend(c.copy(), p.copy(), group: group);
     }
     return _request!;
@@ -87,12 +89,18 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             );
           }
           final courses = snapshot.data ?? [];
+          final selectedIndex = _selectedCourseIndex < courses.length
+              ? _selectedCourseIndex
+              : 0;
+          final selectedCourse = courses.isEmpty
+              ? null
+              : courses[selectedIndex];
           return MapSheetFrame(
             app: app,
             title: courses.isEmpty
                 ? '추천 결과 없음'
-                : '추천 ${courses.length}개 · ${courses.first.title}',
-            course: courses.isEmpty ? null : courses.first,
+                : '추천 ${courses.length}개 · ${selectedCourse!.title}',
+            course: selectedCourse,
             initialSize: expanded
                 ? RecommendationSheetSize.expanded
                 : RecommendationSheetSize.collapsed,
@@ -112,23 +120,17 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                 RankedCourseCard(
                   rank: i + 1,
                   title: courses[i].title,
-                  summary: summary(courses[i]),
+                  summary: _courseSummary(courses[i]),
                   reason: courses[i].reason,
-                  selected: i == 0,
-                  onReason: () => openPage(
+                  keywords: _courseKeywords(courses[i]),
+                  selected: i == selectedIndex,
+                  onSelected: () => _openCourseDetail(courses[i], i),
+                  onReason: () => _showRecommendationReasonPopup(
                     context,
-                    ReasonScreen(
-                      app: app,
-                      course: courses[i],
-                      rank: i + 1,
-                      group: group,
-                    ),
-                    '/recommendation/reason/${i + 1}',
-                  ),
-                  onDetails: () => openPage(
-                    context,
-                    CourseDetailScreen(app: app, initial: courses[i]),
-                    '/course/${courses[i].id}',
+                    app: app,
+                    course: courses[i],
+                    rank: i + 1,
+                    group: group,
                   ),
                 ),
               if (courses.isNotEmpty)
@@ -147,76 +149,182 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       );
     },
   );
+
+  Future<void> _openCourseDetail(Course course, int index) async {
+    await openPage(
+      context,
+      CourseDetailScreen(app: app, initial: course),
+      '/course/${course.id}',
+    );
+    if (!mounted) return;
+    setState(() => _selectedCourseIndex = index);
+  }
+
+  List<String> _courseKeywords(Course course) {
+    final keywords = <String>[];
+    final mood = app.conditions.mood.trim();
+    if (mood.isNotEmpty) keywords.add(mood);
+    for (final stop in course.stops) {
+      final category = app.repository.place(stop.placeId).category;
+      if (!keywords.contains(category)) keywords.add(category);
+      if (keywords.length == 2) break;
+    }
+    return keywords.take(2).toList();
+  }
+
+  String _courseSummary(Course course) {
+    final congestion = course.stops
+        .map(
+          (stop) => app.repository.congestion(stop.placeId, stop.arrival).value,
+        )
+        .toList();
+    final average = congestion.isEmpty
+        ? 0
+        : congestion.reduce((a, b) => a + b) / congestion.length;
+    final congestionText = average < 40
+        ? '한산'
+        : average < 70
+        ? '보통'
+        : '혼잡';
+    final hours = course.totalMinutes ~/ 60;
+    final minutes = course.totalMinutes % 60;
+    final duration = hours == 0
+        ? '약 ${minutes}분'
+        : '약 ${hours}시간${minutes == 0 ? '' : ' ${minutes}분'}';
+    return '$duration · ${course.distanceKm.toStringAsFixed(1)}km · 평균 $congestionText ${average.round()}%';
+  }
 }
 
-class ReasonScreen extends StatelessWidget {
-  const ReasonScreen({
-    super.key,
-    required this.app,
-    required this.course,
-    required this.rank,
-    this.group = false,
-  });
-  final AppState app;
-  final Course course;
-  final int rank;
-  final bool group;
-  @override
-  Widget build(BuildContext context) {
-    final values = course.stops.map(
-      (s) => app.repository.congestion(s.placeId, s.arrival).value,
-    );
-    final average = values.isEmpty
-        ? 0
-        : values.reduce((a, b) => a + b) / values.length;
-    return MapSheetFrame(
-      app: app,
-      title: group ? '그룹 추천 근거' : '추천 근거',
-      course: course,
-      initialSize: RecommendationSheetSize.expanded,
-      children: [
-        RecommendationRankHeader(rank: rank),
-        RecommendationReasonRow(
-          label: '코스 종합 점수',
-          value: '${course.matchScore}% · 예시 추천 점수',
+void _showRecommendationScoreInfo(BuildContext context) {
+  showDialog<void>(
+    context: context,
+    barrierColor: const Color(0x2E1F1A2E),
+    builder: (dialogContext) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        width: 350,
+        constraints: const BoxConstraints(minHeight: 166),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
         ),
-        RecommendationReasonRow(
-          label: '예시 지역 혼잡도',
-          value: '평균 백분위 ${average.round()}',
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: label('추천에 반영한 조건', size: 14, bold: true)),
+                IconButton(
+                  tooltip: '닫기',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  icon: const Icon(
+                    Icons.close,
+                    size: 16,
+                    color: OdigaTokens.muted,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            label(
+              '조건 30% · 혼잡도 25% · 거리 15%',
+              size: 12,
+              color: OdigaTokens.muted,
+            ),
+            const SizedBox(height: 4),
+            label(
+              '체류 10% · 특징 10% · 그룹 10%',
+              size: 12,
+              color: OdigaTokens.muted,
+            ),
+            const SizedBox(height: 8),
+            label('입력한 조건과 장소 정보를 함께 반영해 코스를 추천해요.', size: 12, bold: true),
+          ],
         ),
-        RecommendationReasonRow(
-          label: '이동거리',
-          value: '${course.distanceKm.toStringAsFixed(1)}km · 예시 도보 추정',
+      ),
+    ),
+  );
+}
+
+void _showRecommendationReasonPopup(
+  BuildContext context, {
+  required AppState app,
+  required Course course,
+  required int rank,
+  required bool group,
+}) {
+  final congestionValues = course.stops
+      .map((s) => app.repository.congestion(s.placeId, s.arrival).value)
+      .toList();
+  final averageCongestion = congestionValues.isEmpty
+      ? 0
+      : congestionValues.reduce((a, b) => a + b) / congestionValues.length;
+  final congestionLabel = averageCongestion < 40
+      ? '한산'
+      : averageCongestion < 70
+      ? '보통'
+      : '혼잡';
+  final staySummary = course.stops
+      .map((stop) {
+        final category = app.repository.place(stop.placeId).category;
+        return '$category ${stop.stayMinutes}분';
+      })
+      .join(' · ');
+  final keyword = app.conditions.mood.isNotEmpty
+      ? app.conditions.mood
+      : app.preference.moods.isEmpty
+      ? '추천 포인트'
+      : app.preference.moods.first;
+  final groupPreference = group
+      ? '미연결 · 전체 평균 기준 적용'
+      : app.preference.moods.isEmpty
+      ? '저장된 취향 없음'
+      : '${app.preference.moods.join(' · ')} 반영';
+
+  showDialog<void>(
+    context: context,
+    barrierColor: const Color(0x660E0D15),
+    builder: (dialogContext) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 350,
+          maxHeight: MediaQuery.sizeOf(dialogContext).height - 32,
         ),
-        RecommendationReasonRow(
-          label: '체류시간',
-          value: course.stops.map((s) => '${s.stayMinutes}분').join(' · '),
-        ),
-        RecommendationReasonRow(label: '장소 특징', value: course.reason),
-        RecommendationReasonRow(
-          label: '그룹 선호도',
-          value: '지역별 고정 샘플 · 취향 변경은 결과에 반영되지 않아요',
-        ),
-        panel([
-          label('추천에 반영한 조건', bold: true),
-          label('장소 평균 점수 70% · 이동 효율 20% · 시간 적합도 10%', size: 11),
-          label(
-            '점수는 API 명세의 계산 기준을 따르는 예시입니다.',
-            size: 11,
-            color: OdigaTokens.muted,
+        child: SingleChildScrollView(
+          child: RecommendationReasonPopup(
+            state: rank == 1
+                ? RecommendationReasonPopupState.firstRank
+                : RecommendationReasonPopupState.keyword,
+            rank: rank,
+            courseTitle: course.title,
+            keyword: keyword,
+            conditionMatch:
+                '${course.matchScore}% · ${app.conditions.region} · ${app.conditions.people}명 · ${clockText(app.conditions.start)}',
+            congestion: '평균 ${averageCongestion.round()}% · $congestionLabel',
+            distance: '${course.distanceKm.toStringAsFixed(1)}km · 도보 이동 중심',
+            stay: staySummary,
+            placeFeatures: course.reason.isEmpty
+                ? '장소 특징 정보 없음'
+                : course.reason,
+            groupPreference: groupPreference,
+            onClose: () => Navigator.of(dialogContext).pop(),
           ),
-        ]),
-        action(
-          '코스 상세',
-          () => openPage(
-            context,
-            CourseDetailScreen(app: app, initial: course),
-            '/course/${course.id}',
-          ),
         ),
-      ],
-    );
-  }
+      ),
+    ),
+  );
 }
 
 class CourseDetailScreen extends StatelessWidget {

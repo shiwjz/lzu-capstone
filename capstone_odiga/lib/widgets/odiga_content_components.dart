@@ -350,6 +350,220 @@ class RecommendationRankHeader extends StatelessWidget {
   );
 }
 
+enum RecommendationReasonPopupState { keyword, firstRank }
+
+/// Figma 2147:3936: shared popup for keyword and first-rank explanations.
+class RecommendationReasonPopup extends StatelessWidget {
+  const RecommendationReasonPopup({
+    super.key,
+    required this.state,
+    required this.rank,
+    required this.courseTitle,
+    required this.keyword,
+    required this.conditionMatch,
+    required this.congestion,
+    required this.distance,
+    required this.stay,
+    required this.placeFeatures,
+    required this.groupPreference,
+    required this.onClose,
+  });
+
+  final RecommendationReasonPopupState state;
+  final int rank;
+  final String courseTitle;
+  final String keyword;
+  final String conditionMatch;
+  final String congestion;
+  final String distance;
+  final String stay;
+  final String placeFeatures;
+  final String groupPreference;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: state == RecommendationReasonPopupState.keyword
+        ? '키워드 추천 근거'
+        : '$rank순위 추천 근거',
+    child: Container(
+      width: 350,
+      height: 550,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: OdigaTokens.border),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(19, 14, 19, 19),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 38,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '추천 근거',
+                      style: OdigaTokens.text(18, weight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '닫기',
+                    onPressed: onClose,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 38,
+                      height: 38,
+                    ),
+                    icon: const Icon(
+                      Icons.close,
+                      size: 21,
+                      color: OdigaTokens.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '키워드에 담긴 추천 이유를 확인해 보세요.',
+              style: OdigaTokens.text(12, color: OdigaTokens.muted),
+            ),
+            const SizedBox(height: 17),
+            const Divider(height: 1, color: OdigaTokens.border),
+            const SizedBox(height: 13),
+            Text(
+              '$rank순위  $courseTitle',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: OdigaTokens.text(16, weight: FontWeight.w700),
+            ),
+            const SizedBox(height: 9),
+            Container(
+              constraints: const BoxConstraints(minWidth: 102, minHeight: 26),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: OdigaTokens.lavender,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Text(
+                keyword,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: OdigaTokens.text(12, color: OdigaTokens.brand),
+              ),
+            ),
+            const SizedBox(height: 13),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _RecommendationPopupRow(
+                      label: '사용자 조건 일치도',
+                      value: conditionMatch,
+                    ),
+                    _RecommendationPopupRow(label: '예상 혼잡도', value: congestion),
+                    _RecommendationPopupRow(label: '이동거리', value: distance),
+                    _RecommendationPopupRow(label: '체류시간', value: stay),
+                    _RecommendationPopupRow(
+                      label: '장소 특징',
+                      value: placeFeatures,
+                    ),
+                    _RecommendationPopupRow(
+                      label: '그룹 선호도',
+                      value: groupPreference,
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      height: 60,
+                      padding: const EdgeInsets.fromLTRB(12, 6, 12, 5),
+                      decoration: BoxDecoration(
+                        color: OdigaTokens.lavender,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '추천에 반영한 조건',
+                            style: OdigaTokens.text(
+                              11,
+                              weight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            '조건 30% · 혼잡도 25% · 거리 15%',
+                            style: OdigaTokens.text(
+                              10,
+                              color: OdigaTokens.muted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '체류 10% · 특징 10% · 그룹 10%',
+                            style: OdigaTokens.text(
+                              10,
+                              color: OdigaTokens.muted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _RecommendationPopupRow extends StatelessWidget {
+  const _RecommendationPopupRow({required this.label, required this.value});
+  final String label, value;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 41,
+    margin: const EdgeInsets.only(bottom: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    decoration: BoxDecoration(
+      color: OdigaTokens.background,
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 88,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: OdigaTokens.text(10, color: OdigaTokens.muted),
+          ),
+        ),
+        const SizedBox(width: 2),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: OdigaTokens.text(10),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 /// Figma 29:402, 29:408, 29:414. Reuses the existing avatar.
 class FriendCard extends StatelessWidget {
   const FriendCard({
