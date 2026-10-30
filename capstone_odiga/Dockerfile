@@ -25,7 +25,9 @@ COPY --chown=flutteruser:flutteruser . .
 
 RUN flutter config --enable-web
 RUN flutter pub get
-RUN flutter build web --release
+# 진짜 서버 주소 넣어서 빌드 (안 넣으면 가짜 JSON으로 돌아감) - 예민
+ARG ODIGA_API=https://lzu-capstone.onrender.com
+RUN flutter build web --release --dart-define=ODIGA_API=${ODIGA_API}
 
 FROM nginx:alpine
 
