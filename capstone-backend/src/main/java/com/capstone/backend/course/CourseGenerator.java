@@ -13,19 +13,25 @@ import java.util.Set;
  * 코스 생성 v1 - 김예민
  *
  * 1. 칸별 후보: 필터 통과한 장소 중 칸마다 점수 상위 10곳 (그 칸의 대략적인 도착 시각 기준)
+ *    - 조용한 곳 원하면 놀거리 칸에서 노래방·오락실 등 제외 (v0.3)
  * 2. 조합: 10 × 10 × 10 = 1,000개
  * 3. 시간 계산 + 도착 시각 혼잡도로 점수 다시 계산 (CourseCalculator)
  * 4. 총 소요시간 150~210분만 남기기
  * 5. 코스 점수 순으로, 앞에서 고른 코스와 장소 안 겹치는 것만 3개 선택
  *
- * 장소 목록은 DB(장소 테이블), 점수는 PlaceScorer(이윤경 모듈)에서 받아서 사용
- * 지금은 Spring 빈으로 등록 안 함 → 장소 테이블·점수 모듈 생기면 서비스에서 new 하거나 빈으로 등록
+ * 장소 목록은 PlaceStore(지금은 resources/data 파일, ERD 확정 후 DB), 점수는 PlaceScorer(이윤경 모듈 자리)에서 받아서 사용
+ * Spring 빈 아님 → SearchService에서 new 해서 사용
  */
 public class CourseGenerator {
 
     private final CourseCalculator calculator = new CourseCalculator();
 
-    public List<CoursePlan> generate(CourseRequest request, List<CoursePlace> places, PlaceScorer scorer) {
+    /** 칸별 후보 결과: 칸 순서, 칸별 대략 도착 시각(시), 칸별 후보 (검색 API 추천 장소 목록도 이걸로 만듦) */
+    public record Candidates(List<Slot> order, Map<Slot, Integer> nominalHour, List<List<CoursePlace>> perSlot) {
+    }
+
+    /** 1. 칸별 후보: 필터 통과한 장소 중 점수 상위 10곳 (점수 같으면 원래 순서 유지) */
+    public Candidates candidates(CourseRequest request, List<CoursePlace> places, PlaceScorer scorer) {
         int start = request.startMinute();
         List<Slot> order = request.slotOrder();
         Set<String> allergies = request.allergies() == null ? Set.of() : request.allergies();
@@ -39,22 +45,27 @@ public class CourseGenerator {
             time += CourseRules.nominalStay(slot) + CourseRules.ASSUMED_MOVE_MINUTES;
         }
 
-        // 1. 칸별 후보 (점수 같으면 원래 순서 유지)
-        List<List<CoursePlace>> candidates = new ArrayList<>();
+        List<List<CoursePlace>> perSlot = new ArrayList<>();
         for (Slot slot : order) {
             int hour = nominalHour.get(slot);
             List<CoursePlace> pool = new ArrayList<>();
             Map<String, Double> scoreById = new HashMap<>();
             for (CoursePlace place : places) {
-                if (fitsSlot(place, slot, playCategories)
+                if (fitsSlot(place, slot, playCategories, request.wantsQuiet())
                         && CourseRules.allowed(place, request.region(), hour, allergies)) {
                     pool.add(place);
                     scoreById.put(place.placeId(), CourseRules.round2(scorer.score(place, hour).total()));
                 }
             }
             pool.sort(Comparator.comparingDouble(p -> -scoreById.get(p.placeId())));
-            candidates.add(pool.subList(0, Math.min(CourseRules.CANDIDATES_PER_SLOT, pool.size())));
+            perSlot.add(List.copyOf(pool.subList(0, Math.min(CourseRules.CANDIDATES_PER_SLOT, pool.size()))));
         }
+        return new Candidates(order, nominalHour, perSlot);
+    }
+
+    public List<CoursePlan> generate(CourseRequest request, List<CoursePlace> places, PlaceScorer scorer) {
+        int start = request.startMinute();
+        List<List<CoursePlace>> candidates = candidates(request, places, scorer).perSlot();
 
         // 2~4. 조합 → 계산 → 시간 기준 통과한 것만
         List<CoursePlan> plans = new ArrayList<>();
@@ -93,11 +104,12 @@ public class CourseGenerator {
         return calculator.warnings(plan, crowdPreference);
     }
 
-    private static boolean fitsSlot(CoursePlace place, Slot slot, List<String> playCategories) {
+    private static boolean fitsSlot(CoursePlace place, Slot slot, List<String> playCategories, boolean quiet) {
         return switch (slot) {
             case MEAL -> place.category().equals("FOOD");
-            case CAFE -> place.category().equals("CAFE");
-            case PLAY -> playCategories.contains(place.category());
+            case CAFE -> place.category().equals("CAFE");      // SNACK은 코스 생성에서 제외
+            case PLAY -> playCategories.contains(place.category())
+                    && !(quiet && CourseRules.isNoisy(place));  // 조용한 곳 원하면 노래방·오락실 등 제외
         };
     }
 

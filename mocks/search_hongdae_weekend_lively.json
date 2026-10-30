@@ -20,74 +20,152 @@
       ],
       "crowdPreference": "LIVELY",
       "allergies": [],
+      "gender": null,
+      "ageGroup": null,
+      "companionType": "COUPLE",
+      "excludedFoods": [],
       "extractedBy": "GEMINI"
     },
     "places": [
       {
-        "placeId": "1683028093",
-        "name": "바비노래연습장",
-        "category": "ACTIVITY",
+        "placeId": "1991723539",
+        "name": "컴포즈커피 홍대서교점",
+        "category": "CAFE",
         "region": "HONGDAE",
-        "address": "서울 마포구 동교로 221",
-        "lat": 37.5597349,
-        "lng": 126.9236319,
-        "phone": null,
-        "placeUrl": "http://place.map.kakao.com/1683028093",
+        "address": "서울 마포구 와우산로23길 41",
+        "lat": 37.5546784,
+        "lng": 126.9235013,
+        "phone": "02-325-2220",
+        "placeUrl": "http://place.map.kakao.com/1991723539",
         "tags": [
           {
-            "tag": "이색 체험",
-            "mentions": 5
+            "tag": "조용함",
+            "mentions": 8
           },
           {
             "tag": "데이트",
-            "mentions": 2
+            "mentions": 5
           },
           {
-            "tag": "활동적",
-            "mentions": 9
+            "tag": "디저트",
+            "mentions": 2
           }
         ],
         "congestion": {
-          "hour": 21,
+          "hour": 20,
           "level": "BUSY",
-          "percentile": 90
+          "percentile": 79
         },
         "score": {
           "total": 0.98,
-          "request": 1.0,
-          "target": 0.93,
+          "request": 0.99,
+          "target": 0.94,
           "congestion": 1.0
         },
-        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 21시 주변이 붐벼요"
+        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 20시 주변이 붐벼요"
       },
       {
-        "placeId": "19382069",
-        "name": "홍대조폭떡볶이 홍대2호점",
+        "placeId": "1507202671",
+        "name": "꾸감",
         "category": "FOOD",
         "region": "HONGDAE",
-        "address": "서울 마포구 홍익로6길 38",
-        "lat": 37.5558796,
-        "lng": 126.9237615,
+        "address": "서울 마포구 와우산로23길 44",
+        "lat": 37.5547912,
+        "lng": 126.9236879,
         "phone": null,
-        "placeUrl": "http://place.map.kakao.com/19382069",
+        "placeUrl": "http://place.map.kakao.com/1507202671",
         "tags": [
+          {
+            "tag": "단체석",
+            "mentions": 10
+          },
           {
             "tag": "데이트",
             "mentions": 5
           },
           {
-            "tag": "분위기",
-            "mentions": 6
-          },
-          {
-            "tag": "웨이팅",
-            "mentions": 10
+            "tag": "가성비",
+            "mentions": 3
           }
         ],
         "congestion": {
           "hour": 19,
           "level": "BUSY",
-          "percentile": 92
+          "percentile": 74
+        },
+        "score": {
+          "total": 0.97,
+          "request": 1.0,
+          "target": 0.89,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
+      },
+      {
+        "placeId": "436404197",
+        "name": "푸라닭치킨 홍대점",
+        "category": "FOOD",
+        "region": "HONGDAE",
+        "address": "서울 마포구 어울마당로 113-1",
+        "lat": 37.5550412,
+        "lng": 126.9229848,
+        "phone": "02-336-9206",
+        "placeUrl": "http://place.map.kakao.com/436404197",
+        "tags": [
+          {
+            "tag": "단체석",
+            "mentions": 3
+          },
+          {
+            "tag": "분위기",
+            "mentions": 2
+          },
+          {
+            "tag": "데이트",
+            "mentions": 6
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "BUSY",
+          "percentile": 83
+        },
+        "score": {
+          "total": 0.97,
+          "request": 0.99,
+          "target": 0.93,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
+      },
+      {
+        "placeId": "16051121",
+        "name": "하회마을",
+        "category": "FOOD",
+        "region": "HONGDAE",
+        "address": "서울 마포구 어울마당로 122-1",
+        "lat": 37.5554365,
+        "lng": 126.9239294,
+        "phone": null,
+        "placeUrl": "http://place.map.kakao.com/16051121",
+        "tags": [
+          {
+            "tag": "가성비",
+            "mentions": 7
+          },
+          {
+            "tag": "데이트",
+            "mentions": 8
+          },
+          {
+            "tag": "단체석",
+            "mentions": 9
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "BUSY",
+          "percentile": 74
         },
         "score": {
           "total": 0.97,
@@ -98,19 +176,56 @@
         "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
       },
       {
-        "placeId": "1677794841",
-        "name": "오마파스타바",
+        "placeId": "1523836581",
+        "name": "오다리집 홍대점",
         "category": "FOOD",
         "region": "HONGDAE",
-        "address": "서울 마포구 월드컵북로4길 76",
-        "lat": 37.5591101,
-        "lng": 126.9229195,
-        "phone": "070-8656-9966",
-        "placeUrl": "http://place.map.kakao.com/1677794841",
+        "address": "서울 마포구 잔다리로6길 36",
+        "lat": 37.552256,
+        "lng": 126.92122,
+        "phone": null,
+        "placeUrl": "http://place.map.kakao.com/1523836581",
         "tags": [
           {
             "tag": "웨이팅",
-            "mentions": 5
+            "mentions": 6
+          },
+          {
+            "tag": "데이트",
+            "mentions": 8
+          },
+          {
+            "tag": "가성비",
+            "mentions": 3
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "BUSY",
+          "percentile": 84
+        },
+        "score": {
+          "total": 0.96,
+          "request": 1.0,
+          "target": 0.88,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
+      },
+      {
+        "placeId": "960562796",
+        "name": "파파이스 홍대점",
+        "category": "FOOD",
+        "region": "HONGDAE",
+        "address": "서울 마포구 양화로 133",
+        "lat": 37.5552355,
+        "lng": 126.9211331,
+        "phone": "070-7038-3509",
+        "placeUrl": "http://place.map.kakao.com/960562796",
+        "tags": [
+          {
+            "tag": "가성비",
+            "mentions": 2
           },
           {
             "tag": "데이트",
@@ -124,52 +239,89 @@
         "congestion": {
           "hour": 19,
           "level": "BUSY",
-          "percentile": 77
+          "percentile": 92
         },
         "score": {
-          "total": 0.97,
-          "request": 0.99,
-          "target": 0.91,
+          "total": 0.96,
+          "request": 0.95,
+          "target": 0.93,
           "congestion": 1.0
         },
         "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
       },
       {
-        "placeId": "368533490",
-        "name": "블루로그",
-        "category": "CAFE",
+        "placeId": "15509416",
+        "name": "오클리",
+        "category": "FOOD",
         "region": "HONGDAE",
-        "address": "서울 마포구 와우산로29마길 12",
-        "lat": 37.555594,
-        "lng": 126.9265141,
-        "phone": "070-8829-6688",
-        "placeUrl": "http://place.map.kakao.com/368533490",
+        "address": "서울 마포구 동교로 174",
+        "lat": 37.5560483,
+        "lng": 126.9212477,
+        "phone": null,
+        "placeUrl": "http://place.map.kakao.com/15509416",
         "tags": [
           {
-            "tag": "사진·인테리어",
-            "mentions": 5
-          },
-          {
-            "tag": "데이트",
+            "tag": "혼밥",
             "mentions": 7
           },
           {
-            "tag": "조용함",
-            "mentions": 9
+            "tag": "데이트",
+            "mentions": 2
+          },
+          {
+            "tag": "단체석",
+            "mentions": 3
           }
         ],
         "congestion": {
-          "hour": 20,
+          "hour": 19,
           "level": "BUSY",
-          "percentile": 78
+          "percentile": 79
         },
         "score": {
-          "total": 0.97,
-          "request": 0.98,
-          "target": 0.91,
+          "total": 0.96,
+          "request": 0.96,
+          "target": 0.93,
           "congestion": 1.0
         },
-        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 20시 주변이 붐벼요"
+        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
+      },
+      {
+        "placeId": "577617475",
+        "name": "애슐리퀸즈 홍대점",
+        "category": "FOOD",
+        "region": "HONGDAE",
+        "address": "서울 마포구 양화로 176",
+        "lat": 37.5572472,
+        "lng": 126.9249858,
+        "phone": "0507-1485-0439",
+        "placeUrl": "http://place.map.kakao.com/577617475",
+        "tags": [
+          {
+            "tag": "데이트",
+            "mentions": 5
+          },
+          {
+            "tag": "웨이팅",
+            "mentions": 2
+          },
+          {
+            "tag": "단체석",
+            "mentions": 10
+          }
+        ],
+        "congestion": {
+          "hour": 19,
+          "level": "BUSY",
+          "percentile": 80
+        },
+        "score": {
+          "total": 0.96,
+          "request": 0.95,
+          "target": 0.94,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
       },
       {
         "placeId": "1264775340",
@@ -198,86 +350,12 @@
         "congestion": {
           "hour": 19,
           "level": "BUSY",
-          "percentile": 74
+          "percentile": 91
         },
         "score": {
           "total": 0.96,
           "request": 0.99,
           "target": 0.88,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
-      },
-      {
-        "placeId": "21236051",
-        "name": "스시오 홍대점",
-        "category": "FOOD",
-        "region": "HONGDAE",
-        "address": "서울 마포구 어울마당로 100-6",
-        "lat": 37.553702,
-        "lng": 126.9225052,
-        "phone": "02-336-4300",
-        "placeUrl": "http://place.map.kakao.com/21236051",
-        "tags": [
-          {
-            "tag": "단체석",
-            "mentions": 3
-          },
-          {
-            "tag": "데이트",
-            "mentions": 2
-          },
-          {
-            "tag": "분위기",
-            "mentions": 6
-          }
-        ],
-        "congestion": {
-          "hour": 19,
-          "level": "BUSY",
-          "percentile": 79
-        },
-        "score": {
-          "total": 0.96,
-          "request": 0.97,
-          "target": 0.91,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
-      },
-      {
-        "placeId": "1118730363",
-        "name": "도회",
-        "category": "FOOD",
-        "region": "HONGDAE",
-        "address": "서울 마포구 동교로27길 8-3",
-        "lat": 37.5590164,
-        "lng": 126.9230385,
-        "phone": "070-8691-3259",
-        "placeUrl": "http://place.map.kakao.com/1118730363",
-        "tags": [
-          {
-            "tag": "데이트",
-            "mentions": 2
-          },
-          {
-            "tag": "가성비",
-            "mentions": 4
-          },
-          {
-            "tag": "분위기",
-            "mentions": 4
-          }
-        ],
-        "congestion": {
-          "hour": 19,
-          "level": "BUSY",
-          "percentile": 77
-        },
-        "score": {
-          "total": 0.96,
-          "request": 0.98,
-          "target": 0.89,
           "congestion": 1.0
         },
         "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 19시 주변이 붐벼요"
@@ -309,86 +387,12 @@
         "congestion": {
           "hour": 20,
           "level": "BUSY",
-          "percentile": 94
+          "percentile": 96
         },
         "score": {
           "total": 0.96,
           "request": 0.98,
           "target": 0.89,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 20시 주변이 붐벼요"
-      },
-      {
-        "placeId": "26644181",
-        "name": "설빙 홍대입구역점",
-        "category": "CAFE",
-        "region": "HONGDAE",
-        "address": "서울 마포구 홍익로6길 15",
-        "lat": 37.5553744,
-        "lng": 126.9227117,
-        "phone": "02-323-3287",
-        "placeUrl": "http://place.map.kakao.com/26644181",
-        "tags": [
-          {
-            "tag": "조용함",
-            "mentions": 2
-          },
-          {
-            "tag": "디저트",
-            "mentions": 4
-          },
-          {
-            "tag": "데이트",
-            "mentions": 5
-          }
-        ],
-        "congestion": {
-          "hour": 20,
-          "level": "BUSY",
-          "percentile": 77
-        },
-        "score": {
-          "total": 0.96,
-          "request": 0.97,
-          "target": 0.92,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 20시 주변이 붐벼요"
-      },
-      {
-        "placeId": "525668814",
-        "name": "카페플로라운지",
-        "category": "CAFE",
-        "region": "HONGDAE",
-        "address": "서울 마포구 양화로18안길 26",
-        "lat": 37.5568595,
-        "lng": 126.9259753,
-        "phone": "02-335-6547",
-        "placeUrl": "http://place.map.kakao.com/525668814",
-        "tags": [
-          {
-            "tag": "디저트",
-            "mentions": 4
-          },
-          {
-            "tag": "공간·좌석",
-            "mentions": 6
-          },
-          {
-            "tag": "데이트",
-            "mentions": 2
-          }
-        ],
-        "congestion": {
-          "hour": 20,
-          "level": "BUSY",
-          "percentile": 73
-        },
-        "score": {
-          "total": 0.96,
-          "request": 0.99,
-          "target": 0.9,
           "congestion": 1.0
         },
         "reason": "블로그 후기에서 '데이트' 언급이 많고, 주말 20시 주변이 붐벼요"
@@ -398,180 +402,28 @@
       {
         "courseId": "c_hongdae_1",
         "rank": 1,
-        "title": "홍대 저녁 보드게임 코스",
-        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 4분",
-        "startAt": "19:00",
-        "endAt": "21:54",
-        "totalMinutes": 174,
-        "totalWalkMinutes": 4,
-        "totalDistanceMeters": 111,
-        "score": {
-          "total": 0.93,
-          "placeAvg": 0.96,
-          "moveEfficiency": 0.9,
-          "timeFit": 0.8
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "MEAL",
-            "placeId": "19382069",
-            "name": "홍대조폭떡볶이 홍대2호점",
-            "category": "FOOD",
-            "lat": 37.5558796,
-            "lng": 126.9237615,
-            "arriveAt": "19:00",
-            "leaveAt": "20:00",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "BUSY",
-              "percentile": 92
-            },
-            "placeScore": 0.97
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "26644181",
-            "name": "설빙 홍대입구역점",
-            "category": "CAFE",
-            "lat": 37.5553744,
-            "lng": 126.9227117,
-            "arriveAt": "20:03",
-            "leaveAt": "20:53",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 3,
-            "distanceMetersFromPrev": 108,
-            "congestion": {
-              "level": "BUSY",
-              "percentile": 77
-            },
-            "placeScore": 0.96
-          },
-          {
-            "order": 3,
-            "slot": "PLAY",
-            "placeId": "205320302",
-            "name": "히어로보드게임카페 홍대2호점",
-            "category": "ACTIVITY",
-            "lat": 37.5553492,
-            "lng": 126.9227027,
-            "arriveAt": "20:54",
-            "leaveAt": "21:54",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 1,
-            "distanceMetersFromPrev": 3,
-            "congestion": {
-              "level": "BUSY",
-              "percentile": 77
-            },
-            "placeScore": 0.96
-          }
-        ]
-      },
-      {
-        "courseId": "c_hongdae_2",
-        "rank": 2,
-        "title": "홍대 저녁 노래방 코스",
-        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 10분",
-        "startAt": "19:00",
-        "endAt": "22:00",
-        "totalMinutes": 180,
-        "totalWalkMinutes": 10,
-        "totalDistanceMeters": 495,
-        "score": {
-          "total": 0.93,
-          "placeAvg": 0.97,
-          "moveEfficiency": 0.75,
-          "timeFit": 1.0
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "MEAL",
-            "placeId": "1677794841",
-            "name": "오마파스타바",
-            "category": "FOOD",
-            "lat": 37.5591101,
-            "lng": 126.9229195,
-            "arriveAt": "19:00",
-            "leaveAt": "20:00",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "BUSY",
-              "percentile": 77
-            },
-            "placeScore": 0.97
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "15985522",
-            "name": "이미커피",
-            "category": "CAFE",
-            "lat": 37.557475,
-            "lng": 126.9219196,
-            "arriveAt": "20:04",
-            "leaveAt": "20:54",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 4,
-            "distanceMetersFromPrev": 202,
-            "congestion": {
-              "level": "BUSY",
-              "percentile": 94
-            },
-            "placeScore": 0.96
-          },
-          {
-            "order": 3,
-            "slot": "PLAY",
-            "placeId": "1683028093",
-            "name": "바비노래연습장",
-            "category": "ACTIVITY",
-            "lat": 37.5597349,
-            "lng": 126.9236319,
-            "arriveAt": "21:00",
-            "leaveAt": "22:00",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 6,
-            "distanceMetersFromPrev": 293,
-            "congestion": {
-              "level": "BUSY",
-              "percentile": 90
-            },
-            "placeScore": 0.98
-          }
-        ]
-      },
-      {
-        "courseId": "c_hongdae_3",
-        "rank": 3,
         "title": "홍대 저녁 테마카페 코스",
-        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 5분",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 3분",
         "startAt": "19:00",
-        "endAt": "21:55",
-        "totalMinutes": 175,
-        "totalWalkMinutes": 5,
-        "totalDistanceMeters": 166,
+        "endAt": "21:53",
+        "totalMinutes": 173,
+        "totalWalkMinutes": 3,
+        "totalDistanceMeters": 96,
         "score": {
-          "total": 0.93,
-          "placeAvg": 0.95,
-          "moveEfficiency": 0.88,
-          "timeFit": 0.83
+          "total": 0.94,
+          "placeAvg": 0.97,
+          "moveEfficiency": 0.93,
+          "timeFit": 0.77
         },
         "stops": [
           {
             "order": 1,
             "slot": "MEAL",
-            "placeId": "21236051",
-            "name": "스시오 홍대점",
+            "placeId": "1507202671",
+            "name": "꾸감",
             "category": "FOOD",
-            "lat": 37.553702,
-            "lng": 126.9225052,
+            "lat": 37.5547912,
+            "lng": 126.9236879,
             "arriveAt": "19:00",
             "leaveAt": "20:00",
             "stayMinutes": 60,
@@ -579,28 +431,28 @@
             "distanceMetersFromPrev": null,
             "congestion": {
               "level": "BUSY",
-              "percentile": 79
+              "percentile": 74
             },
-            "placeScore": 0.96
+            "placeScore": 0.97
           },
           {
             "order": 2,
             "slot": "CAFE",
-            "placeId": "236388222",
-            "name": "마이캔카페",
+            "placeId": "1991723539",
+            "name": "컴포즈커피 홍대서교점",
             "category": "CAFE",
-            "lat": 37.5536804,
-            "lng": 126.9224781,
+            "lat": 37.5546784,
+            "lng": 126.9235013,
             "arriveAt": "20:01",
             "leaveAt": "20:51",
             "stayMinutes": 50,
             "walkMinutesFromPrev": 1,
-            "distanceMetersFromPrev": 3,
+            "distanceMetersFromPrev": 21,
             "congestion": {
               "level": "BUSY",
-              "percentile": 80
+              "percentile": 79
             },
-            "placeScore": 0.95
+            "placeScore": 0.98
           },
           {
             "order": 3,
@@ -610,16 +462,168 @@
             "category": "ACTIVITY",
             "lat": 37.555115,
             "lng": 126.9228478,
-            "arriveAt": "20:55",
-            "leaveAt": "21:55",
+            "arriveAt": "20:53",
+            "leaveAt": "21:53",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 4,
-            "distanceMetersFromPrev": 163,
+            "walkMinutesFromPrev": 2,
+            "distanceMetersFromPrev": 75,
             "congestion": {
               "level": "BUSY",
-              "percentile": 87
+              "percentile": 83
             },
             "placeScore": 0.95
+          }
+        ]
+      },
+      {
+        "courseId": "c_hongdae_2",
+        "rank": 2,
+        "title": "홍대 저녁 테마카페 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 4분",
+        "startAt": "19:00",
+        "endAt": "21:54",
+        "totalMinutes": 174,
+        "totalWalkMinutes": 4,
+        "totalDistanceMeters": 147,
+        "score": {
+          "total": 0.93,
+          "placeAvg": 0.95,
+          "moveEfficiency": 0.9,
+          "timeFit": 0.8
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "1264775340",
+            "name": "모모쥬 홍대입구점",
+            "category": "FOOD",
+            "lat": 37.5567605,
+            "lng": 126.9260263,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 91
+            },
+            "placeScore": 0.96
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "525668814",
+            "name": "카페플로라운지",
+            "category": "CAFE",
+            "lat": 37.5568595,
+            "lng": 126.9259753,
+            "arriveAt": "20:01",
+            "leaveAt": "20:51",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 1,
+            "distanceMetersFromPrev": 12,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 93
+            },
+            "placeScore": 0.96
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "18657395",
+            "name": "심리카페점컴",
+            "category": "ACTIVITY",
+            "lat": 37.5562514,
+            "lng": 126.9246529,
+            "arriveAt": "20:54",
+            "leaveAt": "21:54",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 3,
+            "distanceMetersFromPrev": 135,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 83
+            },
+            "placeScore": 0.93
+          }
+        ]
+      },
+      {
+        "courseId": "c_hongdae_3",
+        "rank": 3,
+        "title": "홍대 저녁 사주카페 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 8분",
+        "startAt": "19:00",
+        "endAt": "21:58",
+        "totalMinutes": 178,
+        "totalWalkMinutes": 8,
+        "totalDistanceMeters": 342,
+        "score": {
+          "total": 0.92,
+          "placeAvg": 0.95,
+          "moveEfficiency": 0.8,
+          "timeFit": 0.93
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "436404197",
+            "name": "푸라닭치킨 홍대점",
+            "category": "FOOD",
+            "lat": 37.5550412,
+            "lng": 126.9229848,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 83
+            },
+            "placeScore": 0.97
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "1693094082",
+            "name": "카페엔텐바흐",
+            "category": "CAFE",
+            "lat": 37.5562838,
+            "lng": 126.9217579,
+            "arriveAt": "20:04",
+            "leaveAt": "20:54",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 4,
+            "distanceMetersFromPrev": 175,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 82
+            },
+            "placeScore": 0.94
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "144696587",
+            "name": "에로스 사주 타로 카페",
+            "category": "ACTIVITY",
+            "lat": 37.5556335,
+            "lng": 126.9234652,
+            "arriveAt": "20:58",
+            "leaveAt": "21:58",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 4,
+            "distanceMetersFromPrev": 167,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 84
+            },
+            "placeScore": 0.94
           }
         ]
       }

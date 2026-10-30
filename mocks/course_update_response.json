@@ -5,28 +5,28 @@
   "data": {
     "courseId": "c_seongsu_1",
     "rank": null,
-    "title": "성수 오후 노래방 코스",
-    "reason": "'조용함' 후기 많은 곳 2곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 12분",
+    "title": "성수 오후 전시 코스",
+    "reason": "'조용함' 후기 많은 곳 1곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 11분",
     "startAt": "15:00",
-    "endAt": "18:32",
-    "totalMinutes": 212,
-    "totalWalkMinutes": 12,
-    "totalDistanceMeters": 576,
+    "endAt": "18:31",
+    "totalMinutes": 211,
+    "totalWalkMinutes": 11,
+    "totalDistanceMeters": 516,
     "score": {
-      "total": 0.71,
-      "placeAvg": 0.81,
-      "moveEfficiency": 0.7,
+      "total": 0.65,
+      "placeAvg": 0.72,
+      "moveEfficiency": 0.72,
       "timeFit": 0.0
     },
     "stops": [
       {
         "order": 1,
         "slot": "PLAY",
-        "placeId": "20745493",
-        "name": "해피노래연습장",
-        "category": "ACTIVITY",
-        "lat": 37.5452526,
-        "lng": 127.054687,
+        "placeId": "462259510",
+        "name": "브레가 아티스트스페이스",
+        "category": "CULTURE",
+        "lat": 37.5426152,
+        "lng": 127.0530783,
         "arriveAt": "15:00",
         "leaveAt": "16:30",
         "stayMinutes": 90,
@@ -34,57 +34,57 @@
         "distanceMetersFromPrev": null,
         "congestion": {
           "level": "QUIET",
-          "percentile": 25
+          "percentile": 20
         },
         "placeScore": 0.96
       },
       {
         "order": 2,
         "slot": "CAFE",
-        "placeId": "332674718",
-        "name": "뉴믹스커피",
+        "placeId": "2076170050",
+        "name": "카페어게인",
         "category": "CAFE",
-        "lat": 37.5439783,
-        "lng": 127.0512687,
-        "arriveAt": "16:37",
-        "leaveAt": "17:27",
+        "lat": 37.5425264,
+        "lng": 127.0501271,
+        "arriveAt": "16:36",
+        "leaveAt": "17:26",
         "stayMinutes": 50,
-        "walkMinutesFromPrev": 7,
-        "distanceMetersFromPrev": 333,
+        "walkMinutesFromPrev": 6,
+        "distanceMetersFromPrev": 260,
         "congestion": {
           "level": "BUSY",
-          "percentile": 73
+          "percentile": 92
         },
-        "placeScore": 0.69
+        "placeScore": 0.43
       },
       {
         "order": 3,
         "slot": "MEAL",
-        "placeId": "2091596191",
-        "name": "미루성수",
+        "placeId": "1771596435",
+        "name": "하루나",
         "category": "FOOD",
-        "lat": 37.5434239,
-        "lng": 127.0539298,
-        "arriveAt": "17:32",
-        "leaveAt": "18:32",
+        "lat": 37.5421314,
+        "lng": 127.0529851,
+        "arriveAt": "17:31",
+        "leaveAt": "18:31",
         "stayMinutes": 60,
         "walkMinutesFromPrev": 5,
-        "distanceMetersFromPrev": 243,
+        "distanceMetersFromPrev": 256,
         "congestion": {
           "level": "QUIET",
-          "percentile": 27
+          "percentile": 21
         },
-        "placeScore": 0.79
+        "placeScore": 0.77
       }
     ],
     "warnings": [
       {
         "code": "TOTAL_TIME_OVER",
-        "message": "총 212분으로 3시간 30분을 넘어요"
+        "message": "총 211분으로 3시간 30분을 넘어요"
       },
       {
         "code": "BUSY_AT_ARRIVAL",
-        "message": "16:37에 뉴믹스커피 주변이 붐벼요"
+        "message": "16:36에 카페어게인 주변이 붐벼요"
       }
     ]
   }

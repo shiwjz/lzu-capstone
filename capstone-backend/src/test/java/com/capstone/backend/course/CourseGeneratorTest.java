@@ -193,6 +193,24 @@ class CourseGeneratorTest {
         assertFalse(used.contains("A1"));
     }
 
+    @Test
+    @DisplayName("조용한 곳 원하면 노래방·오락실은 놀거리 칸에서 빠짐, 활기찬 곳이면 나옴")
+    void quietExcludesNoisyPlay() {
+        Fixture f = new Fixture();
+        f.basicSet();
+        f.add("K1", "SEONGSU", "ACTIVITY", "가정,생활 > 여가시설 > 노래방", 0.99);
+        f.add("K2", "SEONGSU", "ACTIVITY", "가정,생활 > 여가시설 > 오락실", 0.99);
+
+        Set<String> quiet = usedIds(generator.generate(request(15 * 60), f.places, f.scorer(CongestionLevel.QUIET)));
+        assertFalse(quiet.contains("K1"));
+        assertFalse(quiet.contains("K2"));
+
+        CourseRequest lively = new CourseRequest("SEONGSU", 15 * 60, 2, List.of("데이트"), CrowdPreference.LIVELY,
+                Set.of(), List.of(), List.of());
+        Set<String> busy = usedIds(generator.generate(lively, f.places, f.scorer(CongestionLevel.BUSY)));
+        assertTrue(busy.contains("K1") || busy.contains("K2"), busy.toString());
+    }
+
     // ---------- 시간 계산·경고 (코스 수정 API) ----------
 
     @Test
@@ -281,7 +299,7 @@ class CourseGeneratorTest {
 
         CoursePlan best = generator.generate(request(15 * 60), f.places, f.scorer(CongestionLevel.QUIET)).get(0);
 
-        assertEquals("성수 오후 노래방 코스", best.title());
+        assertEquals("성수 오후 전시관 코스", best.title());
         // 기본 장소 태그 = 조용함 → 3곳 다 맞음, 혼잡도 전부 한산
         assertTrue(best.reason().startsWith("'조용함' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 "), best.reason());
     }
@@ -328,7 +346,7 @@ class CourseGeneratorTest {
                 double s = 0.95 - i * 0.05;
                 add("F" + i, "SEONGSU", "FOOD", "음식점 > 한식", s);
                 add("C" + i, "SEONGSU", "CAFE", "음식점 > 카페", s);
-                add("P" + i, "SEONGSU", "ACTIVITY", "가정,생활 > 여가시설 > 노래방", s);
+                add("P" + i, "SEONGSU", "CULTURE", "문화,예술 > 문화시설 > 전시관", s);
             }
         }
 

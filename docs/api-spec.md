@@ -1,6 +1,33 @@
-# 오디가 API 명세 v0.2
+# 오디가 API 명세 v0.3
 
-2026-10-16 · 김예민
+2026-10-24 · 김예민
+
+## v0.3에서 바뀐 점 (9주차)
+
+| 바뀐 것 | v0.2 | v0.3 | 근거 |
+| --- | --- | --- | --- |
+| 서버 구현 | 가짜 JSON만 | 검색·장소 목록·장소 상세·코스 수정·공유 만들기·공유 보기 6개 서버에서 동작 | 아래 '서버 구현 상태' |
+| 검색 조건 필드 | region ~ allergies | + gender, ageGroup, companionType, excludedFoods | 피그마 04 조건 화면, 타깃 점수(성·연령)에 필요 |
+| 검색 요청 | query, date, startTime, region | + conditions (조건 화면에서 고친 값 그대로 보내면 문장 분석 건너뜀) | 피그마 '수정 조건으로 바로 추천' |
+| 장소 목록 | 없음 | GET /api/places?region=&category= 추가 | 피그마 01·02 홈 '내 주변 장소' |
+| 저장 코스·저장한 장소 | 없음 | GET·POST·DELETE /api/users/me/courses, /api/users/me/places (10/24 구현) | 피그마 09·17 |
+| 회원·내 설정 | 가짜 JSON만 | 회원가입·로그인·내 설정 서버에서 동작, 로그인하고 검색하면 내 설정 자동 반영 | 9주차 정헌 할 일 중 ERD·배포 빼고 예민이 가져감 |
+| 없는 주소 | 500 INTERNAL_SERVER_ERROR | 404 NOT_READY | 앱이 '준비 중'으로 처리 |
+| 카테고리 | 8개 | + SNACK 간식 (베이커리·아이스크림 등, 코스 칸에는 안 넣음) | 최예린 8주차 분류 보정 |
+| 코스 규칙 | - | 조용한 곳 원하면 놀거리 칸에서 노래방·오락실·PC방 등 제외 | '조용한데 노래방 추천' 문제 |
+| 장소 데이터 | 1,795곳 (분류 보정은 가짜 JSON에서만) | 3,306곳, 분류 보정·영어 코드는 최예린 수집 단계에서 끝남 | 최예린 collect_places.py |
+| 혼잡도 데이터 | congestion_fake.csv | cell_congestion.csv (3×3 평균, 영어 코드) | 이윤경 make_congestion.py |
+
+**서버 구현 상태 (2026-10-24)**
+
+| API | 상태 | 담당 |
+| --- | --- | --- |
+| POST /api/search (+ 확인용 GET /api/search?q=) | ✅ 동작. 조건 추출은 규칙 기반(Gemini 자리 있음), 장소 점수는 임시(윤경 모듈 자리 있음) | 김예민 · 최예린 · 이윤경 |
+| GET /api/places, GET /api/places/{placeId} | ✅ 동작. 지금은 resources/data 파일에서 읽음 → ERD 확정 후 DB | 김예민 (9주차에 가져옴) |
+| PUT /api/courses/{courseId} | ✅ 동작. 코스는 서버 메모리에 저장 (서버 끄면 사라짐) → ERD 확정 후 DB | 김예민 |
+| POST /api/courses/{courseId}/share, GET /api/share/{shareCode} | ✅ 동작 | 김예민 |
+| POST /api/auth/signup, /api/auth/login, GET·PUT /api/users/me/preferences | ✅ 동작. 회원·내 설정은 DB(users, user_preference, user_allergy) | 김예민 (정헌 대신, 테이블은 정헌) |
+| 저장 코스·저장한 장소 GET·POST·DELETE /api/users/me/courses, /api/users/me/places | ✅ 동작. 지금은 서버 메모리 (서버 끄면 사라짐) → ERD 확정 후 DB | 김예민 |
 
 ## v0.2에서 바뀐 점
 
@@ -35,11 +62,13 @@
 | 구분 | 코드 → 화면 표시 |
 | --- | --- |
 | 지역 `region` | SEONGSU 성수 · HONGDAE 홍대 · GANGNAM 강남 |
-| 카테고리 `category` | FOOD 음식 · CAFE 카페 · CULTURE 문화 · ACTIVITY 액티비티 · EXPERIENCE 체험 · SHOPPING 쇼핑 · TOUR 관광 · NATURE 자연/휴식 |
+| 카테고리 `category` | FOOD 음식 · CAFE 카페 · CULTURE 문화 · ACTIVITY 액티비티 · EXPERIENCE 체험 · SHOPPING 쇼핑 · TOUR 관광 · NATURE 자연/휴식 · SNACK 간식 |
 | 코스 칸 `slot` | MEAL 식사(FOOD) · CAFE 카페(CAFE) · PLAY 놀거리(나머지 6개) |
 | 혼잡도 `level` | QUIET 한산(하위 30%) · NORMAL 보통 · BUSY 혼잡(상위 30%) |
 | 혼잡 선호 `crowdPreference` | QUIET 조용한 곳 · DEFAULT 상관없음 · LIVELY 활기찬 곳 |
 | 요일 구분 `dayType` | WEEKDAY 주중 · WEEKEND 주말 |
+| 동행 `companionType` | FRIEND 친구 · COUPLE 연인 · FAMILY 가족 · COWORKER 회사 · SOLO 혼자 |
+| 성별 `gender` · 나이 `ageGroup` | F 여성 · M 남성 / 10s · 20s · 30s · 40s · 50s · 60s (모르면 null → 전체 평균 기준) |
 
 - Gemini 조건 추출 결과도 이 코드로 통일. 계획 문서 예시의 `"성수"`, `"weekend"`는 `"SEONGSU"`, `"WEEKEND"`로 변경
 
@@ -49,29 +78,33 @@
 | USER_NOT_FOUND | 404 | 없는 사용자 | 있음 |
 | DUPLICATE_EMAIL | 409 | 이미 가입된 이메일 | 있음 |
 | INTERNAL_SERVER_ERROR | 500 | 그 밖의 서버 오류 | 있음 |
-| UNAUTHORIZED | 401 | 토큰이 없거나 만료됨 (로그인 필요한 API만) | 추가 필요 |
-| LOGIN_FAILED | 401 | 이메일 또는 비밀번호 틀림 | 추가 필요 |
-| PLACE_NOT_FOUND · COURSE_NOT_FOUND · SHARE_NOT_FOUND | 404 | 없는 장소·코스·공유 코드 | 추가 필요 |
-| CONDITION_MISSING | 422 | 문장에서 지역처럼 꼭 필요한 조건을 못 찾음 → 앱에서 다시 물어보기 | 추가 필요 |
-| AI_UNAVAILABLE | 503 | Gemini 오류 + 규칙 기반 예비 처리도 실패 | 추가 필요 |
+| UNAUTHORIZED | 401 | 토큰이 없거나 만료됨 (로그인 필요한 API만) | 있음 (9주차) |
+| LOGIN_FAILED | 401 | 이메일 또는 비밀번호 틀림 | 있음 (9주차) |
+| PLACE_NOT_FOUND · COURSE_NOT_FOUND · SHARE_NOT_FOUND | 404 | 없는 장소·코스·공유 코드 | 있음 (9주차) |
+| CONDITION_MISSING | 422 | 문장에서 지역처럼 꼭 필요한 조건을 못 찾음 → 앱에서 다시 물어보기 | 있음 (9주차) |
+| AI_UNAVAILABLE | 503 | Gemini 오류 + 규칙 기반 예비 처리도 실패 | 있음 (9주차) |
+| NOT_READY | 404 | 서버에 없는 주소 (예전엔 500) | 있음 (9주차) |
 
-- '추가 필요'는 ErrorCode에 같은 형식으로 추가 부탁 (@성정헌)
+- 9주차에 ErrorCode에 전부 추가함. 검색·장소·코스 API(`search/`, `place/`)는 아직 자체 ApiException으로 같은 코드·HTTP 상태를 내보냄 → 응답 JSON은 똑같음
 - 조건에 맞는 코스가 없는 건 에러 아님 → `courses: []` + 안내 문구(`notice`) 반환
 
 ## API 목록
 
-MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 따로 추가.
+MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소). 회원가입·로그인·내 설정은 9주차에 예민이 만듦 (원래 정헌, 정헌은 ERD·배포).
 
 | 기능 | 메서드·경로 | 로그인 | 백엔드 담당 | 쓰는 화면 |
 | --- | --- | --- | --- | --- |
 | 검색·추천 | POST /api/search | 선택 | 김예민 (조건 추출 최예린, 점수 이윤경) | 검색 → 추천 결과·지도·코스 |
-| 장소 상세 | GET /api/places/{placeId} | 불필요 | 성정헌 | 장소 카드 상세 |
+| 장소 목록 (v0.3) | GET /api/places | 불필요 | 김예민 | 홈 지도 내 주변 장소 |
+| 장소 상세 | GET /api/places/{placeId} | 불필요 | 김예민 (원래 성정헌, 9주차 변경) | 장소 카드 상세 |
 | 코스 수정 | PUT /api/courses/{courseId} | 선택 | 김예민 | 커스텀 |
 | 공유 만들기 | POST /api/courses/{courseId}/share | 선택 | 김예민 | 공유 |
 | 공유 코스 보기 | GET /api/share/{shareCode} | 불필요 | 김예민 | 공유 링크로 연 화면 |
-| 회원가입 | POST /api/auth/signup | 불필요 | 성정헌 | 로그인 |
-| 로그인 | POST /api/auth/login | 불필요 | 성정헌 | 로그인 |
-| 내 설정 보기·수정 | GET·PUT /api/users/me/preferences | 필요 | 성정헌 | 마이페이지 |
+| 회원가입 | POST /api/auth/signup | 불필요 | 김예민 (원래 성정헌, 9주차 변경) | 로그인 |
+| 로그인 | POST /api/auth/login | 불필요 | 김예민 (원래 성정헌, 9주차 변경) | 로그인 |
+| 내 설정 보기·수정 | GET·PUT /api/users/me/preferences | 필요 | 김예민 (원래 성정헌, 9주차 변경) | 마이페이지 |
+| 저장 코스 | GET·POST /api/users/me/courses, DELETE /api/users/me/courses/{courseId} | 필요 | 김예민 | 저장 코스 |
+| 저장한 장소 | GET·POST /api/users/me/places, DELETE /api/users/me/places/{placeId} | 필요 | 김예민 | 저장한 장소 |
 
 ## 검색·추천 POST /api/search
 
@@ -91,11 +124,15 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 | date | X | 날짜 선택기 값. 문장 속 날짜보다 우선 |
 | startTime | X | 시간 선택기 값. 없으면 문장에서 추출, 그것도 없으면 현재 시각 다음 정시 |
 | region | X | 지역 버튼 선택 시. 문장보다 우선 |
+| conditions | X | (v0.3) 조건 화면에서 사용자가 고친 조건 전체. 있으면 문장 분석 안 하고 이 값 그대로 사용 (extractedBy = USER). 모양은 응답 conditions와 같음 |
+
+- 시연용: 브라우저에서 `GET /api/search?q=성수에서 조용한 카페` 로도 같은 응답 확인 가능
+- 지역을 못 찾으면 422 CONDITION_MISSING → 앱에서 지역 다시 물어보고 region 넣어서 다시 요청
 
 | 응답 data 필드 | 설명 |
 | --- | --- |
 | searchId | 검색 1회 ID (로그·평가용) |
-| conditions | 추출된 조건: region, date, dayType, startTime, partySize, categories, atmospheres(내 설정과 같은 이름), crowdPreference, allergies, extractedBy(GEMINI / RULE) |
+| conditions | 추출된 조건: region, date, dayType, startTime, partySize, categories, atmospheres(내 설정과 같은 이름), crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy(GEMINI / RULE / USER) |
 | places | 추천 장소 최대 10곳, 점수 높은 순 |
 | courses | 코스 최대 3개, rank 1이 1등. 코스끼리 장소 안 겹침 |
 | notice | 결과가 없거나 조건을 바꿨을 때 안내 문구, 평소엔 null |
@@ -111,7 +148,9 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 | stops[].congestion | 해당 장소 도착 시각 기준 혼잡도 (검색 시각 아님) |
 | stops[].walkMinutesFromPrev | 이전 장소에서 걷는 시간(분), 첫 장소는 null |
 | courses[].score | placeAvg·moveEfficiency·timeFit = 평균 장소 점수·이동 효율·시간 적합도, total = 0.70·0.20·0.10 가중합 |
-| courses[].title | 코스 카드 제목 (예: "성수 오후 노래방 코스"), 서버에서 생성 |
+| courses[].title | 코스 카드 제목 (예: "성수 오후 전시 코스"), 서버에서 생성 |
+| conditions.excludedFoods | 빼고 싶은 음식 단어 (예: ["매운", "고기"]) → 식사 칸에서 해당 식당 제외 |
+| conditions.companionType | 동행 유형. 연인이면 '데이트' 분위기 자동 추가 |
 | courses[].reason | 코스 추천 이유 한 줄 (예: "'조용함' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 6분"), 서버에서 생성 |
 
 **코스 안 장소 하나(stops[ ]) 예시** - 이름·좌표는 실제 수집 데이터, 혼잡도는 윤경 데이터, 점수는 가짜 값
@@ -131,6 +170,12 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 ## 장소·코스 API
 
 - 검색 때 만든 코스 3개는 서버에 저장하고 courseId 반환 → 로그인 없이도 수정·공유 가능, 로그인하면 내 코스로 연결
+
+**장소 목록 GET /api/places?region=SEONGSU&category=CAFE&date=2026-10-31&hour=15&limit=50** (v0.3)
+
+- region 필수, 나머지 선택 (category 없으면 전부, date 없으면 오늘, hour 없으면 지금 시각, limit 기본 50·최대 500)
+- 응답 data: date, dayType, hour, total(전체 개수), places[] = placeId, name, category, region, address, lat, lng, tags, congestion(hour, level, percentile)
+- 혼잡도는 같은 시간끼리 비교(pct_same_time) → 지도 마커 색에 사용
 
 **장소 상세 GET /api/places/{placeId}?date=2026-10-17**
 
@@ -157,7 +202,7 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 - `startTime`은 선택. 없으면 원래 코스 시작 시각 사용
 - 응답: 다시 계산된 코스(검색 응답의 courses[ ]와 같은 형식, rank는 null) + `warnings`
 - 경고가 있어도 저장은 됨. 앱에서 경고 문구 보여주고 사용자가 판단
-- 가짜 JSON: `mocks/course_update_request.json` → `mocks/course_update_response.json` (1번 체류 90분 + 2번 카페 교체 → 총 212분, TOTAL_TIME_OVER·BUSY_AT_ARRIVAL 경고 2개)
+- 가짜 JSON: `mocks/course_update_request.json` → `mocks/course_update_response.json` (1번 체류 90분 + 2번을 도착 때 붐비는 카페로 교체 → 총 211분, TOTAL_TIME_OVER·BUSY_AT_ARRIVAL 경고 2개)
 
 | 경고 코드 | 언제 |
 | --- | --- |
@@ -189,7 +234,13 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 | GET /api/users/me/preferences | 없음 | region, atmospheres, allergies | users.region, user_preference, user_allergy | preferences.json |
 | PUT /api/users/me/preferences | GET 응답과 같은 형식 | 저장된 값 | 위와 같음 (목록은 지우고 다시 저장) | preferences.json |
 
-- 비밀번호는 BCrypt로 암호화해서 password_hash에 저장. 현재 build.gradle에 암호화·JWT 라이브러리 없음 → 추가 필요 (spring-security-crypto, jjwt 등)
+- 비밀번호는 BCrypt로 암호화해서 password_hash에 저장 (build.gradle에 spring-security-crypto 추가)
+- 로그인 토큰: JWT(HS256), 1시간. jjwt 대신 자바 기본 HMAC으로 직접 만듦 (`auth/JwtProvider`). 토큰 안에는 사용자 번호·시각만
+- 토큰 비밀키: `odiga.jwt.secret`, 로컬은 기본값으로 켜짐. **배포 서버는 `JWT_SECRET` 환경변수에 32자 이상 새 값** (@성정헌, 깃허브에 올리지 않기)
+- 이메일은 공백 빼고 소문자로 저장. 로그인 실패는 이메일이 없든 비번이 틀리든 똑같이 LOGIN_FAILED
+- 회원가입 성공은 HTTP 201, 형식 틀림(이메일 모양·비번 8자 미만·지역 코드)은 INVALID_INPUT 400
+- 내 설정 PUT 검사: region은 지역 코드 또는 null, atmospheres는 공백·중복 빼고 최대 10개·각 30자, allergies는 아래 코드 6개만
+- 로그인하고 검색(토큰 넣고 POST /api/search): 문장에 지역 없으면 내 설정 지역, 분위기 없으면 내 설정 분위기(혼잡 선호도 따라감), 알레르기는 항상 합침. 조건 화면에서 직접 고친 조건(conditions)이면 알레르기만 합침. 토큰이 틀리거나 만료면 그냥 비로그인 검색
 - region은 지역 코드(SEONGSU 등)로 저장
 - atmospheres는 블로그 태그 사전의 태그 이름 그대로(조용함, 디저트, 사진·인테리어, 데이트, 단체석 등) user_preference.atmosphere에 한 줄씩 저장. 태그 목록은 최예린 확정
 - allergies는 아래 코드 그대로 user_allergy.allergy_name에 저장
@@ -205,6 +256,24 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 
 - 카카오에 메뉴 정보가 없어서 음식점 종류로 거를 수 있는 건 갑각류·해산물뿐 → 나머지는 블로그 메뉴 경고로 보완 (최예린)
 
+## 저장 코스·저장한 장소 (v0.3, 로그인 필요)
+
+| API | 요청 | 응답 data |
+| --- | --- | --- |
+| GET /api/users/me/courses | 없음 | courses[] (최근 저장 순) |
+| POST /api/users/me/courses | `{ "courseId": "c_1_1" }` (검색·코스 수정으로 받은 courseId) | 저장한 코스 한 개 |
+| DELETE /api/users/me/courses/{courseId} | 없음 | courseId, deleted: true |
+| GET /api/users/me/places | 없음 | places[] (최근 저장 순) |
+| POST /api/users/me/places | `{ "placeId": "780757764" }` | 저장한 장소 한 개 |
+| DELETE /api/users/me/places/{placeId} | 없음 | placeId, deleted: true |
+
+- 저장 코스 한 개: `courseId`, `savedAt`, `conditions`(검색 조건 전체), `course`(검색 응답 courses[]와 같은 모양)
+- 저장한 장소 한 개: 장소 목록 API랑 같은 기본 정보(placeId, name, category, region, address, lat, lng, tags) + `savedAt`
+- 코스는 저장한 순간 그대로 복사 (공유랑 같음) → 나중에 원본 코스를 고쳐도 저장본은 그대로. 고친 걸 저장하려면 다시 POST (맨 위로 올라감)
+- 같은 장소 두 번 저장해도 하나 (처음 저장 시각 유지)
+- 없는 courseId·placeId: COURSE_NOT_FOUND·PLACE_NOT_FOUND 404, 저장 안 한 걸 지우면 똑같이 404
+- 지금은 서버 메모리 (서버 끄면 사라짐, 회원 정보는 DB라 남음) → ERD에 saved_course, saved_place 생기면 `user/SavedStore`만 DB로
+
 ## 코스 생성 규칙 v0.1
 
 - 칸 3개(식사·카페·놀거리)를 시작 시각에 맞는 순서로 채우고, 총 3시간 ±30분 안에서 점수 가장 높은 조합 3개 선택
@@ -212,8 +281,9 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 - 구현: `capstone-backend/src/main/java/com/capstone/backend/course/` (`CourseGenerator`가 시작점, 숫자는 전부 `CourseRules`에)
   - 같은 장소·점수 넣었을 때 `mocks/` 가짜 JSON 코스(성수·홍대·강남 3개씩 + 코스 수정·경고)와 결과 똑같은 거 확인함
   - 규칙 바꾸면 `CourseRules` + 이 문서 + `mocks/generate_mocks.py` 같이 바꾸기
-  - 테스트: `./gradlew test --tests "com.capstone.backend.course.*"` (DB 없이 돌아감)
-  - 확인용 주소: 서버 켜고 `GET /api/dev/courses` → 가짜 점수로 코스 3개 JSON (기본값 = 성수 가짜 JSON이랑 같은 조건, 파라미터는 `DevCourseController` 주석 참고). /api/search 붙으면 지우기
+  - 검색·코스 수정·공유 API는 `search/` (`SearchService`), 장소 API는 `place/` (`PlaceStore`, `PlaceController`)
+  - 테스트: `./gradlew test --tests "com.capstone.backend.course.*" --tests "com.capstone.backend.search.*"` (DB 없이 돌아감)
+  - 확인용: 서버 켜고 브라우저로 `http://localhost:8080/api/search?q=토요일 오후 3시 성수에서 조용한 카페` (v0.2의 /api/dev/courses는 이걸로 대체)
 
 1. **칸별 후보:** 지역·알레르기·술집 시간 필터 통과한 장소 중 칸마다 점수 상위 10곳 (점수는 그 칸의 대략적인 도착 시각 기준)
 2. **조합:** 10 × 10 × 10 = 1,000개
@@ -246,9 +316,12 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 
 **칸 채우는 규칙**
 
-- 식사 칸: FOOD 중 간식(베이커리·아이스크림·도넛)과 구내식당 제외. 술집은 도착이 18시 이후일 때만
-- 카페 칸: CAFE
+- 식사 칸: FOOD (간식은 v0.3부터 SNACK으로 따로 분류돼서 자동 제외). 술집은 도착이 18시 이후일 때만. excludedFoods에 걸리는 식당 제외
+- 카페 칸: CAFE (SNACK은 코스 생성엔 안 쓰고, 사용자가 직접 추가하면 카페 칸으로 표시)
 - 놀거리 칸: 문장에 놀거리 종류가 있으면 그 카테고리(예: 방탈출 → ACTIVITY), 없으면 나머지 6개 전부
+- (v0.3) 조용한 곳 원하면(crowdPreference QUIET 또는 분위기 '조용함') 놀거리 칸에서 노래방·코인노래방·멀티방·오락실·PC방·볼링·당구·클럽·VR·사격 제외
+  - 혼잡도는 '주변 유동인구' 기준이라 장소 안이 시끄러운지는 모름 → 종류로 거름
+  - 성수 조용함 시나리오 1등: 노래방 → 갤러리(전시) 코스로 바뀜
 
 **이동과 점수**
 
@@ -263,19 +336,19 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 | DEFAULT 상관없음 | 0.8 | 1.0 | 0.5 |
 | LIVELY 활기찬 곳 | 0.2 | 0.6 | 1.0 |
 
-**가짜 데이터로 돌려본 결과**
+**가짜 데이터로 돌려본 결과 (v0.3 데이터)**
 
-- 새 장소 데이터(1,795곳) + 윤경 혼잡도 데이터로 시나리오 3개 실행
-- 1,000개 조합 중 81~100%가 시간 기준 통과, 1등 코스는 총 174~180분·도보 4~10분
-- 장소가 전부 중심 500m 안이라 도보 시간보다 체류 시간이 총 시간을 좌우함
+- 장소 3,306곳 + 윤경 혼잡도(cell_congestion.csv)로 시나리오 3개 실행
+- 1,000개 조합 중 75~100%가 시간 기준 통과, 1등 코스는 총 172~175분·도보 2~5분
+- 서버(Java) 결과와 가짜 JSON(파이썬) 결과가 검색 3개·코스 수정·공유·장소 상세까지 필드 하나까지 같음 확인
 
-## 가짜 응답 JSON과 장소 데이터 점검
+## 가짜 응답 JSON과 데이터
 
-- 가짜 JSON 15개는 저장소 `mocks/` 폴더에 있음
-- 장소: 최예린 `output/places.csv`(중심 500m 안 1,795곳) / 혼잡도: 이윤경 `congestion_fake.csv`
-- 셀 매칭 없는 9곳은 가장 가까운 셀로 대체
+- 가짜 JSON 15개는 저장소 `mocks/` 폴더 (앱은 `capstone_odiga/assets/mocks/`에 복사본)
+- 장소: 최예린 `output/places.csv` 3,306곳 (분류 보정·영어 코드 끝) / 혼잡도: 이윤경 `cell_congestion.csv`
+- 셀 번호는 윤경 match_places.py랑 같은 방식(EPSG:5179 ÷ 50m)으로 계산, 윤경 파일과 1,784곳 일치 확인. 셀 목록 밖 47곳은 가장 가까운 셀로 대체
 - 태그, 사용자 요구·타깃 점수는 블로그·성연령 데이터 전이라 아직 가짜 값
-- 거리·도보 시간·도착 시각은 위 코스 규칙대로 실제 계산
+- `python mocks/generate_mocks.py` 한 번이면 가짜 JSON 15개 + 서버 데이터(`capstone-backend/src/main/resources/data/`) 같이 다시 만들어짐 → 장소·혼잡도 파일 바뀌면 꼭 다시 실행
 
 | 파일 | 내용 | 쓰는 사람 |
 | --- | --- | --- |
@@ -288,20 +361,17 @@ MVP API 총 8개. 계획 문서 초안에서 공유 코스 보기, 회원가입 
 | share_create_response.json, share_view_response.json | 공유 만들기·보기 | 서예령 |
 | auth_signup_request.json, auth_signup_response.json, auth_error_duplicate_email.json | 회원가입 성공·중복 이메일 | 서예령, 성정헌 |
 | auth_login_request.json, auth_login_response.json, preferences.json | 로그인·내 설정 | 서예령, 성정헌 |
-| generate_mocks.py | 위 파일 다시 만드는 스크립트 (코스 규칙 v0.1 구현). 저장소 맨 위 폴더에서 `python mocks/generate_mocks.py` 실행 | 김예민 |
 
-**places.csv 점검 (@최예린 확인 부탁)**
+## 피그마(UI 초안)랑 맞출 것 (@서예령)
 
-- 500m 필터 적용으로 범위 문제 해결 (가장 먼 장소 495~500m), place_id 중복 없음
-- 분류 문제는 아직 남아 있어서 가짜 JSON에서는 아래처럼 정리해서 사용 (정리 후 1,773곳)
-
-| 발견한 점 | 개수 | 제안 |
+| 피그마 | 서버에서 주는 것 | 정리 |
 | --- | --- | --- |
-| 카페인데 보드게임·만화카페 (카카오: 가정,생활 > 여가시설) | 32 | ACTIVITY로 옮기기 |
-| 카페 > 테마카페 중 사주·고양이·애견·라이브카페 | 23 | ACTIVITY로 옮기기 (디저트·갤러리·북·무인카페는 카페 유지) |
-| 세부 종류 없는 테마카페 (방탈출·수면카페 등 섞임) | 32 | 직접 훑어보고 옮기거나 빼기 (가짜 JSON에서는 ACTIVITY) |
-| 서비스·교육·의료·교통 대분류 (공간대여 8, 미술학원 2, 주차장 2 등) | 21 | 빼기 |
-| 키즈카페 | 1 | 빼기 |
-| 음식 중 간식 (베이커리·아이스크림·도넛) | 59 | 식사 칸에서 제외 (카페 칸에 넣을지는 결정 필요) |
-| 음식 중 술집 | 110 | 18시 이후에만 사용 |
-| 도로명주소 없음 32, 전화번호 없음 558, 검색 키워드 없음 1,125 | - | 문제 없음. 빈 값은 null로 보내고, 키워드 없는 건 카테고리 검색으로 모은 것 |
+| 20 추천 근거: 조건 30%·혼잡도 25%·거리 15%·체류·특징·그룹 10% | 장소 0.45·0.30·0.25, 코스 0.70·0.20·0.10 | 실제 계산식으로 고치기 (courses[].score, stops[].placeScore 그대로 표시) |
+| 03 장소 상세 별점 ★4.8 (128), 영업시간, 사진 | 없음 (카카오 API에 없음), openingHours null | 별점·사진 빼기, 영업시간은 "정보 없음" |
+| 04 조건: 성별·나이·동행·제외 음식·분위기 | conditions에 있음 (v0.3) | 그대로 연결 |
+| 04 조건: 제외 장소·기타 조건 | 없음 | MVP에서 빼기 |
+| 06 코스 이름 "맛있는 쉼표" | title "성수 오후 전시 코스" (규칙) | 회의에서 결정 (감성 이름은 Gemini로 만들 수 있음) |
+| 코스 수정 경고 | warnings[].message | 코스 수정 화면에 한 줄 표시 추가 |
+| 공유·로그인 화면 | API 있음 | 화면 추가 |
+| 07·08 코스 상세 번호 "3." 두 번 | - | 번호 고치기 |
+| 10~14, 23·24, 35~38 친구·모임·그룹 | 2단계 | 중간발표 데모에서 빼기 |

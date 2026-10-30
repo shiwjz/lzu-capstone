@@ -23,6 +23,12 @@ public record CourseRequest(
         return (order == null || order.isEmpty()) ? CourseRules.slotOrder(startMinute) : order;
     }
 
+    /** 조용한 곳을 원하는지 (혼잡 선호 QUIET 또는 분위기 '조용함') */
+    public boolean wantsQuiet() {
+        return crowdPreference == CrowdPreference.QUIET
+                || (atmospheres != null && atmospheres.contains("조용함"));
+    }
+
     public List<String> playCategoriesOrAll() {
         List<String> picked = playCategories == null ? List.of()
                 : playCategories.stream().filter(CourseRules.PLAY_CATEGORIES::contains).toList();
