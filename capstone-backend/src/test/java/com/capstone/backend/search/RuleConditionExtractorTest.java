@@ -93,6 +93,22 @@ class RuleConditionExtractorTest {
     }
 
     @Test
+    @DisplayName("다음 주·이번 주는 달력 기준(월요일 시작): 토요일·일요일에 물어봐도 맞게")
+    void weeks() {
+        LocalDateTime sat = LocalDateTime.of(2026, 10, 31, 19, 0);   // 토
+        LocalDateTime sun = LocalDateTime.of(2026, 11, 1, 19, 0);    // 일
+        assertEquals("2026-11-07", rule.extract("다음주 토요일 성수 카페", sat).date());
+        assertEquals("2026-11-07", rule.extract("담주 토요일 성수 카페", sat).date());
+        assertEquals("2026-11-06", rule.extract("다음주 금요일 강남", sat).date());
+        assertEquals("2026-11-07", rule.extract("다음 주말 성수", sat).date());
+        assertEquals("2026-10-31", rule.extract("토요일 성수", sat).date());
+        assertEquals("2026-11-07", rule.extract("다음주 토요일 성수", sun).date());   // 일요일엔 바로 다음 토요일
+        assertEquals("2026-11-07", rule.extract("다음 주말 성수", sun).date());
+        assertEquals("2026-11-01", rule.extract("이번 주말 성수", sun).date());
+        assertEquals("2026-11-06", rule.extract("이번주 금요일 홍대", LocalDateTime.of(2026, 11, 3, 10, 0)).date());
+    }
+
+    @Test
     @DisplayName("지역 없으면 null, '2시간'은 시각 아님, 제외 음식")
     void missingAndExcluded() {
         assertNull(x("조용한 카페 가고 싶어").region());

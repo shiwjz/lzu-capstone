@@ -135,11 +135,15 @@ public class RuleConditionExtractor implements ConditionExtractor {
             }
         }
         if (day != null) {
-            LocalDate d = today.with(TemporalAdjusters.nextOrSame(day));
-            return nextWeek ? d.plusWeeks(1) : d;
+            if (nextWeek) return monday.plusWeeks(1).with(TemporalAdjusters.nextOrSame(day));
+            LocalDate d = monday.with(TemporalAdjusters.nextOrSame(day));
+            if (thisWeek && !d.isBefore(today)) return d;
+            return today.with(TemporalAdjusters.nextOrSame(day));   // 그냥 '토요일' = 가장 가까운 토요일 (오늘이면 오늘)
         }
         if (q.contains("주말")) {
-            return dayType(today).equals("WEEKEND") ? today : today.with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
+            LocalDate saturday = monday.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+            if (nextWeek) return saturday.plusWeeks(1);
+            return dayType(today).equals("WEEKEND") ? today : saturday;
         }
         if (q.contains("평일")) {
             return dayType(today).equals("WEEKDAY") ? today : today.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
