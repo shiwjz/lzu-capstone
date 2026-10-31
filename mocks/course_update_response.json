@@ -5,28 +5,28 @@
   "data": {
     "courseId": "c_seongsu_1",
     "rank": null,
-    "title": "성수 오후 전시 코스",
-    "reason": "'조용함' 후기 많은 곳 1곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 11분",
+    "title": "성수 오후 전시관 코스",
+    "reason": "'조용함' 후기 많은 곳 2곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 20분",
     "startAt": "15:00",
-    "endAt": "18:31",
-    "totalMinutes": 211,
-    "totalWalkMinutes": 11,
-    "totalDistanceMeters": 516,
+    "endAt": "18:40",
+    "totalMinutes": 220,
+    "totalWalkMinutes": 20,
+    "totalDistanceMeters": 960,
     "score": {
-      "total": 0.65,
-      "placeAvg": 0.72,
-      "moveEfficiency": 0.72,
+      "total": 0.54,
+      "placeAvg": 0.62,
+      "moveEfficiency": 0.5,
       "timeFit": 0.0
     },
     "stops": [
       {
         "order": 1,
         "slot": "PLAY",
-        "placeId": "462259510",
-        "name": "브레가 아티스트스페이스",
+        "placeId": "1292703398",
+        "name": "코사이어티 서울숲점",
         "category": "CULTURE",
-        "lat": 37.5426152,
-        "lng": 127.0530783,
+        "lat": 37.5448014,
+        "lng": 127.0456227,
         "arriveAt": "15:00",
         "leaveAt": "16:30",
         "stayMinutes": 90,
@@ -34,9 +34,9 @@
         "distanceMetersFromPrev": null,
         "congestion": {
           "level": "QUIET",
-          "percentile": 20
+          "percentile": 5
         },
-        "placeScore": 0.96
+        "placeScore": 0.85
       },
       {
         "order": 2,
@@ -46,45 +46,45 @@
         "category": "CAFE",
         "lat": 37.5425264,
         "lng": 127.0501271,
-        "arriveAt": "16:36",
-        "leaveAt": "17:26",
+        "arriveAt": "16:40",
+        "leaveAt": "17:30",
         "stayMinutes": 50,
-        "walkMinutesFromPrev": 6,
-        "distanceMetersFromPrev": 260,
+        "walkMinutesFromPrev": 10,
+        "distanceMetersFromPrev": 471,
         "congestion": {
           "level": "BUSY",
           "percentile": 92
         },
-        "placeScore": 0.43
+        "placeScore": 0.17
       },
       {
         "order": 3,
         "slot": "MEAL",
-        "placeId": "1771596435",
-        "name": "하루나",
+        "placeId": "1327766448",
+        "name": "입소문",
         "category": "FOOD",
-        "lat": 37.5421314,
-        "lng": 127.0529851,
-        "arriveAt": "17:31",
-        "leaveAt": "18:31",
+        "lat": 37.545287,
+        "lng": 127.0458041,
+        "arriveAt": "17:40",
+        "leaveAt": "18:40",
         "stayMinutes": 60,
-        "walkMinutesFromPrev": 5,
-        "distanceMetersFromPrev": 256,
+        "walkMinutesFromPrev": 10,
+        "distanceMetersFromPrev": 489,
         "congestion": {
           "level": "QUIET",
-          "percentile": 21
+          "percentile": 3
         },
-        "placeScore": 0.77
+        "placeScore": 0.85
       }
     ],
     "warnings": [
       {
         "code": "TOTAL_TIME_OVER",
-        "message": "총 211분으로 3시간 30분을 넘어요"
+        "message": "총 220분으로 3시간 30분을 넘어요"
       },
       {
         "code": "BUSY_AT_ARRIVAL",
-        "message": "16:36에 카페어게인 주변이 붐벼요"
+        "message": "16:40에 카페어게인 주변이 붐벼요"
       }
     ]
   }

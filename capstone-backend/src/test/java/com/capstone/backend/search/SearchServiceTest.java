@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * 검색·코스 수정·공유 테스트 (DB·Spring 없이) - 김예민
- * - 장소·혼잡도: resources/data (예린 장소 3,306곳 + 윤경 혼잡도), 점수는 임시 점수
+ * - 장소·혼잡도: resources/data (예린 장소 3,306곳·태그 + 윤경 혼잡도·성연령), 점수는 윤경 장소 점수 모듈
  * - 기대값 = mocks/search_seongsu_weekend_quiet.json 1등 코스 (파이썬 가짜 JSON이랑 서버 결과 같은지)
  * - 실행: ./gradlew test --tests "com.capstone.backend.search.*"
  */
@@ -30,7 +30,7 @@ class SearchServiceTest {
     private static final PlaceStore STORE = new PlaceStore();
 
     private SearchService service() {
-        SearchService s = new SearchService(STORE, new RuleConditionExtractor(), new TemporaryPlaceScorerFactory(STORE),
+        SearchService s = new SearchService(STORE, new RuleConditionExtractor(), new PlaceScoreModel(STORE),
                 new CourseStore());
         s.clock = Clock.fixed(Instant.parse("2026-10-16T11:00:00Z"), SearchService.KST);   // 10/16(금) 20시
         return s;
@@ -73,11 +73,11 @@ class SearchServiceTest {
     void sameAsMock() {
         Map<String, Object> data = service().search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet()));
         CoursePlan best = courses(data).get(0);
-        assertEquals(List.of("462259510", "196139841", "1771596435"),
+        assertEquals(List.of("1292703398", "921699059", "1327766448"),
                 best.stops().stream().map(CoursePlan.Stop::placeId).toList());
-        assertEquals("성수 오후 전시 코스", best.title());
-        assertEquals(172, best.totalMinutes());
-        assertEquals(0.88, best.score().total());
+        assertEquals("성수 오후 전시관 코스", best.title());
+        assertEquals(173, best.totalMinutes());
+        assertEquals(0.86, best.score().total());
         assertEquals(3, courses(data).size());
         assertTrue(((List<?>) data.get("places")).size() <= 10);
     }

@@ -40,16 +40,15 @@ public class RuleConditionExtractor implements ConditionExtractor {
             "NATURE", List.of("산책", "공원", "한강", "숲"),
             "TOUR", List.of("명소", "관광"));
 
-    // 분위기 = 블로그 태그 이름 그대로
+    // 분위기 = 예린 블로그 태그 이름 그대로 (tag_dictionary.py 7개: 조용함·데이트·단체·혼자가능·디저트·사진·가성비)
     private static final Map<String, List<String>> MOOD_WORDS = orderedList(
             "조용함", List.of("조용", "한적", "여유", "차분", "시끄럽지 않", "안 시끄", "덜 붐", "사람 적"),
             "디저트", List.of("디저트", "케이크", "빵"),
-            "사진·인테리어", List.of("사진", "인스타", "감성", "예쁜"),
+            "사진", List.of("사진", "인스타", "감성", "예쁜", "포토"),
             "데이트", List.of("데이트", "남자친구", "여자친구", "남친", "여친", "애인", "연인"),
-            "단체석", List.of("단체", "모임", "회식", "동기", "동료"),
+            "단체", List.of("단체", "모임", "회식", "동기", "동료"),
             "가성비", List.of("가성비", "저렴", "싼 "),
-            "작업하기 좋음", List.of("작업", "공부", "노트북"),
-            "혼밥", List.of("혼밥"));
+            "혼자가능", List.of("혼밥", "혼자", "혼카페"));
 
     private static final List<String> QUIET_WORDS = MOOD_WORDS.get("조용함");
     private static final List<String> LIVELY_WORDS = List.of("신나", "활기", "사람 많", "북적", "핫한", "시끌", "힙한");

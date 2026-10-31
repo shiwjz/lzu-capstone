@@ -15,28 +15,28 @@
     "course": {
       "courseId": "c_seongsu_1",
       "rank": 1,
-      "title": "성수 오후 전시 코스",
-      "reason": "'조용함' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 2분",
+      "title": "성수 오후 전시관 코스",
+      "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 3분",
       "startAt": "15:00",
-      "endAt": "17:52",
-      "totalMinutes": 172,
-      "totalWalkMinutes": 2,
-      "totalDistanceMeters": 66,
+      "endAt": "17:53",
+      "totalMinutes": 173,
+      "totalWalkMinutes": 3,
+      "totalDistanceMeters": 121,
       "score": {
-        "total": 0.88,
-        "placeAvg": 0.88,
-        "moveEfficiency": 0.95,
-        "timeFit": 0.73
+        "total": 0.86,
+        "placeAvg": 0.85,
+        "moveEfficiency": 0.93,
+        "timeFit": 0.77
       },
       "stops": [
         {
           "order": 1,
           "slot": "PLAY",
-          "placeId": "462259510",
-          "name": "브레가 아티스트스페이스",
+          "placeId": "1292703398",
+          "name": "코사이어티 서울숲점",
           "category": "CULTURE",
-          "lat": 37.5426152,
-          "lng": 127.0530783,
+          "lat": 37.5448014,
+          "lng": 127.0456227,
           "arriveAt": "15:00",
           "leaveAt": "16:00",
           "stayMinutes": 60,
@@ -44,47 +44,47 @@
           "distanceMetersFromPrev": null,
           "congestion": {
             "level": "QUIET",
-            "percentile": 20
+            "percentile": 5
           },
-          "placeScore": 0.96
+          "placeScore": 0.85
         },
         {
           "order": 2,
           "slot": "CAFE",
-          "placeId": "196139841",
-          "name": "휴먼 메이드 서울 카페 바이 블루보틀 커피",
+          "placeId": "921699059",
+          "name": "아이안",
           "category": "CAFE",
-          "lat": 37.5425331,
-          "lng": 127.0532332,
-          "arriveAt": "16:01",
-          "leaveAt": "16:51",
+          "lat": 37.5455356,
+          "lng": 127.0459989,
+          "arriveAt": "16:02",
+          "leaveAt": "16:52",
           "stayMinutes": 50,
-          "walkMinutesFromPrev": 1,
-          "distanceMetersFromPrev": 16,
+          "walkMinutesFromPrev": 2,
+          "distanceMetersFromPrev": 88,
           "congestion": {
             "level": "QUIET",
-            "percentile": 25
+            "percentile": 21
           },
-          "placeScore": 0.92
+          "placeScore": 0.85
         },
         {
           "order": 3,
           "slot": "MEAL",
-          "placeId": "1771596435",
-          "name": "하루나",
+          "placeId": "1327766448",
+          "name": "입소문",
           "category": "FOOD",
-          "lat": 37.5421314,
-          "lng": 127.0529851,
-          "arriveAt": "16:52",
-          "leaveAt": "17:52",
+          "lat": 37.545287,
+          "lng": 127.0458041,
+          "arriveAt": "16:53",
+          "leaveAt": "17:53",
           "stayMinutes": 60,
           "walkMinutesFromPrev": 1,
-          "distanceMetersFromPrev": 50,
+          "distanceMetersFromPrev": 33,
           "congestion": {
             "level": "QUIET",
-            "percentile": 17
+            "percentile": 3
           },
-          "placeScore": 0.77
+          "placeScore": 0.85
         }
       ]
     }

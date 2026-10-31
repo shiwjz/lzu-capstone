@@ -62,7 +62,7 @@ class RuleConditionExtractorTest {
         assertEquals("2026-10-16", c.date());
         assertEquals("WEEKDAY", c.dayType());
         assertEquals(4, c.partySize().intValue());
-        assertEquals(List.of("단체석"), c.atmospheres());
+        assertEquals(List.of("단체"), c.atmospheres());
         assertEquals("DEFAULT", c.crowdPreference());
         assertEquals(List.of("SHELLFISH"), c.allergies());
         assertEquals("COWORKER", c.companionType());

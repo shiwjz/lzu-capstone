@@ -3,30 +3,34 @@
   "code": "SUCCESS",
   "message": "요청 성공",
   "data": {
-    "placeId": "196139841",
-    "name": "휴먼 메이드 서울 카페 바이 블루보틀 커피",
+    "placeId": "921699059",
+    "name": "아이안",
     "category": "CAFE",
     "region": "SEONGSU",
-    "address": "서울 성동구 성수동2가 333-94",
-    "roadAddress": "서울 성동구 성수이로7길 39",
-    "phone": "1533-6906",
-    "lat": 37.5425331,
-    "lng": 127.0532332,
-    "kakaoCategory": "음식점 > 카페 > 커피전문점 > 블루보틀",
-    "placeUrl": "http://place.map.kakao.com/196139841",
+    "address": "서울 성동구 성수동1가 656-816",
+    "roadAddress": "서울 성동구 왕십리로4가길 3",
+    "phone": "070-7537-0508",
+    "lat": 37.5455356,
+    "lng": 127.0459989,
+    "kakaoCategory": "음식점 > 카페",
+    "placeUrl": "http://place.map.kakao.com/921699059",
     "openingHours": null,
     "tags": [
       {
-        "tag": "데이트",
-        "mentions": 4
-      },
-      {
-        "tag": "사진·인테리어",
-        "mentions": 7
+        "tag": "디저트",
+        "mentions": 20
       },
       {
         "tag": "조용함",
-        "mentions": 10
+        "mentions": 7
+      },
+      {
+        "tag": "데이트",
+        "mentions": 6
+      },
+      {
+        "tag": "사진",
+        "mentions": 2
       }
     ],
     "congestionByHour": {
@@ -42,17 +46,17 @@
         {
           "hour": 10,
           "level": "QUIET",
-          "percentile": 24
+          "percentile": 26
         },
         {
           "hour": 11,
           "level": "NORMAL",
-          "percentile": 31
+          "percentile": 33
         },
         {
           "hour": 12,
           "level": "NORMAL",
-          "percentile": 40
+          "percentile": 47
         },
         {
           "hour": 13,
@@ -67,47 +71,47 @@
         {
           "hour": 15,
           "level": "NORMAL",
-          "percentile": 51
+          "percentile": 56
         },
         {
           "hour": 16,
           "level": "NORMAL",
-          "percentile": 52
+          "percentile": 50
         },
         {
           "hour": 17,
           "level": "NORMAL",
-          "percentile": 50
+          "percentile": 49
         },
         {
           "hour": 18,
           "level": "NORMAL",
-          "percentile": 49
+          "percentile": 43
         },
         {
           "hour": 19,
-          "level": "NORMAL",
-          "percentile": 37
-        },
-        {
-          "hour": 20,
           "level": "QUIET",
           "percentile": 28
         },
         {
-          "hour": 21,
+          "hour": 20,
           "level": "QUIET",
-          "percentile": 19
+          "percentile": 23
         },
         {
-          "hour": 22,
+          "hour": 21,
           "level": "QUIET",
           "percentile": 14
         },
         {
+          "hour": 22,
+          "level": "QUIET",
+          "percentile": 15
+        },
+        {
           "hour": 23,
           "level": "QUIET",
-          "percentile": 10
+          "percentile": 13
         }
       ]
     }

@@ -1,4 +1,4 @@
-"""오디가 가짜 응답 JSON + 서버 데이터 생성 (API 명세 v0.3 기준) - 김예민
+"""오디가 가짜 응답 JSON + 서버 데이터 생성 (API 명세 v0.4 기준) - 김예민
 
 실행: 저장소 맨 위 폴더에서  python mocks/generate_mocks.py
 (장소·셀·혼잡도 파일이 바뀌면 다시 실행)
@@ -9,19 +9,23 @@
 - cell_congestion.csv    이윤경  셀·요일·시간별 혼잡도 (가짜 유동인구 기반)
     · 검색·코스 혼잡도: pct_same_time / level_same_time (같은 시간끼리 비교)
     · 장소 상세 시간대 그래프: pct_all_day / level_all_day (하루 전체 비교)
+- cell_congestion_seoul.csv 이윤경  서울시 생활인구 버전 혼잡도 (서버용 congestion_seoul.tsv로만 만듦)
+- blog_tag/place_tag.csv  최예린  장소별 블로그 태그·언급 수 (태그 7개)
+- cell_gender_age_fake.csv, cell_cluster.csv  이윤경  셀 성·연령 구성(가짜), 셀 유형(군집)
+- place_score.py          이윤경  장소 점수 계산식 (import 해서 그대로 씀 → 서버 Java랑 결과 비교용)
 - 셀 번호는 윤경 match_places.py랑 같은 방식(EPSG:5179 좌표 ÷ 50m)으로 직접 계산
   → places_with_cell.csv가 예전 장소 기준이어도 새 장소까지 전부 셀 붙음 (윤경 파일이랑 1,784곳 일치 확인)
 
-- 태그, 사용자 요구·타깃 점수: 블로그·성연령 데이터 전이라 아직 가짜 값 (place_id 해시)
+- v0.4: 가짜 태그·임시 점수 → 예린 태그 + 윤경 장소 점수 모듈 (사용자 요구·타깃 특성·혼잡도 적합도 전부 계산)
 - 거리·도보 시간·도착 시각·코스 조합: 코스 생성 규칙대로 실제 계산
 - SNACK(베이커리·아이스크림 등)은 코스 칸에 안 넣음. 장소 추천·코스에 직접 추가만 가능
 
 출력
 - mocks/*.json                                   가짜 응답 JSON 15개
-- capstone-backend/src/main/resources/data/      서버가 읽는 장소·혼잡도 (places.tsv, congestion.tsv)
+- capstone-backend/src/main/resources/data/      서버가 읽는 장소·혼잡도·셀 정보
+    (places.tsv, congestion.tsv, congestion_seoul.tsv, cell_profile.tsv)
 """
 import csv
-import hashlib
 import itertools
 import json
 import math
@@ -37,7 +41,8 @@ LEVEL_CODE = {'한산': 'QUIET', '보통': 'NORMAL', '혼잡': 'BUSY',
               'QUIET': 'QUIET', 'NORMAL': 'NORMAL', 'BUSY': 'BUSY'}      # 예전 한글 값도 읽히게
 GRID_REGION = {'SS': 'SEONGSU', 'HD': 'HONGDAE', 'GN': 'GANGNAM',
                'SEONGSU': 'SEONGSU', 'HONGDAE': 'HONGDAE', 'GANGNAM': 'GANGNAM'}
-CONG = {}       # (cell_id, 'WEEKDAY'/'WEEKEND', hour) → 혼잡도 행
+CONG = {}       # (cell_id, 'WEEKDAY'/'WEEKEND', hour) → 혼잡도 행 (가짜 유동인구, LG 데이터 모양)
+CONG_SEOUL = {} # 같은 모양, 서울시 생활인구 버전 (서버 congestion_seoul.tsv용)
 CELLS = []      # (cell_id, region, lat, lng)
 CELL_IDS = set()
 
@@ -64,17 +69,9 @@ CONGESTION_FIT = {           # 혼잡 선호별 구간 점수 (초안)
     'DEFAULT': {'QUIET': 0.8, 'NORMAL': 1.0, 'BUSY': 0.5},
     'LIVELY':  {'QUIET': 0.2, 'NORMAL': 0.6, 'BUSY': 1.0},
 }
-TAG_POOL = {
-    'FOOD': ['데이트', '단체석', '가성비', '웨이팅', '분위기', '혼밥'],
-    'CAFE': ['조용함', '디저트', '사진·인테리어', '공간·좌석', '작업하기 좋음', '데이트'],
-    'PLAY': ['데이트', '사진·인테리어', '실내', '활동적', '이색 체험', '조용함'],
-}
-
-
-def h(*parts):
-    """같은 입력이면 항상 같은 0~1 값 (가짜 점수용)"""
-    s = '|'.join(map(str, parts))
-    return int(hashlib.md5(s.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
+TAGS = {}         # place_id → [{'tag', 'mentions'}] (예린 place_tag.csv, 언급 많은 순)
+TARGET = {}       # 윤경 load_target_data 결과: cells, cell_cluster, cluster_avg, region_avg
+ps = None         # 윤경 place_score 모듈 (load_team_data에서 import)
 
 
 def slot_of(cat):
@@ -116,11 +113,9 @@ def slot_order(start):
     return ['MEAL', 'CAFE', 'PLAY']
 
 
-# ---------------- 가짜 장소 속성 ----------------
+# ---------------- 장소 속성 ----------------
 def tags_of(p):
-    pool = TAG_POOL[{'MEAL': 'FOOD', 'CAFE': 'CAFE', 'PLAY': 'PLAY'}[slot_of(p['category'])]]
-    picked = sorted(pool, key=lambda t: h(p['placeId'], 'tag', t))[:3]
-    return [{'tag': t, 'mentions': 2 + int(h(p['placeId'], 'm', t) * 9)} for t in picked]
+    return TAGS.get(p['placeId'], [])
 
 
 def congestion(p, day_type, hour, basis='same_time'):
@@ -131,22 +126,25 @@ def congestion(p, day_type, hour, basis='same_time'):
 
 
 def place_score(p, cond, hour):
-    tags = [t['tag'] for t in p['tags']]
-    match = any(m in tags for m in cond['moods'])
-    request = 0.5 + (0.4 if match else 0) + 0.1 * h(p['placeId'], 'req')
-    target = 0.5 + 0.45 * h(p['placeId'], 'tgt', cond['partySize'])
+    """윤경 place_score.py 그대로 (혼잡 등급은 도착 시각 level_same_time)"""
     cong = congestion(p, cond['dayType'], hour)
-    cfit = CONGESTION_FIT[cond['crowdPreference']][cong['level']]
-    total = W_PLACE['request'] * request + W_PLACE['target'] * target + W_PLACE['congestion'] * cfit
-    return {'total': round(total, 2), 'request': round(request, 2),
-            'target': round(target, 2), 'congestion': round(cfit, 2)}, cong
+    cell = p['cellId']
+    cluster = TARGET['cluster_avg'].get(TARGET['cell_cluster'].get(cell))
+    req = ps.request_score(cond['moods'], {t['tag']: t['mentions'] for t in p['tags']})
+    tgt = ps.target_score(TARGET['cells'].get(cell), cluster, TARGET['region_avg'][p['region']],
+                          cond.get('gender'), cond.get('ageGroup'))
+    fit = ps.congestion_fit(cond['crowdPreference'], cong['level'])
+    total = ps.W_REQUEST * req + ps.W_TARGET * tgt + ps.W_FIT * fit
+    return {'total': round(total, 2), 'request': round(req, 2),
+            'target': round(tgt, 2), 'congestion': round(fit, 2)}, cong
 
 
 def reason(p, cond, cong):
     tags = sorted(p['tags'], key=lambda t: -t['mentions'])
-    top = next((t['tag'] for t in tags if t['tag'] in cond['moods']), tags[0]['tag'])
+    top = next((t['tag'] for t in tags if t['tag'] in cond['moods']), tags[0]['tag'] if tags else None)
     day = '주말' if cond['dayType'] == 'WEEKEND' else '평일'
-    return f"블로그 후기에서 '{top}' 언급이 많고, {day} {cong['hour']}시 주변이 {LEVEL_LABEL[cong['level']]}"
+    where = f"{day} {cong['hour']}시 주변이 {LEVEL_LABEL[cong['level']]}"
+    return f"블로그 후기에서 '{top}' 언급이 많고, {where}" if top else where   # 태그 없는 곳은 혼잡도만
 
 
 def summary(p, cond, hour):
@@ -210,13 +208,29 @@ def nearest_cell(p):
 
 
 def load_team_data(root):
+    global ps
+    sys.path.insert(0, root)
+    import place_score as yk          # 윤경 모듈 (저장소 맨 위 place_score.py)
+    ps = yk
+    cells, cell_cluster, cluster_avg, region_avg = ps.load_target_data(
+        os.path.join(root, 'cell_gender_age_fake.csv'), os.path.join(root, 'cell_cluster.csv'))
+    TARGET.update(cells=cells, cell_cluster=cell_cluster, cluster_avg=cluster_avg, region_avg=region_avg)
+    with open(os.path.join(root, 'blog_tag', 'place_tag.csv'), encoding='utf-8-sig', newline='') as f:
+        for r in csv.DictReader(f):
+            TAGS.setdefault(r['place_id'], []).append({'tag': r['tag'], 'mentions': int(r['mentions'])})
+    for tags in TAGS.values():
+        tags.sort(key=lambda t: -t['mentions'])       # 언급 많은 순 (같으면 파일 순서)
     with open(os.path.join(root, 'grid_cells.csv'), encoding='utf-8-sig', newline='') as f:
         for r in csv.DictReader(f):
             CELLS.append((r['cell_id'], GRID_REGION[r['region']], float(r['center_lat']), float(r['center_lon'])))
             CELL_IDS.add(r['cell_id'])
-    with open(os.path.join(root, 'cell_congestion.csv'), encoding='utf-8-sig', newline='') as f:
-        for r in csv.DictReader(f):
-            CONG[(r['cell_id'], r['day_type'].upper(), int(r['hour']))] = r
+    for name, target in (('cell_congestion.csv', CONG), ('cell_congestion_seoul.csv', CONG_SEOUL)):
+        path = os.path.join(root, name)
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding='utf-8-sig', newline='') as f:
+            for r in csv.DictReader(f):
+                target[(r['cell_id'], r['day_type'].upper(), int(r['hour']))] = r
 
 
 def allowed(p, cond, arrive_hour):
@@ -393,7 +407,9 @@ def dump(out_dir, name, obj):
 
 def dump_server_data(root, places):
     """서버가 읽는 파일 → capstone-backend/src/main/resources/data/
-    - places.tsv: 장소 + 셀 번호 + 가짜 태그 (이 파일 순서 그대로 써야 가짜 JSON이랑 결과 같음)
+    - places.tsv: 장소 + 셀 번호 + 예린 태그 (이 파일 순서 그대로 써야 가짜 JSON이랑 결과 같음)
+    - congestion_seoul.tsv: 같은 모양, 서울시 생활인구 버전 (서버 설정 odiga.congestion-file로 골라 씀)
+    - cell_profile.tsv: 셀별 성·연령 구성 + 유형 (타깃 특성 점수용)
     - congestion.tsv: 셀·요일별 0~23시 혼잡도 두 줄 (sameTime = 같은 시간끼리 비교, allDay = 하루 전체 비교)
       값 형식: Q25 = 한산 25%, N = 보통, B = 혼잡, - = 없음
     - 정헌 ERD 확정되면 이 파일 대신 DB 테이블에서 읽기로 교체
@@ -413,7 +429,23 @@ def dump_server_data(root, places):
                    p['address'] or '', p['roadAddress'] or '', p['phone'] or '', p['placeUrl'] or '']
             f.write('\t'.join(x.replace('\t', ' ') for x in row) + '\n')
     cells = sorted({p['cellId'] for p in places})
-    with open(os.path.join(out, 'congestion.tsv'), 'w', encoding='utf-8', newline='\n') as f:
+    write_congestion(os.path.join(out, 'congestion.tsv'), cells, CONG)
+    if CONG_SEOUL:
+        write_congestion(os.path.join(out, 'congestion_seoul.tsv'), cells, CONG_SEOUL)
+    # 셀 성·연령·유형 (윤경 타깃 특성 점수용) - 칸 값 그대로, 유형·지역 평균은 서버가 계산
+    cols = ['female_ratio', 'age_10s', 'age_20s', 'age_30s', 'age_40s', 'age_50s', 'age_60s']
+    with open(os.path.join(out, 'cell_profile.tsv'), 'w', encoding='utf-8', newline='\n') as f:
+        f.write('cellId\tregion\tcluster\t' + '\t'.join(cols) + '\n')
+        for c, prof in sorted(TARGET['cells'].items()):
+            region = next((x[1] for x in CELLS if x[0] == c), '')
+            cl = TARGET['cell_cluster'].get(c)
+            f.write('\t'.join([c, region, '' if cl is None else str(int(cl))] + [repr(float(prof[k])) for k in cols]) + '\n')
+    print(f'서버 데이터: 장소 {len(places)}곳, 셀 {len(cells)}개 → {out}')
+
+
+def write_congestion(path, cells, cong):
+    """셀·요일별 0~23시 혼잡도 두 줄 (sameTime, allDay), 값 형식: Q25 = 한산 25%, N = 보통, B = 혼잡, - = 없음"""
+    with open(path, 'w', encoding='utf-8', newline='\n') as f:
         f.write('cellId\tdayType\tsameTime(h0..h23)\tallDay(h0..h23)\n')
         for c in cells:
             for day in ('WEEKDAY', 'WEEKEND'):
@@ -421,12 +453,11 @@ def dump_server_data(root, places):
                 for basis in ('same_time', 'all_day'):
                     hours = []
                     for hr in range(24):
-                        r = CONG.get((c, day, hr))
+                        r = cong.get((c, day, hr))
                         hours.append('-' if r is None else
                                      LEVEL_CODE[r[f'level_{basis}']][0] + str(round(float(r[f'pct_{basis}']))))
                     cols2.append(' '.join(hours))
                 f.write(f"{c}\t{day}\t{cols2[0]}\t{cols2[1]}\n")
-    print(f'서버 데이터: 장소 {len(places)}곳, 셀 {len(cells)}개 → {out}')
 
 
 SCENARIOS = [
@@ -440,7 +471,7 @@ SCENARIOS = [
       'gender': None, 'ageGroup': None, 'companionType': 'COUPLE', 'excludedFoods': []}),
     ('search_gangnam_weekday_group.json', '금요일 저녁 7시 강남역 근처에서 회사 동기 4명 모임, 한 명이 갑각류 알레르기 있어',
      {'region': 'GANGNAM', 'date': '2026-10-16', 'dayType': 'WEEKDAY', 'startTime': '19:00', 'partySize': 4,
-      'categories': ['FOOD'], 'moods': ['단체석'], 'crowdPreference': 'DEFAULT', 'allergies': ['SHELLFISH'],
+      'categories': ['FOOD'], 'moods': ['단체'], 'crowdPreference': 'DEFAULT', 'allergies': ['SHELLFISH'],
       'gender': None, 'ageGroup': None, 'companionType': 'COWORKER', 'excludedFoods': []}),
 ]
 

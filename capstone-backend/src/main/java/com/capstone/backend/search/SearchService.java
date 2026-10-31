@@ -214,9 +214,10 @@ public class SearchService {
         List<PlaceStore.Tag> tags = new ArrayList<>(p.tags());
         tags.sort(Comparator.comparingInt(t -> -t.mentions()));
         String top = tags.stream().map(PlaceStore.Tag::tag).filter(c.atmospheres()::contains).findFirst()
-                .orElse(tags.isEmpty() ? "" : tags.get(0).tag());
+                .orElse(tags.isEmpty() ? null : tags.get(0).tag());
         String day = c.dayType().equals("WEEKEND") ? "주말" : "평일";
-        return "블로그 후기에서 '" + top + "' 언급이 많고, " + day + " " + hour + "시 주변이 " + LEVEL_TEXT.get(level);
+        String where = day + " " + hour + "시 주변이 " + LEVEL_TEXT.get(level);
+        return top == null ? where : "블로그 후기에서 '" + top + "' 언급이 많고, " + where;   // 태그 없는 곳은 혼잡도만
     }
 
     // ---------- 코스 수정 ----------

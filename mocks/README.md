@@ -1,4 +1,4 @@
-# 가짜 응답 JSON (API 명세 v0.3)
+# 가짜 응답 JSON (API 명세 v0.4)
 
 - 서버 없이도 화면 개발할 수 있게 API 응답 형식 그대로 만든 가짜 데이터
 - 명세는 `docs/api-spec.md` 참고
@@ -11,7 +11,9 @@
 - 혼잡도: `cell_congestion.csv` (이윤경)
   - 검색·코스: `pct_same_time` (같은 시간끼리 비교)
   - 장소 상세 시간대 그래프: `pct_all_day` (하루 전체 비교)
-- 태그, 사용자 요구·타깃 점수: 아직 가짜 값 (블로그·성연령 데이터 들어오면 교체)
+- 태그: `blog_tag/place_tag.csv` (최예린, 태그 7개)
+- 장소 점수: `place_score.py` (이윤경) 그대로 import, 성·연령은 `cell_gender_age_fake.csv`·`cell_cluster.csv`
+- 서울시 생활인구 혼잡도(`cell_congestion_seoul.csv`)는 서버용 `congestion_seoul.tsv`로만 만들고, 가짜 JSON은 기본 혼잡도로 만듦
 - 거리·도보 시간·도착 시각·코스 조합: 코스 생성 규칙 v0.1로 실제 계산
 
 ## 다시 만들기
