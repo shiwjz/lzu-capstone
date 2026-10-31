@@ -9,7 +9,7 @@ RUN git clone --depth 1 --branch 3.47.8 \
 
 ENV PATH="/opt/flutter/bin:${PATH}"
 
-# Flutter를 일반 사용자 권한으로 실행하도록 설정
+# Flutter를 일반 사용자 권한으로 실행
 RUN useradd -m -s /bin/bash flutteruser \
     && chown -R flutteruser:flutteruser /opt/flutter \
     && mkdir -p /app \
@@ -25,7 +25,9 @@ COPY --chown=flutteruser:flutteruser . .
 
 RUN flutter config --enable-web
 RUN flutter pub get
-RUN flutter build web --release
+
+# 배포된 Spring Boot 백엔드 API 주소 연결
+RUN flutter build web --release --dart-define=ODIGA_API=https://lzu-capstone.onrender.com
 
 FROM nginx:alpine
 
