@@ -149,15 +149,6 @@ class _HomeCategorySettingsDialogState
     });
   }
 
-  Future<void> _editExcludedPlace() async {
-    final value = await editText(
-      context,
-      '제외 장소',
-      initial: _conditions.excluded,
-    );
-    if (value != null && mounted) setState(() => _conditions.excluded = value);
-  }
-
   Future<void> _editDislikedFood() async {
     final value = await editText(
       context,
@@ -185,6 +176,56 @@ class _HomeCategorySettingsDialogState
     );
     if (value != null && mounted) setState(() => _conditions.people = value);
   }
+
+  Future<void> _pickConditionValue({
+    required String title,
+    required List<String> options,
+    required String currentValue,
+    required ValueChanged<String> onSelected,
+  }) async {
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(title),
+        children: options
+            .map(
+              (option) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, option),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(option)),
+                    if (option == currentValue)
+                      const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+    if (value != null && mounted) setState(() => onSelected(value));
+  }
+
+  Future<void> _pickGender() => _pickConditionValue(
+    title: '성별',
+    options: const ['무관', '여성', '남성'],
+    currentValue: _conditions.gender,
+    onSelected: (value) => _conditions.gender = value,
+  );
+
+  Future<void> _pickAgeGroup() => _pickConditionValue(
+    title: '나이',
+    options: const ['무관', '10대', '20대', '30대', '40대', '50대', '60대'],
+    currentValue: _conditions.ageGroup,
+    onSelected: (value) => _conditions.ageGroup = value,
+  );
+
+  Future<void> _pickCompanionType() => _pickConditionValue(
+    title: '동행 유형',
+    options: const ['혼자', '친구', '연인', '가족', '회사'],
+    currentValue: _conditions.companionType,
+    onSelected: (value) => _conditions.companionType = value,
+  );
 
   Future<void> _pickMood() async {
     final value = await showDialog<String>(
@@ -317,22 +358,14 @@ class _HomeCategorySettingsDialogState
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                _conditionRow('성별', '미입력'),
+                _conditionRow('성별', _conditions.gender, onTap: _pickGender),
                 const SizedBox(height: 4),
-                _conditionRow('나이', '미입력'),
+                _conditionRow('나이', _conditions.ageGroup, onTap: _pickAgeGroup),
                 const SizedBox(height: 4),
                 _conditionRow(
                   '방문 시간',
                   clockText(_conditions.start),
                   onTap: _pickTime,
-                ),
-                const SizedBox(height: 4),
-                _conditionRow(
-                  '제외 장소',
-                  _conditions.excluded.isEmpty
-                      ? '입력 안 함'
-                      : _conditions.excluded,
-                  onTap: _editExcludedPlace,
                 ),
                 const SizedBox(height: 4),
                 _conditionRow(
@@ -344,9 +377,15 @@ class _HomeCategorySettingsDialogState
                 ),
                 const SizedBox(height: 4),
                 _conditionRow(
-                  '동행 인원 / 유형',
-                  '${_conditions.people}명 · 인원 선택',
+                  '동행 인원',
+                  '${_conditions.people}명',
                   onTap: _pickPeople,
+                ),
+                const SizedBox(height: 4),
+                _conditionRow(
+                  '동행 유형',
+                  _conditions.companionType,
+                  onTap: _pickCompanionType,
                 ),
                 const SizedBox(height: 4),
                 _conditionRow('분위기', _conditions.mood, onTap: _pickMood),
@@ -386,11 +425,9 @@ class ConditionsScreen extends StatefulWidget {
 class _ConditionsScreenState extends State<ConditionsScreen> {
   late final draft = widget.app.conditions.copy();
   late final query = TextEditingController(text: draft.query);
-  late final excluded = TextEditingController(text: draft.excluded);
   @override
   void dispose() {
     query.dispose();
-    excluded.dispose();
     super.dispose();
   }
 
@@ -470,13 +507,6 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
               )
               .toList(),
         ),
-        TextField(
-          controller: excluded,
-          decoration: const InputDecoration(
-            labelText: '제외 장소·태그·카테고리',
-            hintText: '예: 카페, 한식 (쉼표로 구분)',
-          ),
-        ),
         label(
           '예시 지원 지역: 성수·홍대·강남 · 지역별 고정 샘플을 표시합니다.',
           size: 11,
@@ -486,7 +516,6 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
       action('수정 조건으로 바로 추천', () {
         draft.query = query.text.trim();
         draft.useSelectedRegion = true;
-        draft.excluded = excluded.text.trim();
         widget.app.setConditions(draft);
         Navigator.pushReplacement(
           context,

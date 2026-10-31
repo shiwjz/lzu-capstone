@@ -20,6 +20,8 @@ class AppState extends ChangeNotifier {
   final MockRepository repository;
   int tab = 0;
   String userName = '윤경';
+  String? accountEmail;
+  String? accessToken;
   String groupName = '이번 주말 성수 모임';
   SearchConditions conditions = SearchConditions();
   UserPreference preference = UserPreference();
@@ -72,6 +74,24 @@ class AppState extends ChangeNotifier {
 
   void rename(String name) {
     userName = name;
+    notifyListeners();
+  }
+
+  Future<void> login(String email, String password) async {
+    final result = await repository.api.login(
+      LoginRequestDto(email: email, password: password),
+    );
+    accountEmail = result.user.email;
+    accessToken = result.accessToken;
+    userName = result.user.email.split('@').first;
+    notifyListeners();
+  }
+
+  void logout() {
+    repository.api.clearSession();
+    accountEmail = null;
+    accessToken = null;
+    userName = '윤경';
     notifyListeners();
   }
 

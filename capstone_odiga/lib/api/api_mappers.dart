@@ -37,7 +37,7 @@ class ApiMappers {
       tags: [
         for (final tag in json['tags'] as List? ?? []) tag['tag'] as String,
       ],
-      openingHours: json['openingHours'] as String? ?? '영업시간 정보 없음',
+      openingHours: json['openingHours'] as String? ?? '정보 없음',
       imageAsset: category == '음식점' ? 'assets/ba01c.png' : 'assets/756cc.png',
       rating: null,
       description:

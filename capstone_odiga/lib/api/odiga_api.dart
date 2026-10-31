@@ -11,6 +11,7 @@ class ApiException implements Exception {
 
 /// Eight API features from docs/api-spec.md. Preferences support both GET and PUT.
 abstract interface class OdigaApi {
+  void clearSession();
   Future<SearchResultDto> search(SearchRequestDto request);
   Future<PlaceDetailDto> getPlace(String placeId, {String? date});
   Future<CourseDto> updateCourse(

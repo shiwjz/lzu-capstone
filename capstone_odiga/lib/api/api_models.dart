@@ -13,14 +13,19 @@ class SearchRequestDto {
     this.date,
     this.startTime,
     this.region,
+    this.conditions,
   });
   final String query;
   final String? date, startTime, region;
+
+  /// Explicit filters from the editable conditions screen (API spec v0.3).
+  final Json? conditions;
   Json toJson() => {
     'query': query,
     if (date != null) 'date': date,
     if (startTime != null) 'startTime': startTime,
     if (region != null) 'region': region,
+    if (conditions != null) 'conditions': conditions,
   };
 }
 

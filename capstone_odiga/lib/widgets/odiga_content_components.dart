@@ -495,7 +495,7 @@ class RecommendationReasonPopup extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '조건 30% · 혼잡도 25% · 거리 15%',
+                            '장소 점수: 요청 적합도 0.45 · 타깃 특성 0.30 · 혼잡도 0.25',
                             style: OdigaTokens.text(
                               10,
                               color: OdigaTokens.muted,
@@ -504,7 +504,7 @@ class RecommendationReasonPopup extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            '체류 10% · 특징 10% · 그룹 10%',
+                            '코스 점수: 장소 평균 0.70 · 이동 효율 0.20 · 시간 적합도 0.10',
                             style: OdigaTokens.text(
                               10,
                               color: OdigaTokens.muted,

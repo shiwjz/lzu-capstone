@@ -12,6 +12,9 @@ class MockOdigaApi implements OdigaApi {
   final Map<String, Json> _cache = {};
   PreferencesDto? _preferences;
 
+  @override
+  void clearSession() {}
+
   Future<Json> _read(String file) async {
     try {
       final response = _cache[file] ??= Map<String, dynamic>.from(

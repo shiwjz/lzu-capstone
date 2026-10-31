@@ -8,6 +8,61 @@ import '../api/api_mappers.dart';
 import '../api/mock_odiga_api.dart';
 import '../api/odiga_api.dart';
 
+String? _genderCode(String value) => switch (value) {
+  '여성' => 'F',
+  '남성' => 'M',
+  _ => null,
+};
+
+String? _ageGroupCode(String value) => switch (value) {
+  '10대' => '10s',
+  '20대' => '20s',
+  '30대' => '30s',
+  '40대' => '40s',
+  '50대' => '50s',
+  '60대' => '60s',
+  _ => null,
+};
+
+String _companionCode(String value) => switch (value) {
+  '연인' => 'COUPLE',
+  '가족' => 'FAMILY',
+  '회사' => 'COWORKER',
+  '혼자' => 'SOLO',
+  _ => 'FRIEND',
+};
+
+String _atmosphereCode(String value) => switch (value) {
+  '조용한' => '조용함',
+  '활기찬' => '활동적',
+  '감성적인' => '분위기',
+  '사진' => '사진·인테리어',
+  '친구 모임' => '단체석',
+  _ => value,
+};
+
+String? _categoryCode(String value) => const {
+  '음식점': 'FOOD',
+  '카페': 'CAFE',
+  '놀거리': 'ACTIVITY',
+  '문화시설': 'CULTURE',
+  '체험': 'EXPERIENCE',
+  '쇼핑': 'SHOPPING',
+  '관광': 'TOUR',
+  '자연/휴식': 'NATURE',
+  '간식': 'SNACK',
+}[value];
+
+List<String> _categoryCodes(Set<String> values) =>
+    values.map(_categoryCode).whereType<String>().toList();
+
+List<String> _allergyCodes(String value) => [
+  for (final token in value.split(RegExp(r'[,，\s]+')))
+    for (final allergy in AllergyCode.values)
+      if (token.toUpperCase() == allergy.code || token == allergy.label)
+        allergy.code,
+];
+
 /// Local API fixtures. Python and the source CSV files are not needed at runtime.
 class MockRepository {
   MockRepository._(this.api);
@@ -133,21 +188,7 @@ class MockRepository {
       _matchingPlaces(conditions);
 
   List<Place> _matchingPlaces(SearchConditions conditions) {
-    final excluded = conditions.excluded
-        .split(RegExp(r'[,\s]+'))
-        .where((s) => s.isNotEmpty);
-    return places
-        .where(
-          (p) =>
-              p.region == conditions.region &&
-              !excluded.any(
-                (word) =>
-                    p.name.contains(word) ||
-                    p.category.contains(word) ||
-                    p.tags.any((t) => t.contains(word)),
-              ),
-        )
-        .toList();
+    return places.where((p) => p.region == conditions.region).toList();
   }
 
   /// Returns the region's fixed API response; preferences do not regenerate fixtures.
@@ -164,6 +205,34 @@ class MockRepository {
         region: conditions.useSelectedRegion
             ? RegionCode.parse(conditions.region).code
             : null,
+        conditions: {
+          'region': RegionCode.parse(conditions.region).code,
+          'date': formatDate(conditions.start),
+          'dayType': conditions.start.weekday >= DateTime.saturday
+              ? 'WEEKEND'
+              : 'WEEKDAY',
+          'startTime': formatTime(conditions.start),
+          'partySize': conditions.people,
+          'categories': _categoryCodes(preference.categories),
+          'atmospheres': conditions.mood.isEmpty
+              ? <String>[]
+              : [_atmosphereCode(conditions.mood)],
+          'crowdPreference': switch (conditions.mood) {
+            '조용한' => 'QUIET',
+            '활기찬' => 'LIVELY',
+            _ => 'DEFAULT',
+          },
+          'allergies': _allergyCodes(preference.allergies),
+          'gender': _genderCode(conditions.gender),
+          'ageGroup': _ageGroupCode(conditions.ageGroup),
+          'companionType': _companionCode(conditions.companionType),
+          'excludedFoods': preference.dislikedFood
+              .split(RegExp(r'[,，]+'))
+              .map((food) => food.trim())
+              .where((food) => food.isNotEmpty)
+              .toList(),
+          'extractedBy': 'USER',
+        },
       ),
     );
     _rememberSearch(response);

@@ -427,6 +427,13 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ], lavender: true),
+      _menu(app.accessToken == null ? '로그인' : '로그아웃', () {
+        if (app.accessToken == null) {
+          openPage(context, LoginScreen(app: app), '/login');
+        } else {
+          app.logout();
+        }
+      }),
       _menu(
         '내 선호도 설정',
         () => openPage(context, PreferencesScreen(app: app), '/preferences'),
@@ -470,6 +477,75 @@ class ProfileScreen extends StatelessWidget {
       onTap: onTap,
       minTileHeight: 62,
     ),
+  );
+}
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key, required this.app});
+  final AppState app;
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final email = TextEditingController();
+  final password = TextEditingController();
+  bool loading = false;
+  @override
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
+  Future<void> signIn() async {
+    if (email.text.trim().isEmpty || password.text.isEmpty) {
+      toast(context, '이메일과 비밀번호를 입력해 주세요.');
+      return;
+    }
+    setState(() => loading = true);
+    try {
+      await widget.app.login(email.text.trim(), password.text);
+      if (!mounted) return;
+      toast(context, '로그인했어요.');
+      Navigator.pop(context);
+    } on ApiException catch (error) {
+      if (mounted) toast(context, error.message);
+    } catch (_) {
+      if (mounted) toast(context, '로그인하지 못했어요. 다시 시도해 주세요.');
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AppFrame(
+    app: widget.app,
+    title: '로그인',
+    subtitle: '로그인하면 저장한 취향으로 코스를 추천해요',
+    child: stackItems([
+      panel([
+        TextField(
+          controller: email,
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(labelText: '이메일'),
+        ),
+        TextField(
+          controller: password,
+          obscureText: true,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => signIn(),
+          decoration: const InputDecoration(labelText: '비밀번호'),
+        ),
+      ]),
+      action(loading ? '로그인 중…' : '로그인', loading ? null : signIn),
+      label(
+        '현재는 예시 로그인입니다. 서버 연결 후 실제 계정으로 로그인할 수 있어요.',
+        size: 11,
+        color: OdigaTokens.muted,
+      ),
+    ]),
   );
 }
 

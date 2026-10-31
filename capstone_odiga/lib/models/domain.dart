@@ -136,11 +136,13 @@ class SearchConditions {
     this.region = '성수',
     DateTime? start,
     this.people = 2,
+    this.gender = '무관',
+    this.ageGroup = '무관',
+    this.companionType = '친구',
     this.mood = '조용한',
-    this.excluded = '',
     this.useSelectedRegion = true,
   }) : start = start ?? DateTime(2026, 10, 17, 12);
-  String query, region, mood, excluded;
+  String query, region, gender, ageGroup, companionType, mood;
   DateTime start;
   int people;
   bool useSelectedRegion;
@@ -149,8 +151,10 @@ class SearchConditions {
     region: region,
     start: start,
     people: people,
+    gender: gender,
+    ageGroup: ageGroup,
+    companionType: companionType,
     mood: mood,
-    excluded: excluded,
     useSelectedRegion: useSelectedRegion,
   );
 }

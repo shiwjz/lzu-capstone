@@ -29,8 +29,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       c.region,
       c.start,
       c.people,
+      c.gender,
+      c.ageGroup,
+      c.companionType,
       c.mood,
-      c.excluded,
       c.query,
       c.useSelectedRegion,
       p.categories.join(','),
@@ -189,8 +191,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     final hours = course.totalMinutes ~/ 60;
     final minutes = course.totalMinutes % 60;
     final duration = hours == 0
-        ? '약 ${minutes}분'
-        : '약 ${hours}시간${minutes == 0 ? '' : ' ${minutes}분'}';
+        ? '약 $minutes분'
+        : '약 $hours시간${minutes == 0 ? '' : ' $minutes분'}';
     return '$duration · ${course.distanceKm.toStringAsFixed(1)}km · 평균 $congestionText ${average.round()}%';
   }
 }
@@ -236,13 +238,13 @@ void _showRecommendationScoreInfo(BuildContext context) {
             ),
             const SizedBox(height: 8),
             label(
-              '조건 30% · 혼잡도 25% · 거리 15%',
+              '장소 점수: 요청 적합도 0.45 · 타깃 특성 0.30 · 혼잡도 0.25',
               size: 12,
               color: OdigaTokens.muted,
             ),
             const SizedBox(height: 4),
             label(
-              '체류 10% · 특징 10% · 그룹 10%',
+              '코스 점수: 장소 평균 0.70 · 이동 효율 0.20 · 시간 적합도 0.10',
               size: 12,
               color: OdigaTokens.muted,
             ),
@@ -347,7 +349,7 @@ class CourseDetailScreen extends StatelessWidget {
         title: '코스 상세 · ${course.stops.length}개 장소',
         course: course,
         children: [
-          for (final stop in course.stops) ...[
+          for (final (index, stop) in course.stops.indexed) ...[
             InkWell(
               onTap: () => openPage(
                 context,
@@ -376,7 +378,7 @@ class CourseDetailScreen extends StatelessWidget {
                     Expanded(
                       child: stackItems([
                         label(
-                          '${stop.order}. ${app.repository.place(stop.placeId).name}',
+                          '${index + 1}. ${app.repository.place(stop.placeId).name}',
                           bold: true,
                         ),
                         label(
@@ -439,72 +441,108 @@ class CourseDetailScreen extends StatelessWidget {
 }
 
 String courseText(AppState app, Course course) =>
-    '${course.title}\n${summary(course)}\n${course.stops.map((s) => '${s.order}. ${app.repository.place(s.placeId).name} · ${clockText(s.arrival)} · ${s.stayMinutes}분').join('\n')}';
+    '${course.title}\n${summary(course)}\n${course.stops.indexed.map((entry) => '${entry.$1 + 1}. ${app.repository.place(entry.$2.placeId).name} · ${clockText(entry.$2.arrival)} · ${entry.$2.stayMinutes}분').join('\n')}';
 
-Future<void> _shareCourse(
-  BuildContext context,
-  AppState app,
-  Course course,
-) async {
-  try {
-    final share = await app.repository.api.createShare(course.id);
-    if (!context.mounted) return;
-    final sharedCourse = await app.repository.loadSharedCourse(share.shareCode);
-    if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('예시 코스 공유'),
-        content: SingleChildScrollView(
-          child: SelectableText(
-            '현재는 고정된 예시 공유 결과입니다.\n\n${share.shareText}\n\n${share.shareUrl}',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('닫기'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await Clipboard.setData(
-                ClipboardData(text: '${share.shareText}\n${share.shareUrl}'),
-              );
-              if (dialogContext.mounted) {
-                Navigator.pop(dialogContext);
-                toast(context, '코스 요약을 복사했습니다.');
-              }
-            },
-            child: const Text('복사'),
-          ),
-          TextButton(
-            onPressed: () {
-              app.sendMessage(
-                '함께 가고 싶은 코스예요! ${share.shareUrl}',
-                course: sharedCourse,
-              );
-              Navigator.pop(dialogContext);
-              openPage(context, ChatScreen(app: app), '/group/chat');
-            },
-            child: const Text('예시 모임에 공유'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              openPage(
-                context,
-                CourseDetailScreen(app: app, initial: sharedCourse),
-                '/share/${share.shareCode}',
-              );
-            },
-            child: const Text('공유 코스 보기'),
-          ),
-        ],
-      ),
-    );
-  } on ApiException catch (e) {
-    if (context.mounted) toast(context, e.message);
+void _shareCourse(BuildContext context, AppState app, Course course) {
+  openPage(
+    context,
+    CourseShareScreen(app: app, course: course),
+    '/course/${course.id}/share',
+  );
+}
+
+class CourseShareScreen extends StatefulWidget {
+  const CourseShareScreen({super.key, required this.app, required this.course});
+  final AppState app;
+  final Course course;
+  @override
+  State<CourseShareScreen> createState() => _CourseShareScreenState();
+}
+
+class _CourseShareScreenState extends State<CourseShareScreen> {
+  late Future<ShareCreateDto> share = widget.app.repository.api.createShare(
+    widget.course.id,
+  );
+
+  Future<void> openSharedCourse(ShareCreateDto value) async {
+    try {
+      final course = await widget.app.repository.loadSharedCourse(
+        value.shareCode,
+      );
+      if (!mounted) return;
+      openPage(
+        context,
+        CourseDetailScreen(app: widget.app, initial: course),
+        '/share/${value.shareCode}',
+      );
+    } on ApiException catch (error) {
+      if (mounted) toast(context, error.message);
+    }
   }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<ShareCreateDto>(
+    future: share,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return AppFrame(
+          app: widget.app,
+          title: '코스 공유',
+          child: stackItems([
+            label('공유 링크를 만들지 못했어요.'),
+            action(
+              '다시 시도',
+              () => setState(
+                () => share = widget.app.repository.api.createShare(
+                  widget.course.id,
+                ),
+              ),
+            ),
+          ]),
+        );
+      }
+      if (!snapshot.hasData) {
+        return AppFrame(
+          app: widget.app,
+          title: '코스 공유',
+          child: const Center(child: CircularProgressIndicator()),
+        );
+      }
+      final value = snapshot.data!;
+      return AppFrame(
+        app: widget.app,
+        title: '코스 공유',
+        subtitle: '친구에게 이 코스를 보내보세요',
+        child: stackItems([
+          panel([
+            label(widget.course.title, size: 18, bold: true),
+            label(summary(widget.course), color: OdigaTokens.brand),
+            SelectableText(value.shareText),
+          ], lavender: true),
+          panel([label('공유 링크', bold: true), SelectableText(value.shareUrl)]),
+          action('링크와 코스 설명 복사', () async {
+            await Clipboard.setData(
+              ClipboardData(text: '${value.shareText}\n${value.shareUrl}'),
+            );
+            if (context.mounted) toast(context, '공유 내용을 복사했습니다.');
+          }),
+          action('공유 코스 미리 보기', () => openSharedCourse(value), secondary: true),
+          action('예시 모임 채팅에 공유', () async {
+            final course = await widget.app.repository.loadSharedCourse(
+              value.shareCode,
+            );
+            if (!context.mounted) return;
+            widget.app.sendMessage(
+              '함께 가고 싶은 코스예요! ${value.shareUrl}',
+              course: course,
+            );
+            openPage(context, ChatScreen(app: widget.app), '/group/chat');
+          }, secondary: true),
+          label('현재는 예시 공유 응답을 표시합니다.', size: 11, color: OdigaTokens.muted),
+        ]),
+      );
+    },
+  );
 }
 
 class CourseEditorScreen extends StatefulWidget {
@@ -627,6 +665,12 @@ class _CourseEditorScreenState extends State<CourseEditorScreen> {
         summary: summary(draft),
         detail: '변경하면 도착 시각·혼잡도 자동 재계산',
       ),
+      if (draft.totalMinutes > 210)
+        label(
+          '총 ${draft.totalMinutes}분으로 3시간 30분을 넘어요.',
+          color: OdigaTokens.red,
+          bold: true,
+        ),
       ReorderableListView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),

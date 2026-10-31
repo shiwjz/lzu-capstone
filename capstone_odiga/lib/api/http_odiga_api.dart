@@ -30,6 +30,9 @@ class HttpOdigaApi implements OdigaApi {
   /// 로그인하면 저장, 이후 요청 헤더에 자동으로 붙음
   String? accessToken;
 
+  @override
+  void clearSession() => accessToken = null;
+
   Future<Json> _send(
     String method,
     String path, {
@@ -149,11 +152,16 @@ class HttpOdigaApi implements OdigaApi {
   @override
   Future<PreferencesDto> getPreferences() async {
     try {
-      return PreferencesDto.fromJson(await _send('GET', '/api/users/me/preferences'));
+      return PreferencesDto.fromJson(
+        await _send('GET', '/api/users/me/preferences'),
+      );
     } on ApiException catch (e) {
       if (!_notReady(e)) rethrow;
-      return _localPreferences ??=
-          PreferencesDto(region: 'SEONGSU', atmospheres: const [], allergies: const []);
+      return _localPreferences ??= PreferencesDto(
+        region: 'SEONGSU',
+        atmospheres: const [],
+        allergies: const [],
+      );
     }
   }
 
@@ -161,7 +169,11 @@ class HttpOdigaApi implements OdigaApi {
   Future<PreferencesDto> updatePreferences(PreferencesDto preferences) async {
     try {
       return PreferencesDto.fromJson(
-        await _send('PUT', '/api/users/me/preferences', body: preferences.toJson()),
+        await _send(
+          'PUT',
+          '/api/users/me/preferences',
+          body: preferences.toJson(),
+        ),
       );
     } on ApiException catch (e) {
       if (!_notReady(e)) rethrow;
