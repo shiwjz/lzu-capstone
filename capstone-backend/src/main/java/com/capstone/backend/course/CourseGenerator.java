@@ -57,7 +57,9 @@ public class CourseGenerator {
                     scoreById.put(place.placeId(), CourseRules.round2(scorer.score(place, hour).total()));
                 }
             }
-            pool.sort(Comparator.comparingDouble(p -> -scoreById.get(p.placeId())));
+            // 점수 높은 순, 같으면 tieBreak 큰 순 (원하는 분위기 태그 언급 많은 곳)
+            pool.sort(Comparator.<CoursePlace>comparingDouble(p -> -scoreById.get(p.placeId()))
+                    .thenComparingDouble(p -> -scorer.tieBreak(p)));
             perSlot.add(List.copyOf(pool.subList(0, Math.min(CourseRules.CANDIDATES_PER_SLOT, pool.size()))));
         }
         return new Candidates(order, nominalHour, perSlot);

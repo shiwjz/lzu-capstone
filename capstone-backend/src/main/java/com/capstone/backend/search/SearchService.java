@@ -167,7 +167,11 @@ public class SearchService {
                 }
             }
         }
-        placeCards.sort(Comparator.comparingDouble(m -> -((Score) m.get("score")).total()));
+        // 점수 높은 순, 같으면 원하는 분위기 태그 언급 많은 순 (PlaceScorer.tieBreak)
+        Map<String, Double> tie = new HashMap<>();
+        for (List<CoursePlace> ps : cands.perSlot()) ps.forEach(p -> tie.put(p.placeId(), scorer.tieBreak(p)));
+        placeCards.sort(Comparator.<Map<String, Object>>comparingDouble(m -> -((Score) m.get("score")).total())
+                .thenComparingDouble(m -> -tie.get((String) m.get("placeId"))));
         if (placeCards.size() > 10) placeCards = new ArrayList<>(placeCards.subList(0, 10));
 
         // 코스 (최대 10개) → 저장

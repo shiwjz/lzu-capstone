@@ -1,6 +1,7 @@
 package com.capstone.backend.search;
 
 import com.capstone.backend.course.CongestionLevel;
+import com.capstone.backend.course.CoursePlace;
 import com.capstone.backend.course.CourseRules;
 import com.capstone.backend.course.CrowdPreference;
 import com.capstone.backend.course.Cuisine;
@@ -18,6 +19,7 @@ import java.util.Map;
  * 장소 점수 모듈 (윤경 place_score.py → Java로 옮김, 예민)
  * - 장소 점수 = 0.45 × 사용자 요구 + 0.30 × 타깃 특성 + 0.25 × 혼잡도 적합도 (각 0~1)
  * - v0.5: 사용자 요구에 세부 음식 취향 가점 섞음 (course/Cuisine.detailFit)
+ * - 11/4: 점수 같으면 원하는 분위기 태그 언급 많은 곳 먼저 (tieBreak) → 윤경 평가 9개 시나리오 구글 리뷰 채점 Precision@5 0.40 → 0.76
  * - 계산식·숫자는 place_score.py랑 똑같이 → 바꿀 때는 둘 다 바꾸기 (@이윤경)
  *   · 같은 입력이면 같은 값인지: PlaceScoreModelTest (윤경 test_place_score.py 10개 그대로)
  *   · 가짜 JSON(generate_mocks.py가 place_score.py import)이랑 서버 결과 비교로도 확인
@@ -43,7 +45,22 @@ public class PlaceScoreModel implements PlaceScorerFactory {
     @Override
     public PlaceScorer forConditions(SearchConditions c) {
         CrowdPreference crowd = CrowdPreference.valueOf(c.crowdPreference());
-        return (place, hour) -> {
+        return new PlaceScorer() {
+            @Override
+            public PlaceScore score(CoursePlace place, int hour) {
+                return scoreOf(c, crowd, place, hour);
+            }
+
+            /** 동점일 때: 원하는 분위기 태그 언급 수(3개 넘어도 그대로) 합이 큰 곳 먼저 */
+            @Override
+            public double tieBreak(CoursePlace place) {
+                return mentionSum(store.find(place.placeId()).orElseThrow(), c.atmospheres());
+            }
+        };
+    }
+
+    private PlaceScore scoreOf(SearchConditions c, CrowdPreference crowd, CoursePlace place, int hour) {
+        {
             PlaceStore.Place p = store.find(place.placeId()).orElseThrow();
             Map<String, Integer> tags = new HashMap<>();
             p.tags().forEach(t -> tags.put(t.tag(), t.mentions()));
@@ -64,7 +81,13 @@ public class PlaceScoreModel implements PlaceScorerFactory {
             double fit = congestionFit(crowd, cong.level());
             double total = W_REQUEST * request + W_TARGET * target + W_FIT * fit;
             return new PlaceScore(total, request, target, fit, cong.level(), cong.percentile());
-        };
+        }
+    }
+
+    /** 원하는 분위기 태그 언급 수 합 (동점 정렬용, generate_mocks.py tie_break랑 같게) */
+    static double mentionSum(PlaceStore.Place p, List<String> atmospheres) {
+        if (atmospheres == null || atmospheres.isEmpty()) return 0;
+        return p.tags().stream().filter(t -> atmospheres.contains(t.tag())).mapToInt(PlaceStore.Tag::mentions).sum();
     }
 
     /** 사용자 요구: 요청 분위기마다 min(언급 수, 3) ÷ 3 → 평균. 분위기 요청 없으면 0.5 */

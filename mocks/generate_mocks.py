@@ -497,6 +497,11 @@ def warnings_of(course, cond):
     return out
 
 
+def tie_break(p, cond):
+    """점수 같을 때 순서 (11/4): 원하는 분위기 태그 언급 수 합 큰 곳 먼저 (서버 PlaceScorer.tieBreak랑 같게)"""
+    return sum(t['mentions'] for t in p['tags'] if t['tag'] in cond['moods'])
+
+
 def recommend(places, cond):
     start = to_min(cond['startTime'])
     order = slot_order(start)
@@ -510,7 +515,7 @@ def recommend(places, cond):
     for slot in order:
         cats = {'MEAL': ['FOOD'], 'CAFE': ['CAFE'], 'PLAY': play_cats}[slot]
         pool = [p for p in places if p['category'] in cats and allowed(p, cond, nominal[slot])]
-        pool.sort(key=lambda p: -place_score(p, cond, nominal[slot])[0]['total'])
+        pool.sort(key=lambda p: (-place_score(p, cond, nominal[slot])[0]['total'], -tie_break(p, cond)))
         cands[slot] = pool[:TOP_K]
     combos, passed = [], 0
     for combo in itertools.product(*(cands[s] for s in order)):
@@ -541,7 +546,7 @@ def recommend(places, cond):
             if p['placeId'] not in seen:
                 seen.add(p['placeId'])
                 plist.append(summary(p, cond, nominal[slot]))
-    plist.sort(key=lambda x: -x['score']['total'])
+    plist.sort(key=lambda x: (-x['score']['total'], -tie_break(by_id[x['placeId']], cond)))
     stats = {'order': order, 'candidates': {s: len(v) for s, v in cands.items()},
              'combos': math.prod(len(v) for v in cands.values()), 'passedTimeRule': passed}
     return plist[:10], [ {k: c[k] for k in ['courseId', 'rank', 'title', 'reason', 'keywords', 'startAt', 'endAt', 'totalMinutes',

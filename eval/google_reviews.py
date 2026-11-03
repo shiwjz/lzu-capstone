@@ -182,6 +182,8 @@ def fetch(args):
     key = os.environ.get('GOOGLE_PLACES_API_KEY')
     if not key:
         sys.exit('GOOGLE_PLACES_API_KEY 환경변수 넣고 다시 실행 (키는 코드에 쓰지 않기)')
+    if not key.isascii() or ' ' in key:
+        sys.exit('키에 한글·공백이 들어가 있음 → export GOOGLE_PLACES_API_KEY=AIza... 처럼 키만 다시 넣기')
 
     new_file = not os.path.exists(args.out)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
@@ -189,6 +191,7 @@ def fetch(args):
         w = csv.DictWriter(f, fieldnames=OUT_COLS)
         if new_file:
             w.writeheader()
+        errors = 0
         for k, pid in enumerate(todo, 1):
             place = places[pid]
             try:
@@ -201,14 +204,19 @@ def fetch(args):
                 if e.code == 429:
                     print('요청 너무 많음 → 30초 쉬고 다음 장소'); time.sleep(30)
                 row = {'place_id': pid, 'name': place['name'], 'status': f'HTTP_{e.code}'}
-            except Exception as e:      # 인터넷 끊김 등 → 다음에 다시 돌리면 이어서 (ERROR 줄은 지우고)
-                row = {'place_id': pid, 'name': place['name'], 'status': f'ERROR_{type(e).__name__}'}
+            except Exception as e:      # 인터넷 끊김 등 → 저장 안 하고 넘어감 (다시 돌리면 그 장소만 다시 함)
+                errors += 1
+                print(f'  실패 {pid} {type(e).__name__}')
+                if errors >= 3:
+                    sys.exit('3번 연속 실패 → 멈춤 (키·인터넷 확인)')
+                continue
+            errors = 0
             w.writerow(row)
             f.flush()
             if k % 20 == 0 or k == len(todo):
                 print(f'  {k}/{len(todo)}')
             time.sleep(SLEEP_SEC)
-    print(f'저장: {args.out}  (OK 아닌 줄은 지우고 다시 돌리면 그 장소만 다시 함)')
+    print(f'저장: {args.out}')
 
 
 # ---------------- score ----------------
