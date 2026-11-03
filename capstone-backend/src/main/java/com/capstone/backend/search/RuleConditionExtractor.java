@@ -124,8 +124,10 @@ public class RuleConditionExtractor implements ConditionExtractor {
         if (q.contains("모레")) return today.plusDays(2);
         if (q.contains("내일")) return today.plusDays(1);
         if (q.contains("오늘")) return today;
-        boolean nextWeek = q.contains("다음 주") || q.contains("다음주");
-        int best = Integer.MAX_VALUE;
+       boolean nextWeek = q.contains("다음 주") || q.contains("다음주");
+       boolean thisWeek = q.contains("이번 주") || q.contains("이번주");
+       LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+       int best = Integer.MAX_VALUE;
         DayOfWeek day = null;
         for (Map.Entry<String, DayOfWeek> e : DAYS.entrySet()) {
             int i = q.indexOf(e.getKey());
