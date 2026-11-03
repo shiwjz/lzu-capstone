@@ -69,6 +69,8 @@ public class PlaceController {
                 m.put("lat", p.lat());
                 m.put("lng", p.lng());
                 m.put("tags", p.tags());
+                m.put("cuisine", p.cuisine());
+                m.put("cuisineDetail", p.cuisineDetail());
                 m.put("congestion", store.congestion(p.placeId(), dayType, h, PlaceStore.Basis.SAME_TIME));
                 items.add(m);
             }
@@ -120,6 +122,8 @@ public class PlaceController {
         m.put("lng", p.lng());
         m.put("kakaoCategory", p.kakaoCategory());
         m.put("placeUrl", p.placeUrl());
+        m.put("cuisine", p.cuisine());
+        m.put("cuisineDetail", p.cuisineDetail());
         m.put("openingHours", null);    // 구글 Places 연동 전까지 null → 화면에 "영업시간 정보 없음"
         m.put("tags", p.tags());
         m.put("congestionByHour", byHour);

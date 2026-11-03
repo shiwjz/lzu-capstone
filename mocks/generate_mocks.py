@@ -1,4 +1,4 @@
-"""오디가 가짜 응답 JSON + 서버 데이터 생성 (API 명세 v0.4 기준) - 김예민
+"""오디가 가짜 응답 JSON + 서버 데이터 생성 (API 명세 v0.5 기준) - 김예민
 
 실행: 저장소 맨 위 폴더에서  python mocks/generate_mocks.py
 (장소·셀·혼잡도 파일이 바뀌면 다시 실행)
@@ -17,6 +17,12 @@
   → places_with_cell.csv가 예전 장소 기준이어도 새 장소까지 전부 셀 붙음 (윤경 파일이랑 1,784곳 일치 확인)
 
 - v0.4: 가짜 태그·임시 점수 → 예린 태그 + 윤경 장소 점수 모듈 (사용자 요구·타깃 특성·혼잡도 적합도 전부 계산)
+- v0.5 (11/2):
+    · 음식 취향: 장소마다 큰 종류(cuisine)·세부(detail) → place_cuisine.csv(예린 확정본) 있으면 그걸, 없으면 임시 분류
+      (카카오 분류 → 없으면 가게 이름 → 그것도 없으면 큰 종류만) → 저장소 맨 위 place_cuisine_draft.csv로도 저장
+    · 음식 큰 종류 고르면 식사 칸은 그 종류만, 세부 고르면 사용자 요구 점수에 가점 (딱 맞음 1.0 / 세부 없음 0.5 / 다른 세부 0.2)
+    · 인원 → 분위기 자동 (1명 혼자가능, 2명 데이트(친구·가족·회사 빼고), 4명 이상 단체)
+    · 코스 최대 10개, 코스마다 keywords
 - 거리·도보 시간·도착 시각·코스 조합: 코스 생성 규칙대로 실제 계산
 - SNACK(베이커리·아이스크림 등)은 코스 칸에 안 넣음. 장소 추천·코스에 직접 추가만 가능
 
@@ -69,7 +75,9 @@ CONGESTION_FIT = {           # 혼잡 선호별 구간 점수 (초안)
     'DEFAULT': {'QUIET': 0.8, 'NORMAL': 1.0, 'BUSY': 0.5},
     'LIVELY':  {'QUIET': 0.2, 'NORMAL': 0.6, 'BUSY': 1.0},
 }
+COURSE_COUNT = 10            # 추천 코스 최대 수 (v0.5, 예령 추천 리스트용)
 TAGS = {}         # place_id → [{'tag', 'mentions'}] (예린 place_tag.csv, 언급 많은 순)
+CUISINE = {}      # place_id → (cuisine, detail, source) 예린 place_cuisine.csv 확정본 (없으면 임시 분류)
 TARGET = {}       # 윤경 load_target_data 결과: cells, cell_cluster, cluster_avg, region_avg
 ps = None         # 윤경 place_score 모듈 (load_team_data에서 import)
 
@@ -118,6 +126,121 @@ def tags_of(p):
     return TAGS.get(p['placeId'], [])
 
 
+# ---------------- 음식 취향 (v0.5, 임시 분류 → 예린 place_cuisine.csv 오면 그걸 씀) ----------------
+CUISINE_LABEL = {'KOREAN': '한식', 'JAPANESE': '일식', 'WESTERN': '양식', 'CHINESE': '중식', 'BUNSIK': '분식',
+                 'ASIAN': '아시아', 'CHICKEN': '치킨', 'BAR': '술집', 'CAFE': '카페', 'ETC': '기타'}
+# 카카오 두 번째 칸 → 큰 종류 (음식점)
+KAKAO_BIG = {'한식': 'KOREAN', '일식': 'JAPANESE', '양식': 'WESTERN', '패밀리레스토랑': 'WESTERN', '패스트푸드': 'WESTERN',
+             '중식': 'CHINESE', '분식': 'BUNSIK', '아시아음식': 'ASIAN', '치킨': 'CHICKEN', '술집': 'BAR'}
+# 카카오 세 번째 칸 → 세부
+KAKAO_DETAIL = {'육류,고기': '고기', '해물,생선': '해물·생선', '국밥': '국밥', '찌개,전골': '찌개·전골', '국수': '국수',
+                '초밥,롤': '초밥·롤', '일본식라면': '라멘', '돈까스,우동': '돈까스·우동', '참치회': '초밥·롤',
+                '이탈리안': '이탈리안', '피자': '피자', '햄버거': '햄버거', '스테이크,립': '스테이크', '멕시칸,브라질': '멕시칸',
+                '중국요리': '중국요리', '양꼬치': '양꼬치', '떡볶이': '떡볶이', '동남아음식': '동남아', '인도음식': '인도',
+                '호프,요리주점': '호프·요리주점', '일본식주점': '이자카야', '칵테일바': '칵테일바', '와인바': '와인바',
+                '실내포장마차': '포장마차', '디저트카페': '디저트카페', '갤러리카페': '갤러리·북카페', '북카페': '갤러리·북카페'}
+# 세부 없을 때 가게 이름으로 추정 (큰 종류 안에서만)
+NAME_DETAIL = {
+    'KOREAN': [('고기', ['고기', '삼겹', '갈비', '한우', '정육']), ('국밥', ['국밥', '곰탕', '설렁탕']),
+               ('찌개·전골', ['찌개', '전골', '부대']), ('국수', ['국수', '칼국수', '냉면'])],
+    'JAPANESE': [('초밥·롤', ['스시', '초밥', '오마카세']), ('라멘', ['라멘', '라면']),
+                 ('돈까스·우동', ['돈까스', '돈카츠', '카츠', '우동', '소바']), ('덮밥', ['덮밥', '텐동', '규동', '카이센동', '히츠마부시'])],
+    'WESTERN': [('이탈리안', ['파스타', '이탈리', '트라토리아']), ('피자', ['피자', '피제리아']), ('햄버거', ['버거']),
+                ('스테이크', ['스테이크']), ('멕시칸', ['타코', '멕시'])],
+    'CHINESE': [('양꼬치', ['양꼬치']), ('중국요리', ['마라', '짬뽕', '짜장', '반점'])],
+    'BUNSIK': [('떡볶이', ['떡볶이']), ('김밥', ['김밥'])],
+    'CAFE': [('디저트카페', ['디저트', '케이크', '베이커리', '구움과자'])],
+}
+CAFE_DRINK = ['전통찻집', '생과일전문점', '공차', '차백도', '흑화당', '홍콩다방', '차지', '다방']
+CUISINE_COLS = ['place_id', 'name', 'region', 'category', 'kakao_category', 'cuisine', 'detail', 'source']
+
+
+def classify_cuisine(p):
+    """임시 분류 → (cuisine, detail, source). 음식점·카페만, 나머지는 (None, None, None)"""
+    parts = [x.strip() for x in p['kakaoCategory'].split('>')]
+    name = p['name']
+    if p['category'] == 'FOOD':
+        l2 = parts[1] if len(parts) > 1 else ''
+        l3 = parts[2] if len(parts) > 2 else ''
+        big = KAKAO_BIG.get(l2)
+        if l2 == '퓨전요리':
+            big = 'JAPANESE' if l3 == '퓨전일식' else 'KOREAN' if l3 == '퓨전한식' else None
+        big = big or 'ETC'
+        if l3 in KAKAO_DETAIL:
+            return big, KAKAO_DETAIL[l3], 'KAKAO'
+        if l2 == '분식' and '김밥' in l3:
+            return big, '김밥', 'KAKAO'
+        if l2 == '패스트푸드' and '버거' in (l3 + name):
+            return big, '햄버거', 'KAKAO'
+    elif p['category'] == 'CAFE':
+        big = 'CAFE'
+        l2 = parts[2] if len(parts) > 2 else ''     # 음식점 > 카페 > (커피전문점 / 테마카페 …)
+        l3 = parts[3] if len(parts) > 3 else ''
+        if l3 in KAKAO_DETAIL:
+            return big, KAKAO_DETAIL[l3], 'KAKAO'
+        if l2 in CAFE_DRINK:
+            return big, '차·음료', 'KAKAO'
+        if l2 == '바나프레소' or (l2 == '커피전문점' and l3):
+            return big, '프랜차이즈', 'KAKAO'
+    else:
+        return None, None, None
+    for detail, words in NAME_DETAIL.get(big, []):
+        if any(w in name for w in words):
+            return big, detail, 'NAME'
+    if big == 'CAFE':
+        return big, '개인카페', 'KAKAO'                # 카카오에 세부 없는 일반 카페
+    return big, None, 'NONE'
+
+
+def cuisine_of(p):
+    if CUISINE:
+        return CUISINE.get(p['placeId'], (None, None, None))
+    return classify_cuisine(p)
+
+
+def wants_cuisine(p, cond):
+    """음식 큰 종류 골랐으면 식사 칸은 그 종류만 (카페·놀거리는 상관없음)"""
+    return not cond.get('cuisines') or p['category'] != 'FOOD' or p['cuisine'] in cond['cuisines']
+
+
+def detail_fit(p, cond):
+    """세부 취향 가점: 딱 맞음 1.0 / 큰 종류만 맞고 세부 없음 0.5 / 같은 큰 종류인데 다른 세부 0.2 / 해당 없음 None
+    - 사용자가 고른 세부가 속한 큰 종류에서만 판단 (일식 세부만 골랐으면 카페는 가점 계산 안 함)"""
+    wanted = cond.get('cuisineDetails') or []
+    if not wanted or p['cuisine'] is None:
+        return None
+    families = {DETAIL_FAMILY.get(d) for d in wanted}
+    if p['cuisine'] not in families:
+        return None
+    if p['cuisineDetail'] in wanted:
+        return 1.0
+    return 0.5 if p['cuisineDetail'] is None else 0.2
+
+
+DETAIL_FAMILY = {}   # 세부 → 큰 종류 (아래에서 채움)
+for _big, _pairs in NAME_DETAIL.items():
+    for _d, _ in _pairs:
+        DETAIL_FAMILY[_d] = _big
+DETAIL_FAMILY.update({'해물·생선': 'KOREAN', '중국요리': 'CHINESE', '동남아': 'ASIAN', '인도': 'ASIAN',
+                      '호프·요리주점': 'BAR', '이자카야': 'BAR', '칵테일바': 'BAR', '와인바': 'BAR', '포장마차': 'BAR',
+                      '개인카페': 'CAFE', '프랜차이즈': 'CAFE', '갤러리·북카페': 'CAFE', '차·음료': 'CAFE'})
+
+
+def party_moods(cond):
+    """인원 → 분위기 자동 (10/31 회의): 1명 혼자가능, 2명 데이트(친구·가족·회사 빼고), 4명 이상 단체"""
+    n = cond.get('partySize')
+    add = None
+    if n == 1:
+        add = '혼자가능'
+    elif n == 2 and cond.get('companionType') not in ('FRIEND', 'FAMILY', 'COWORKER'):
+        add = '데이트'
+    elif n is not None and n >= 4:
+        add = '단체'
+    if add and add not in cond['moods']:
+        cond = {**cond, 'moods': cond['moods'] + [add]}
+    return cond
+
+
 def congestion(p, day_type, hour, basis='same_time'):
     """혼잡도 조회. basis = same_time(추천 점수용) / all_day(시간대 그래프용)"""
     row = CONG[(p['cellId'], day_type.upper(), hour % 24)]
@@ -131,6 +254,10 @@ def place_score(p, cond, hour):
     cell = p['cellId']
     cluster = TARGET['cluster_avg'].get(TARGET['cell_cluster'].get(cell))
     req = ps.request_score(cond['moods'], {t['tag']: t['mentions'] for t in p['tags']})
+    fit_d = detail_fit(p, cond)
+    if fit_d is not None:   # 세부 취향 가점: 분위기 점수들과 같이 평균 (분위기 없으면 세부 점수만) - 윤경 확정 전 임시
+        n = len(cond['moods'])
+        req = (req * n + fit_d) / (n + 1) if n else fit_d
     tgt = ps.target_score(TARGET['cells'].get(cell), cluster, TARGET['region_avg'][p['region']],
                           cond.get('gender'), cond.get('ageGroup'))
     fit = ps.congestion_fit(cond['crowdPreference'], cong['level'])
@@ -153,7 +280,8 @@ def summary(p, cond, hour):
         'placeId': p['placeId'], 'name': p['name'], 'category': p['category'],
         'region': p['region'], 'address': p['roadAddress'] or p['address'],
         'lat': p['lat'], 'lng': p['lng'], 'phone': p['phone'], 'placeUrl': p['placeUrl'],
-        'tags': p['tags'], 'congestion': cong, 'score': score, 'reason': reason(p, cond, cong),
+        'tags': p['tags'], 'cuisine': p['cuisine'], 'cuisineDetail': p['cuisineDetail'],
+        'congestion': cong, 'score': score, 'reason': reason(p, cond, cong),
     }
 
 
@@ -169,6 +297,7 @@ def load(csv_path):
                  'placeUrl': r['place_url'], 'searchKeyword': r['search_keyword'] or None}
             p['cellId'] = cell_of(float(r['latitude']), float(r['longitude'])) or nearest_cell(p)
             p['tags'] = tags_of(p)
+            p['cuisine'], p['cuisineDetail'], p['cuisineSource'] = cuisine_of(p)
             rows.append(p)
     return rows
 
@@ -220,6 +349,11 @@ def load_team_data(root):
             TAGS.setdefault(r['place_id'], []).append({'tag': r['tag'], 'mentions': int(r['mentions'])})
     for tags in TAGS.values():
         tags.sort(key=lambda t: -t['mentions'])       # 언급 많은 순 (같으면 파일 순서)
+    final = os.path.join(root, 'place_cuisine.csv')  # 예린 확정본 (place_id, cuisine, detail, source)
+    if os.path.exists(final):
+        with open(final, encoding='utf-8-sig', newline='') as f:
+            for r in csv.DictReader(f):
+                CUISINE[r['place_id']] = (r['cuisine'] or None, r['detail'] or None, r['source'] or None)
     with open(os.path.join(root, 'grid_cells.csv'), encoding='utf-8-sig', newline='') as f:
         for r in csv.DictReader(f):
             CELLS.append((r['cell_id'], GRID_REGION[r['region']], float(r['center_lat']), float(r['center_lon'])))
@@ -242,6 +376,8 @@ def allowed(p, cond, arrive_hour):
         return False                                   # 혹시 남은 간식·구내식당은 식사 칸 제외
     if wants_quiet(cond) and slot_of(p['category']) == 'PLAY' and is_noisy(p):
         return False                                   # 조용한 곳 원하면 노래방·오락실 등 제외
+    if not wants_cuisine(p, cond):
+        return False                                   # 음식 큰 종류 고르면 식사 칸은 그 종류만
     for code in cond['allergies']:
         if any(w in p['kakaoCategory'] for w in ALLERGY_EXCLUDE.get(code, [])):
             return False
@@ -327,6 +463,26 @@ def course_text(course, cond, by_id):
     return title, ' · '.join(parts)
 
 
+def course_keywords(course, cond, by_id):
+    """코스 키워드 태그 (최대 4개): 원하는 분위기 중 2곳 이상 태그 있는 것 → 한산/북적(2곳 이상) → 식사 음식 종류 → 도보 5분 이내"""
+    stops = course['stops']
+    out = []
+    for mood in cond['moods']:
+        if sum(1 for s in stops if mood in [t['tag'] for t in by_id[s['placeId']]['tags']]) >= 2:
+            out.append(mood)
+    levels = [s['congestion']['level'] for s in stops]
+    if levels.count('QUIET') >= 2:
+        out.append('한산')
+    elif levels.count('BUSY') >= 2:
+        out.append('북적')
+    meal = next((by_id[s['placeId']] for s in stops if s['slot'] == 'MEAL'), None)
+    if meal and meal['cuisine'] not in (None, 'ETC'):
+        out.append(meal['cuisineDetail'] or CUISINE_LABEL[meal['cuisine']])
+    if course['totalWalkMinutes'] <= 5:
+        out.append('도보 5분 이내')
+    return out[:4]
+
+
 def warnings_of(course, cond):
     out = []
     if course['totalMinutes'] > TARGET_MIN + TOL_MIN:
@@ -370,13 +526,14 @@ def recommend(places, cond):
             continue
         chosen.append(c)
         used |= ids
-        if len(chosen) == 3:
+        if len(chosen) == COURSE_COUNT:
             break
     by_id = {p['placeId']: p for p in places}
     for i, c in enumerate(chosen, 1):
         c['courseId'] = f"c_{cond['region'].lower()}_{i}"
         c['rank'] = i
         c['title'], c['reason'] = course_text(c, cond, by_id)
+        c['keywords'] = course_keywords(c, cond, by_id)
     # 추천 장소 목록: 후보 전체에서 점수 상위 10곳
     seen, plist = set(), []
     for slot in order:
@@ -387,7 +544,7 @@ def recommend(places, cond):
     plist.sort(key=lambda x: -x['score']['total'])
     stats = {'order': order, 'candidates': {s: len(v) for s, v in cands.items()},
              'combos': math.prod(len(v) for v in cands.values()), 'passedTimeRule': passed}
-    return plist[:10], [ {k: c[k] for k in ['courseId', 'rank', 'title', 'reason', 'startAt', 'endAt', 'totalMinutes',
+    return plist[:10], [ {k: c[k] for k in ['courseId', 'rank', 'title', 'reason', 'keywords', 'startAt', 'endAt', 'totalMinutes',
                           'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']} for c in chosen], stats
 
 
@@ -419,15 +576,24 @@ def dump_server_data(root, places):
         return
     os.makedirs(out, exist_ok=True)
     cols = ['placeId', 'name', 'region', 'category', 'kakaoCategory', 'lat', 'lng', 'cellId', 'tags',
-            'address', 'roadAddress', 'phone', 'placeUrl']
+            'address', 'roadAddress', 'phone', 'placeUrl', 'cuisine', 'cuisineDetail']
     with open(os.path.join(out, 'places.tsv'), 'w', encoding='utf-8', newline='\n') as f:
         f.write('\t'.join(cols) + '\n')
         for p in places:
             row = [p['placeId'], p['name'], p['region'], p['category'], p['kakaoCategory'],
                    repr(p['lat']), repr(p['lng']), p['cellId'],
                    '|'.join(f"{t['tag']}:{t['mentions']}" for t in p['tags']),
-                   p['address'] or '', p['roadAddress'] or '', p['phone'] or '', p['placeUrl'] or '']
+                   p['address'] or '', p['roadAddress'] or '', p['phone'] or '', p['placeUrl'] or '',
+                   p['cuisine'] or '', p['cuisineDetail'] or '']
             f.write('\t'.join(x.replace('\t', ' ') for x in row) + '\n')
+    if not CUISINE:   # 예린 확정본 오기 전: 임시 분류를 저장소 맨 위에 저장 → 예린이 고쳐서 place_cuisine.csv로
+        with open(os.path.join(root, 'place_cuisine_draft.csv'), 'w', encoding='utf-8-sig', newline='') as f:
+            w = csv.writer(f)
+            w.writerow(CUISINE_COLS)
+            for p in places:
+                if p['cuisine']:
+                    w.writerow([p['placeId'], p['name'], p['region'], p['category'], p['kakaoCategory'],
+                                p['cuisine'], p['cuisineDetail'] or '', p['cuisineSource']])
     cells = sorted({p['cellId'] for p in places})
     write_congestion(os.path.join(out, 'congestion.tsv'), cells, CONG)
     if CONG_SEOUL:
@@ -464,15 +630,15 @@ SCENARIOS = [
     ('search_seongsu_weekend_quiet.json', '토요일 오후 3시에 성수에서 친구랑 조용한 카페 가고 저녁도 먹고 싶어',
      {'region': 'SEONGSU', 'date': '2026-10-17', 'dayType': 'WEEKEND', 'startTime': '15:00', 'partySize': 2,
       'categories': ['CAFE', 'FOOD'], 'moods': ['조용함'], 'crowdPreference': 'QUIET', 'allergies': [],
-      'gender': None, 'ageGroup': None, 'companionType': 'FRIEND', 'excludedFoods': []}),
+      'gender': None, 'ageGroup': None, 'companionType': 'FRIEND', 'excludedFoods': [], 'cuisines': [], 'cuisineDetails': []}),
     ('search_hongdae_weekend_lively.json', '토요일 저녁 7시 홍대에서 남자친구랑 신나게 놀 수 있는 사람 많은 곳',
      {'region': 'HONGDAE', 'date': '2026-10-17', 'dayType': 'WEEKEND', 'startTime': '19:00', 'partySize': 2,
       'categories': ['FOOD', 'ACTIVITY'], 'moods': ['데이트'], 'crowdPreference': 'LIVELY', 'allergies': [],
-      'gender': None, 'ageGroup': None, 'companionType': 'COUPLE', 'excludedFoods': []}),
+      'gender': None, 'ageGroup': None, 'companionType': 'COUPLE', 'excludedFoods': [], 'cuisines': [], 'cuisineDetails': []}),
     ('search_gangnam_weekday_group.json', '금요일 저녁 7시 강남역 근처에서 회사 동기 4명 모임, 한 명이 갑각류 알레르기 있어',
      {'region': 'GANGNAM', 'date': '2026-10-16', 'dayType': 'WEEKDAY', 'startTime': '19:00', 'partySize': 4,
       'categories': ['FOOD'], 'moods': ['단체'], 'crowdPreference': 'DEFAULT', 'allergies': ['SHELLFISH'],
-      'gender': None, 'ageGroup': None, 'companionType': 'COWORKER', 'excludedFoods': []}),
+      'gender': None, 'ageGroup': None, 'companionType': 'COWORKER', 'excludedFoods': [], 'cuisines': [], 'cuisineDetails': []}),
 ]
 
 
@@ -486,6 +652,7 @@ def main(root, out_dir):
     by_id = {p['placeId']: p for p in places}
     first = None
     for i, (fname, query, cond) in enumerate(SCENARIOS, 1):
+        cond = party_moods(cond)
         plist, courses, stats = recommend(places, cond)
         data = {'searchId': f's_20261016_{i:04d}', 'query': query,
                 # 분위기는 DB(user_preference.atmosphere)랑 이름 맞춰서 atmospheres로
@@ -509,6 +676,7 @@ def main(root, out_dir):
     score, cong = place_score(p, cond, 16)
     detail = {k: p[k] for k in ['placeId', 'name', 'category', 'region', 'address', 'roadAddress', 'phone',
                                 'lat', 'lng', 'kakaoCategory', 'placeUrl']}
+    detail.update({'cuisine': p['cuisine'], 'cuisineDetail': p['cuisineDetail']})
     detail.update({'openingHours': None, 'tags': p['tags'],
                    'congestionByHour': {'date': cond['date'], 'dayType': cond['dayType'],
                                         'basis': 'ALL_DAY',
@@ -530,7 +698,8 @@ def main(root, out_dir):
     dump(out_dir, 'course_update_request.json', req)
     upd = build_course(edited, cond, to_min(cond['startTime']))
     upd['title'], upd['reason'] = course_text(upd, cond, by_id)
-    upd = {'courseId': c1['courseId'], 'rank': None, 'title': upd['title'], 'reason': upd['reason'],
+    upd['keywords'] = course_keywords(upd, cond, by_id)
+    upd = {'courseId': c1['courseId'], 'rank': None, 'title': upd['title'], 'reason': upd['reason'], 'keywords': upd['keywords'],
            **{k: upd[k] for k in ['startAt', 'endAt', 'totalMinutes',
            'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']}, 'warnings': warnings_of(upd, cond)}
     dump(out_dir, 'course_update_response.json', wrap(upd))
@@ -551,7 +720,7 @@ def main(root, out_dir):
     dump(out_dir, 'auth_login_response.json', wrap({'accessToken': 'eyJhbGciOiJIUzI1NiJ9.mock.token', 'tokenType': 'Bearer',
          'expiresIn': 3600, 'user': user}))
     dump(out_dir, 'auth_error_duplicate_email.json', error('DUPLICATE_EMAIL', '이미 사용 중인 이메일입니다.'))
-    dump(out_dir, 'preferences.json', wrap({'region': 'SEONGSU', 'atmospheres': ['조용함', '디저트'],
+    dump(out_dir, 'preferences.json', wrap({'region': 'SEONGSU', 'atmospheres': ['조용함', '사진'],
          'allergies': ['SHELLFISH']}))
 
     # 에러 예시

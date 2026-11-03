@@ -75,7 +75,7 @@ class CourseGeneratorTest {
     // ---------- 코스 생성 기본 ----------
 
     @Test
-    @DisplayName("코스 3개, 장소 안 겹침, 150~210분, 점수 순")
+    @DisplayName("코스 여러 개(최대 10개), 장소 안 겹침, 150~210분, 점수 순")
     void generatesThreeNonOverlappingCourses() {
         Fixture f = new Fixture();
         f.basicSet();
@@ -83,7 +83,7 @@ class CourseGeneratorTest {
 
         List<CoursePlan> courses = generator.generate(request(15 * 60), f.places, f.scorer(CongestionLevel.QUIET));
 
-        assertEquals(3, courses.size());
+        assertTrue(courses.size() >= 3 && courses.size() <= CourseRules.COURSE_COUNT, "코스 " + courses.size() + "개");
         Set<String> used = new HashSet<>();
         double prevScore = Double.MAX_VALUE;
         for (int i = 0; i < courses.size(); i++) {

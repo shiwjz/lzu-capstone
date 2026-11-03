@@ -19,7 +19,7 @@ public final class CourseRules {
     public static final int TOLERANCE_MINUTES = 30;      // ±30분 → 150~210분만 남김
     public static final int WALK_ZERO_MINUTES = 40;      // 총 도보 40분이면 이동 효율 0
     public static final int CANDIDATES_PER_SLOT = 10;    // 칸별 후보 수 → 10 × 10 × 10 조합
-    public static final int COURSE_COUNT = 3;            // 추천 코스 수
+    public static final int COURSE_COUNT = 10;           // 추천 코스 최대 수 (v0.5, 예전 3)
     public static final int BAR_FROM_HOUR = 18;          // 술집은 18시 이후 도착일 때만
     public static final int ASSUMED_MOVE_MINUTES = 10;   // 후보 고를 때 칸 사이 이동 시간 가정
 

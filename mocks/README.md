@@ -1,4 +1,4 @@
-# 가짜 응답 JSON (API 명세 v0.4)
+# 가짜 응답 JSON (API 명세 v0.5)
 
 - 서버 없이도 화면 개발할 수 있게 API 응답 형식 그대로 만든 가짜 데이터
 - 명세는 `docs/api-spec.md` 참고
@@ -15,6 +15,9 @@
 - 장소 점수: `place_score.py` (이윤경) 그대로 import, 성·연령은 `cell_gender_age_fake.csv`·`cell_cluster.csv`
 - 서울시 생활인구 혼잡도(`cell_congestion_seoul.csv`)는 서버용 `congestion_seoul.tsv`로만 만들고, 가짜 JSON은 기본 혼잡도로 만듦
 - 거리·도보 시간·도착 시각·코스 조합: 코스 생성 규칙 v0.1로 실제 계산
+- (v0.5) 음식 큰 종류·세부: `blog_tag/place_cuisine.csv`(최예린 확정본) 있으면 그걸, 없으면 카카오 분류·가게 이름으로 임시 분류
+  - 임시 분류 결과는 맨 위 `place_cuisine_draft.csv`로 같이 나옴 → 예린 검수용 (고쳐서 `blog_tag/place_cuisine.csv`로 저장하면 다음부터 그걸 씀)
+- (v0.5) 코스 최대 10개 + 키워드, 인원 → 분위기 자동, 알레르기 2개 (명세 'v0.5에서 바뀐 점')
 
 ## 다시 만들기
 
@@ -54,6 +57,9 @@ try {
 - 가입할 때 `taken@example.com` 넣으면 DUPLICATE_EMAIL 에러 → 에러 화면 확인용
 - 테스트: `flutter test test/api_mock_test.dart`
 - 9주차: 서버 붙이면 `HttpOdigaApi`만 새로 만들어서 `MockOdigaApi` 자리에 넣기 → 화면 코드는 그대로
+- (v0.5, @서예령) 응답에 새로 생긴 필드: `courses[].keywords`, `places[].cuisine`·`cuisineDetail`, `conditions.cuisines`·`cuisineDetails`
+  - 앱 `api_models.dart`는 아직 안 읽음 (없는 필드는 무시돼서 안 깨짐) → 코스 카드 칩·음식 취향 화면 만들 때 추가하기
+  - 코스가 최대 10개라 결과 화면은 목록 스크롤 필요
 
 ## 진짜 서버로 바꾸기 (9주차)
 

@@ -78,8 +78,46 @@ class SearchServiceTest {
         assertEquals("성수 오후 전시관 코스", best.title());
         assertEquals(173, best.totalMinutes());
         assertEquals(0.86, best.score().total());
-        assertEquals(3, courses(data).size());
+        assertEquals(9, courses(data).size());                       // v0.5 최대 10개, 가짜 JSON도 9개
+        assertEquals(List.of("조용함", "한산", "분식", "도보 5분 이내"), best.keywords());
         assertTrue(((List<?>) data.get("places")).size() <= 10);
+    }
+
+    @Test
+    @DisplayName("v0.5 인원 → 분위기: 1명 혼자가능, 2명 데이트(친구면 안 붙임), 4명 단체, 인원 모르면 안 붙임")
+    void partyMoods() {
+        assertEquals(List.of("혼자가능"), ((Map<?, ?>) service().search(query("토요일 점심 홍대에서 혼자 밥 먹을 곳")).get("conditions")).get("atmospheres"));
+        assertEquals(List.of("조용함"), ((Map<?, ?>) service().search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet())).get("conditions")).get("atmospheres"));
+        assertEquals(List.of("단체"), ((Map<?, ?>) service().search(query("토요일 저녁 강남 4명 밥집")).get("conditions")).get("atmospheres"));
+        assertEquals(List.of(), ((Map<?, ?>) service().search(query("토요일 저녁 강남 밥집")).get("conditions")).get("atmospheres"));
+        SearchConditions two = new SearchConditions("HONGDAE", "2026-10-17", null, "19:00", 2, List.of(), List.of(),
+                "DEFAULT", List.of(), null, null, null, List.of(), "USER");
+        assertEquals(List.of("데이트"), two.withPartyMoods().atmospheres());
+    }
+
+    @Test
+    @DisplayName("v0.5 음식 취향: 큰 종류 고르면 식사 칸은 그 종류만, 세부 맞으면 사용자 요구 점수 올라감, 이상한 코드는 400")
+    void cuisines() {
+        SearchConditions c = new SearchConditions("HONGDAE", "2026-10-17", "WEEKEND", "19:00", 3, List.of(), List.of(),
+                "DEFAULT", List.of(), null, null, null, List.of(), "USER");
+        for (CoursePlan course : courses(service().search(new SearchService.SearchRequest("홍대", null, null, null,
+                c.withCuisines(List.of("JAPANESE"), List.of()))))) {
+            for (CoursePlan.Stop s : course.stops()) {
+                if (s.slot() == Slot.MEAL) assertEquals("JAPANESE", STORE.find(s.placeId()).orElseThrow().cuisine(), s.name());
+            }
+        }
+        PlaceScoreModel model = new PlaceScoreModel(STORE);
+        PlaceStore.Place sushi = STORE.all().stream()
+                .filter(p -> "초밥·롤".equals(p.cuisineDetail()) && p.region().equals("HONGDAE")).findFirst().orElseThrow();
+        double plain = model.forConditions(c.withDefaults()).score(sushi.toCoursePlace(), 19).request();
+        double liked = model.forConditions(c.withCuisines(List.of(), List.of("초밥·롤")).withDefaults()).score(sushi.toCoursePlace(), 19).request();
+        assertEquals(0.5, plain);
+        assertEquals(1.0, liked);
+        assertEquals("INVALID_INPUT", expectError(() -> service().search(new SearchService.SearchRequest("홍대", null, null, null,
+                c.withCuisines(List.of("PIZZA"), List.of())))).code());
+        assertEquals("INVALID_INPUT", expectError(() -> service().search(new SearchService.SearchRequest("홍대", null, null, null,
+                new SearchConditions("HONGDAE", "2026-10-17", null, "19:00", 3, List.of(), List.of(), "DEFAULT",
+                        List.of("PEANUT"), null, null, null, List.of(), "USER")))).code());   // 알레르기는 2개만
     }
 
     @Test

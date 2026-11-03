@@ -24,6 +24,7 @@ import java.util.Optional;
  * 장소·혼잡도 저장소 - 김예민
  * - 지금: resources/data/places.tsv, congestion.tsv, cell_profile.tsv 읽음 (mocks/generate_mocks.py가 만듦)
  *   · 장소: 예린 output/places.csv (분류 보정·영어 코드) + 셀 번호 + 예린 블로그 태그(place_tag.csv)
+ *     + 음식 큰 종류·세부 (v0.5, 예린 place_cuisine.csv 오기 전엔 임시 분류)
  *   · 혼잡도: 윤경 cell_congestion.csv (sameTime = 같은 시간끼리 비교, allDay = 하루 전체 비교)
  *     → 서울시 생활인구 버전 쓰려면 application.properties odiga.congestion-file=congestion_seoul.tsv
  *   · 셀 성·연령 구성 + 유형(군집): 윤경 cell_gender_age_fake.csv, cell_cluster.csv (타깃 특성 점수용)
@@ -38,11 +39,12 @@ public class PlaceStore {
 
     public record Place(String placeId, String name, String region, String category, String kakaoCategory,
                         double lat, double lng, String cellId, List<Tag> tags,
-                        String address, String roadAddress, String phone, String placeUrl) {
+                        String address, String roadAddress, String phone, String placeUrl,
+                        String cuisine, String cuisineDetail) {
 
         public CoursePlace toCoursePlace() {
             return new CoursePlace(placeId, name, region, category, kakaoCategory, lat, lng,
-                    tags.stream().map(Tag::tag).toList());
+                    tags.stream().map(Tag::tag).toList(), cuisine, cuisineDetail);
         }
 
         /** 화면 표시용 주소 (도로명 우선) */
@@ -95,7 +97,7 @@ public class PlaceStore {
     PlaceStore(String placesPath, String congestionPath, String profilePath, String congestionFile) {
         this.congestionFile = congestionFile;
         List<Place> loaded = new ArrayList<>();
-        for (String[] r : readTsv(placesPath, 13)) {
+        for (String[] r : readTsv(placesPath, 15)) {
             List<Tag> tags = new ArrayList<>();
             if (!r[8].isEmpty()) {
                 for (String t : r[8].split("\\|")) {
@@ -105,7 +107,7 @@ public class PlaceStore {
             }
             Place p = new Place(r[0], r[1], r[2], r[3], r[4], Double.parseDouble(r[5]), Double.parseDouble(r[6]),
                     r[7], List.copyOf(tags), blankToNull(r[9]), blankToNull(r[10]), blankToNull(r[11]),
-                    blankToNull(r[12]));
+                    blankToNull(r[12]), blankToNull(r[13]), blankToNull(r[14]));
             loaded.add(p);
             byId.put(p.placeId(), p);
         }

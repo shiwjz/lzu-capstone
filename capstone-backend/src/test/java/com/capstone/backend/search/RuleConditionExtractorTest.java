@@ -118,4 +118,19 @@ class RuleConditionExtractorTest {
         assertEquals(List.of("매운"), c.excludedFoods());
         assertEquals(List.of(), x("성수 회사 근처 카페").allergies());   // '회사'의 '회'를 생선으로 안 봄
     }
+
+    @Test
+    @DisplayName("v0.5 음식 취향: 큰 종류·세부 찾기, 빼는 말은 취향 아님, 알레르기 2개만")
+    void cuisines() {
+        SearchConditions c = x("토요일 저녁 홍대에서 일식 먹고 싶어 초밥이나 라멘");
+        assertEquals(List.of("JAPANESE"), c.cuisines());
+        assertEquals(List.of("초밥·롤", "라멘"), c.cuisineDetails());
+        SearchConditions no = x("성수에서 저녁 먹을 건데 일식 말고 고기 빼고");
+        assertEquals(List.of(), no.cuisines());
+        assertEquals(List.of(), no.cuisineDetails());
+        assertEquals(List.of("일식", "고기"), no.excludedFoods());
+        assertEquals(List.of(), x("강남 땅콩 알레르기 있어").allergies());
+        assertEquals(List.of("SEAFOOD"), x("강남 해산물 알레르기 있어").allergies());
+        assertEquals(List.of(), x("강남 해산물 알레르기 있어").cuisineDetails());
+    }
 }

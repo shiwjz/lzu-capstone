@@ -14,6 +14,8 @@
     "lng": 127.0459989,
     "kakaoCategory": "음식점 > 카페",
     "placeUrl": "http://place.map.kakao.com/921699059",
+    "cuisine": "CAFE",
+    "cuisineDetail": "개인카페",
     "openingHours": null,
     "tags": [
       {

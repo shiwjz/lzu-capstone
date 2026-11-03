@@ -26,7 +26,8 @@ import java.util.Set;
 public class PreferenceService {
 
     static final Set<String> REGIONS = Set.of("SEONGSU", "HONGDAE", "GANGNAM");
-    static final Set<String> ALLERGIES = Set.of("SHELLFISH", "SEAFOOD", "PEANUT", "MILK", "EGG", "WHEAT");
+    // 알레르기는 카카오 음식점 분류로 확실히 걸러지는 2개만 (10/31 회의, 땅콩·우유·달걀·밀은 메뉴 데이터 없어서 향후 보완)
+    static final Set<String> ALLERGIES = Set.of("SHELLFISH", "SEAFOOD");
 
     private final UserRepository users;
     private final UserPreferenceRepository preferences;
@@ -78,7 +79,7 @@ public class PreferenceService {
      * 값 검사·정리 (DB 없이 테스트하려고 static)
      * - region: SEONGSU/HONGDAE/GANGNAM 또는 null
      * - atmospheres: 앞뒤 공백 빼고, 빈 값·중복 빼고, 최대 10개·각 30자 (태그 이름은 예린 태그 사전 기준, 서버는 이름 검사 안 함)
-     * - allergies: 명세 알레르기 코드 6개만
+     * - allergies: SHELLFISH·SEAFOOD 2개만 (v0.5)
      */
     static Preferences validate(Preferences req) {
         if (req == null) throw new CustomException(ErrorCode.INVALID_INPUT);

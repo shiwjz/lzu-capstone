@@ -24,6 +24,8 @@
       "ageGroup": null,
       "companionType": "COUPLE",
       "excludedFoods": [],
+      "cuisines": [],
+      "cuisineDetails": [],
       "extractedBy": "GEMINI"
     },
     "places": [
@@ -55,6 +57,8 @@
             "mentions": 2
           }
         ],
+        "cuisine": "KOREAN",
+        "cuisineDetail": "고기",
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -92,6 +96,8 @@
             "mentions": 4
           }
         ],
+        "cuisine": "JAPANESE",
+        "cuisineDetail": "돈까스·우동",
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -133,6 +139,8 @@
             "mentions": 2
           }
         ],
+        "cuisine": "JAPANESE",
+        "cuisineDetail": "초밥·롤",
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -170,6 +178,8 @@
             "mentions": 2
           }
         ],
+        "cuisine": "BAR",
+        "cuisineDetail": null,
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -207,6 +217,8 @@
             "mentions": 2
           }
         ],
+        "cuisine": "KOREAN",
+        "cuisineDetail": "고기",
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -244,6 +256,8 @@
             "mentions": 2
           }
         ],
+        "cuisine": "BAR",
+        "cuisineDetail": "호프·요리주점",
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -277,6 +291,8 @@
             "mentions": 12
           }
         ],
+        "cuisine": "KOREAN",
+        "cuisineDetail": "고기",
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -310,6 +326,8 @@
             "mentions": 7
           }
         ],
+        "cuisine": "KOREAN",
+        "cuisineDetail": "고기",
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -351,6 +369,8 @@
             "mentions": 2
           }
         ],
+        "cuisine": "BAR",
+        "cuisineDetail": "칵테일바",
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -388,6 +408,8 @@
             "mentions": 6
           }
         ],
+        "cuisine": "KOREAN",
+        "cuisineDetail": "고기",
         "congestion": {
           "hour": 19,
           "level": "BUSY",
@@ -408,6 +430,12 @@
         "rank": 1,
         "title": "홍대 저녁 테마카페 코스",
         "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 3분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "고기",
+          "도보 5분 이내"
+        ],
         "startAt": "19:00",
         "endAt": "21:53",
         "totalMinutes": 173,
@@ -484,6 +512,12 @@
         "rank": 2,
         "title": "홍대 저녁 테마카페 코스",
         "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 3분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "돈까스·우동",
+          "도보 5분 이내"
+        ],
         "startAt": "19:00",
         "endAt": "21:53",
         "totalMinutes": 173,
@@ -560,6 +594,12 @@
         "rank": 3,
         "title": "홍대 저녁 테마카페 코스",
         "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 3분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "고기",
+          "도보 5분 이내"
+        ],
         "startAt": "19:00",
         "endAt": "21:53",
         "totalMinutes": 173,
@@ -626,6 +666,573 @@
             "congestion": {
               "level": "BUSY",
               "percentile": 76
+            },
+            "placeScore": 0.85
+          }
+        ]
+      },
+      {
+        "courseId": "c_hongdae_4",
+        "rank": 4,
+        "title": "홍대 저녁 테마카페 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 6분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "초밥·롤"
+        ],
+        "startAt": "19:00",
+        "endAt": "21:56",
+        "totalMinutes": 176,
+        "totalWalkMinutes": 6,
+        "totalDistanceMeters": 247,
+        "score": {
+          "total": 0.85,
+          "placeAvg": 0.85,
+          "moveEfficiency": 0.85,
+          "timeFit": 0.87
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "1890298945",
+            "name": "스시노칸도 홍대점",
+            "category": "FOOD",
+            "lat": 37.5522125,
+            "lng": 126.9208387,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 84
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "2029870069",
+            "name": "수택",
+            "category": "CAFE",
+            "lat": 37.5530137,
+            "lng": 126.9199268,
+            "arriveAt": "20:03",
+            "leaveAt": "20:53",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 3,
+            "distanceMetersFromPrev": 120,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 73
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "947862288",
+            "name": "메이드문 홍대본점",
+            "category": "ACTIVITY",
+            "lat": 37.5522216,
+            "lng": 126.9209722,
+            "arriveAt": "20:56",
+            "leaveAt": "21:56",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 3,
+            "distanceMetersFromPrev": 127,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 87
+            },
+            "placeScore": 0.85
+          }
+        ]
+      },
+      {
+        "courseId": "c_hongdae_5",
+        "rank": 5,
+        "title": "홍대 저녁 보드게임 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 7분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "술집"
+        ],
+        "startAt": "19:00",
+        "endAt": "21:57",
+        "totalMinutes": 177,
+        "totalWalkMinutes": 7,
+        "totalDistanceMeters": 316,
+        "score": {
+          "total": 0.85,
+          "placeAvg": 0.85,
+          "moveEfficiency": 0.82,
+          "timeFit": 0.9
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "1077811232",
+            "name": "프리즘",
+            "category": "FOOD",
+            "lat": 37.5522017,
+            "lng": 126.9209835,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 84
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "1620894311",
+            "name": "블루보틀 홍대카페",
+            "category": "CAFE",
+            "lat": 37.5543346,
+            "lng": 126.9212076,
+            "arriveAt": "20:05",
+            "leaveAt": "20:55",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 5,
+            "distanceMetersFromPrev": 238,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 78
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "1493237095",
+            "name": "홈즈앤루팡 홍대점",
+            "category": "ACTIVITY",
+            "lat": 37.5541414,
+            "lng": 126.9220589,
+            "arriveAt": "20:57",
+            "leaveAt": "21:57",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 2,
+            "distanceMetersFromPrev": 78,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 87
+            },
+            "placeScore": 0.85
+          }
+        ]
+      },
+      {
+        "courseId": "c_hongdae_6",
+        "rank": 6,
+        "title": "홍대 저녁 고양이카페 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 9분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "고기"
+        ],
+        "startAt": "19:00",
+        "endAt": "21:59",
+        "totalMinutes": 179,
+        "totalWalkMinutes": 9,
+        "totalDistanceMeters": 378,
+        "score": {
+          "total": 0.85,
+          "placeAvg": 0.85,
+          "moveEfficiency": 0.78,
+          "timeFit": 0.97
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "1214853708",
+            "name": "홍대족발",
+            "category": "FOOD",
+            "lat": 37.5531438,
+            "lng": 126.9204676,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 71
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "1568686492",
+            "name": "헤이스위티 홍대점",
+            "category": "CAFE",
+            "lat": 37.5550592,
+            "lng": 126.9202641,
+            "arriveAt": "20:05",
+            "leaveAt": "20:55",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 5,
+            "distanceMetersFromPrev": 214,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 87
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "1092855670",
+            "name": "루프캣미 고양이카페 홍대점",
+            "category": "ACTIVITY",
+            "lat": 37.5551019,
+            "lng": 126.9221235,
+            "arriveAt": "20:59",
+            "leaveAt": "21:59",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 4,
+            "distanceMetersFromPrev": 164,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 88
+            },
+            "placeScore": 0.85
+          }
+        ]
+      },
+      {
+        "courseId": "c_hongdae_7",
+        "rank": 7,
+        "title": "홍대 저녁 보드게임 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 7분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "고기"
+        ],
+        "startAt": "19:00",
+        "endAt": "21:57",
+        "totalMinutes": 177,
+        "totalWalkMinutes": 7,
+        "totalDistanceMeters": 333,
+        "score": {
+          "total": 0.85,
+          "placeAvg": 0.85,
+          "moveEfficiency": 0.82,
+          "timeFit": 0.9
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "1510834256",
+            "name": "서교동연탄집",
+            "category": "FOOD",
+            "lat": 37.5555562,
+            "lng": 126.9196513,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 89
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "2085156455",
+            "name": "일용할커피 홍대본점",
+            "category": "CAFE",
+            "lat": 37.5552084,
+            "lng": 126.9196449,
+            "arriveAt": "20:01",
+            "leaveAt": "20:51",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 1,
+            "distanceMetersFromPrev": 39,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 86
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "953386352",
+            "name": "레드버튼 홍대점",
+            "category": "ACTIVITY",
+            "lat": 37.5540084,
+            "lng": 126.9226136,
+            "arriveAt": "20:57",
+            "leaveAt": "21:57",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 6,
+            "distanceMetersFromPrev": 294,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 85
+            },
+            "placeScore": 0.85
+          }
+        ]
+      },
+      {
+        "courseId": "c_hongdae_8",
+        "rank": 8,
+        "title": "홍대 저녁 애견카페 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 15분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "칵테일바"
+        ],
+        "startAt": "19:00",
+        "endAt": "22:05",
+        "totalMinutes": 185,
+        "totalWalkMinutes": 15,
+        "totalDistanceMeters": 755,
+        "score": {
+          "total": 0.8,
+          "placeAvg": 0.85,
+          "moveEfficiency": 0.62,
+          "timeFit": 0.83
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "848125549",
+            "name": "바다",
+            "category": "FOOD",
+            "lat": 37.5539793,
+            "lng": 126.9222424,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 87
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "27339829",
+            "name": "디스코플래닛",
+            "category": "CAFE",
+            "lat": 37.5546525,
+            "lng": 126.9184482,
+            "arriveAt": "20:07",
+            "leaveAt": "20:57",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 7,
+            "distanceMetersFromPrev": 343,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 73
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "32238625",
+            "name": "페럿월드",
+            "category": "ACTIVITY",
+            "lat": 37.5537555,
+            "lng": 126.9229816,
+            "arriveAt": "21:05",
+            "leaveAt": "22:05",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 8,
+            "distanceMetersFromPrev": 412,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 73
+            },
+            "placeScore": 0.85
+          }
+        ]
+      },
+      {
+        "courseId": "c_hongdae_9",
+        "rank": 9,
+        "title": "홍대 저녁 테마카페 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 17분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "고기"
+        ],
+        "startAt": "19:00",
+        "endAt": "22:07",
+        "totalMinutes": 187,
+        "totalWalkMinutes": 17,
+        "totalDistanceMeters": 810,
+        "score": {
+          "total": 0.79,
+          "placeAvg": 0.85,
+          "moveEfficiency": 0.57,
+          "timeFit": 0.77
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "1052257097",
+            "name": "제주특별집",
+            "category": "FOOD",
+            "lat": 37.552256,
+            "lng": 126.92122,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 84
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "64737691",
+            "name": "히트커피로스터스 서교점",
+            "category": "CAFE",
+            "lat": 37.5552111,
+            "lng": 126.918357,
+            "arriveAt": "20:09",
+            "leaveAt": "20:59",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 9,
+            "distanceMetersFromPrev": 414,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 81
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "1620800014",
+            "name": "망고룸카페",
+            "category": "ACTIVITY",
+            "lat": 37.555115,
+            "lng": 126.9228478,
+            "arriveAt": "21:07",
+            "leaveAt": "22:07",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 8,
+            "distanceMetersFromPrev": 396,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 84
+            },
+            "placeScore": 0.85
+          }
+        ]
+      },
+      {
+        "courseId": "c_hongdae_10",
+        "rank": 10,
+        "title": "홍대 저녁 보드게임 코스",
+        "reason": "'데이트' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 21분",
+        "keywords": [
+          "데이트",
+          "북적",
+          "호프·요리주점"
+        ],
+        "startAt": "19:00",
+        "endAt": "22:11",
+        "totalMinutes": 191,
+        "totalWalkMinutes": 21,
+        "totalDistanceMeters": 1042,
+        "score": {
+          "total": 0.75,
+          "placeAvg": 0.85,
+          "moveEfficiency": 0.47,
+          "timeFit": 0.63
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "379558448",
+            "name": "한량",
+            "category": "FOOD",
+            "lat": 37.552256,
+            "lng": 126.92122,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 84
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "802176152",
+            "name": "페그로스터스",
+            "category": "CAFE",
+            "lat": 37.5553427,
+            "lng": 126.9171719,
+            "arriveAt": "20:10",
+            "leaveAt": "21:00",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 10,
+            "distanceMetersFromPrev": 495,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 86
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "32375674",
+            "name": "데블다이스 홍대점",
+            "category": "ACTIVITY",
+            "lat": 37.5549495,
+            "lng": 126.9233584,
+            "arriveAt": "21:11",
+            "leaveAt": "22:11",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 11,
+            "distanceMetersFromPrev": 547,
+            "congestion": {
+              "level": "BUSY",
+              "percentile": 74
             },
             "placeScore": 0.85
           }

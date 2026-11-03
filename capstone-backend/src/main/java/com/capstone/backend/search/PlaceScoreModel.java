@@ -3,6 +3,7 @@ package com.capstone.backend.search;
 import com.capstone.backend.course.CongestionLevel;
 import com.capstone.backend.course.CourseRules;
 import com.capstone.backend.course.CrowdPreference;
+import com.capstone.backend.course.Cuisine;
 import com.capstone.backend.course.PlaceScore;
 import com.capstone.backend.course.PlaceScorer;
 import com.capstone.backend.place.PlaceStore;
@@ -16,6 +17,7 @@ import java.util.Map;
 /**
  * 장소 점수 모듈 (윤경 place_score.py → Java로 옮김, 예민)
  * - 장소 점수 = 0.45 × 사용자 요구 + 0.30 × 타깃 특성 + 0.25 × 혼잡도 적합도 (각 0~1)
+ * - v0.5: 사용자 요구에 세부 음식 취향 가점 섞음 (course/Cuisine.detailFit)
  * - 계산식·숫자는 place_score.py랑 똑같이 → 바꿀 때는 둘 다 바꾸기 (@이윤경)
  *   · 같은 입력이면 같은 값인지: PlaceScoreModelTest (윤경 test_place_score.py 10개 그대로)
  *   · 가짜 JSON(generate_mocks.py가 place_score.py import)이랑 서버 결과 비교로도 확인
@@ -46,6 +48,12 @@ public class PlaceScoreModel implements PlaceScorerFactory {
             Map<String, Integer> tags = new HashMap<>();
             p.tags().forEach(t -> tags.put(t.tag(), t.mentions()));
             double request = requestScore(c.atmospheres(), tags);
+            // v0.5 세부 음식 취향 가점: 분위기 점수들과 같이 평균 (분위기 없으면 세부 점수만) - 윤경 확정 전 임시, generate_mocks.py랑 같게
+            Double fitD = Cuisine.detailFit(p.cuisine(), p.cuisineDetail(), c.cuisineDetails());
+            if (fitD != null) {
+                int n = c.atmospheres() == null ? 0 : c.atmospheres().size();
+                request = n > 0 ? (request * n + fitD) / (n + 1) : fitD;
+            }
 
             PlaceStore.CellProfile cell = store.cellProfile(p.placeId());
             Map<String, Double> cluster = cell == null ? null : store.clusterAverage(cell.cluster());
