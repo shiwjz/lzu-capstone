@@ -56,44 +56,11 @@ public class RuleConditionExtractor implements ConditionExtractor {
     // 알레르기 (문장에 '알레르기·알러지·못 먹'이 있을 때만)
     private static final Map<String, List<String>> ALLERGY_WORDS = orderedList(
             "SHELLFISH", List.of("갑각류", "새우", "꽃게", "대게", "랍스터", "게 알레르기"),
-            "SEAFOOD", List.of("해산물", "생선", "해물"));     // 10/31 회의: 2개로 줄임 (땅콩·우유 등은 향후 보완)
-
-    // 음식 취향 v0.5 - 큰 종류(거르기)·세부(가점), 코드는 course/Cuisine이랑 같게
-    // - "일식 말고"처럼 빼는 말은 먼저 지우고 찾음 (빼는 건 excludedFoods)
-    private static final Map<String, List<String>> CUISINE_WORDS = orderedList(
-            "KOREAN", List.of("한식", "한정식", "백반"),
-            "JAPANESE", List.of("일식", "일본 음식", "일본음식"),
-            "WESTERN", List.of("양식", "서양 음식"),
-            "CHINESE", List.of("중식", "중국집", "중화"),
-            "BUNSIK", List.of("분식"),
-            "ASIAN", List.of("아시안", "동남아 음식"),
-            "CHICKEN", List.of("치킨", "통닭", "치맥"),
-            "BAR", List.of("술집", "한잔", "한 잔", "술 마시"));
-    private static final Map<String, List<String>> DETAIL_WORDS = orderedList(
-            "고기", List.of("고기", "삼겹살", "갈비", "고깃집"),
-            "국밥", List.of("국밥", "순대국", "설렁탕"),
-            "찌개·전골", List.of("찌개", "전골"),
-            "국수", List.of("국수", "냉면", "칼국수"),
-            "초밥·롤", List.of("초밥", "스시", "오마카세"),
-            "라멘", List.of("라멘"),
-            "돈까스·우동", List.of("돈까스", "돈가스", "우동"),
-            "덮밥", List.of("덮밥", "규동"),
-            "이탈리안", List.of("파스타", "이탈리안", "리조또"),
-            "피자", List.of("피자"),
-            "햄버거", List.of("햄버거", "버거"),
-            "스테이크", List.of("스테이크"),
-            "멕시칸", List.of("타코", "멕시칸", "부리또"),
-            "중국요리", List.of("짜장", "짬뽕", "마라", "탕수육"),
-            "양꼬치", List.of("양꼬치"),
-            "떡볶이", List.of("떡볶이"),
-            "김밥", List.of("김밥"),
-            "동남아", List.of("쌀국수", "팟타이", "베트남", "태국"),
-            "인도", List.of("커리", "카레", "인도"),
-            "이자카야", List.of("이자카야"),
-            "칵테일바", List.of("칵테일"),
-            "와인바", List.of("와인"),
-            "포장마차", List.of("포차", "포장마차"),
-            "호프·요리주점", List.of("호프"));
+            "SEAFOOD", List.of("해산물", "생선", "해물"),
+            "PEANUT", List.of("땅콩", "견과"),
+            "MILK", List.of("우유", "유제품", "유당"),
+            "EGG", List.of("계란", "달걀"),
+            "WHEAT", List.of("밀가루", "글루텐", "밀 알레르기"));
 
     // 제외 음식 ("매운 거 말고", "고기 빼고")
     private static final List<String> FOOD_WORDS = List.of(
@@ -145,9 +112,7 @@ public class RuleConditionExtractor implements ConditionExtractor {
                 age(q),
                 companion,
                 excludedFoods(q),
-                "RULE",
-                firstAppearance(withoutExcluded(q), CUISINE_WORDS),
-                firstAppearance(withoutExcluded(q), DETAIL_WORDS));
+                "RULE");
     }
 
     public static String dayType(LocalDate date) {
@@ -159,11 +124,10 @@ public class RuleConditionExtractor implements ConditionExtractor {
         if (q.contains("모레")) return today.plusDays(2);
         if (q.contains("내일")) return today.plusDays(1);
         if (q.contains("오늘")) return today;
-        // 주는 월요일 시작 (달력 기준): 다음 주 = 다음 월~일, 이번 주 = 이번 월~일 (10/31 예린 제보 반영)
-        boolean nextWeek = anyOf(q, List.of("다음 주", "다음주", "담주", "차주"));
-        boolean thisWeek = anyOf(q, List.of("이번 주", "이번주", "금주"));
-        LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        int best = Integer.MAX_VALUE;
+       boolean nextWeek = q.contains("다음 주") || q.contains("다음주");
+       boolean thisWeek = q.contains("이번 주") || q.contains("이번주");
+       LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+       int best = Integer.MAX_VALUE;
         DayOfWeek day = null;
         for (Map.Entry<String, DayOfWeek> e : DAYS.entrySet()) {
             int i = q.indexOf(e.getKey());
@@ -277,11 +241,6 @@ public class RuleConditionExtractor implements ConditionExtractor {
             }
         }
         return out;
-    }
-
-    /** "일식 말고", "고기 빼고" 같은 빼는 말 지운 문장 (음식 취향 찾을 때 헷갈리지 않게) */
-    private static String withoutExcluded(String q) {
-        return EXCLUDE.matcher(q).replaceAll(" ");
     }
 
     // ---------- 도우미 ----------
