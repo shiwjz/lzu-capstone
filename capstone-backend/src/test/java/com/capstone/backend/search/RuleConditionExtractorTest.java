@@ -62,7 +62,7 @@ class RuleConditionExtractorTest {
         assertEquals("2026-10-16", c.date());
         assertEquals("WEEKDAY", c.dayType());
         assertEquals(4, c.partySize().intValue());
-        assertEquals(List.of("단체석"), c.atmospheres());
+        assertEquals(List.of("단체"), c.atmospheres());
         assertEquals("DEFAULT", c.crowdPreference());
         assertEquals(List.of("SHELLFISH"), c.allergies());
         assertEquals("COWORKER", c.companionType());
@@ -93,6 +93,22 @@ class RuleConditionExtractorTest {
     }
 
     @Test
+    @DisplayName("다음 주·이번 주는 달력 기준(월요일 시작): 토요일·일요일에 물어봐도 맞게")
+    void weeks() {
+        LocalDateTime sat = LocalDateTime.of(2026, 10, 31, 19, 0);   // 토
+        LocalDateTime sun = LocalDateTime.of(2026, 11, 1, 19, 0);    // 일
+        assertEquals("2026-11-07", rule.extract("다음주 토요일 성수 카페", sat).date());
+        assertEquals("2026-11-07", rule.extract("담주 토요일 성수 카페", sat).date());
+        assertEquals("2026-11-06", rule.extract("다음주 금요일 강남", sat).date());
+        assertEquals("2026-11-07", rule.extract("다음 주말 성수", sat).date());
+        assertEquals("2026-10-31", rule.extract("토요일 성수", sat).date());
+        assertEquals("2026-11-07", rule.extract("다음주 토요일 성수", sun).date());   // 일요일엔 바로 다음 토요일
+        assertEquals("2026-11-07", rule.extract("다음 주말 성수", sun).date());
+        assertEquals("2026-11-01", rule.extract("이번 주말 성수", sun).date());
+        assertEquals("2026-11-06", rule.extract("이번주 금요일 홍대", LocalDateTime.of(2026, 11, 3, 10, 0)).date());
+    }
+
+    @Test
     @DisplayName("지역 없으면 null, '2시간'은 시각 아님, 제외 음식")
     void missingAndExcluded() {
         assertNull(x("조용한 카페 가고 싶어").region());
@@ -101,5 +117,20 @@ class RuleConditionExtractorTest {
         assertEquals("18:00", c.startTime());
         assertEquals(List.of("매운"), c.excludedFoods());
         assertEquals(List.of(), x("성수 회사 근처 카페").allergies());   // '회사'의 '회'를 생선으로 안 봄
+    }
+
+    @Test
+    @DisplayName("v0.5 음식 취향: 큰 종류·세부 찾기, 빼는 말은 취향 아님, 알레르기 2개만")
+    void cuisines() {
+        SearchConditions c = x("토요일 저녁 홍대에서 일식 먹고 싶어 초밥이나 라멘");
+        assertEquals(List.of("JAPANESE"), c.cuisines());
+        assertEquals(List.of("초밥·롤", "라멘"), c.cuisineDetails());
+        SearchConditions no = x("성수에서 저녁 먹을 건데 일식 말고 고기 빼고");
+        assertEquals(List.of(), no.cuisines());
+        assertEquals(List.of(), no.cuisineDetails());
+        assertEquals(List.of("일식", "고기"), no.excludedFoods());
+        assertEquals(List.of(), x("강남 땅콩 알레르기 있어").allergies());
+        assertEquals(List.of("SEAFOOD"), x("강남 해산물 알레르기 있어").allergies());
+        assertEquals(List.of(), x("강남 해산물 알레르기 있어").cuisineDetails());
     }
 }

@@ -1,6 +1,79 @@
-# 오디가 API 명세 v0.3
+# 오디가 API 명세 v0.5
 
-2026-10-24 · 김예민
+2026-11-02 · 김예민
+
+## v0.5에서 바뀐 점 (10주차, 10/31 회의 반영)
+
+| 바뀐 것 | v0.4 | v0.5 | 근거 |
+| --- | --- | --- | --- |
+| 알레르기 | 6개 (SHELLFISH·SEAFOOD·PEANUT·MILK·EGG·WHEAT) | **2개 (SHELLFISH 갑각류·SEAFOOD 해산물)**, 나머지는 향후 보완 | 카카오 음식점 종류로 거를 수 있는 건 2개뿐 |
+| 인원 → 분위기 | 따로 받음 | 인원 보고 분위기 자동 추가: 1명 혼자가능 / 2명 데이트 / 4명 이상 단체 | 10/31 회의 |
+| 음식 취향 | 없음 | 검색 조건 `cuisines`(큰 종류, 거르기) + `cuisineDetails`(세부, 가점) | 10/31 회의 (개인 설정 → 음식 취향) |
+| 장소 정보 | tags까지 | + `cuisine`, `cuisineDetail` (장소 목록·상세·검색 카드) | 위 음식 취향 |
+| 코스 개수 | 최대 3개 | **최대 10개** | 10/31 회의 |
+| 코스 키워드 | 없음 | `courses[].keywords` (최대 4개, 카드에 칩으로) | 10/31 회의 |
+
+**인원 → 분위기 (서버가 자동, 인원 모르면 안 붙임)**
+
+- 1명 → 혼자가능, 4명 이상 → 단체, 3명 → 없음
+- 2명 → 데이트. 단, 동행이 친구·가족·회사(FRIEND·FAMILY·COWORKER)면 안 붙임 (회의 때 안 정한 부분이라 예민이 추가, 이상하면 말해주기)
+- 그래서 앱 분위기 칩에서 혼자가능·데이트·디저트는 빼기 (@서예령), 서버는 7개 이름 다 계속 받음
+
+**음식 취향 (`course/Cuisine.java` = `mocks/generate_mocks.py` 같은 표)**
+
+| 큰 종류 코드 (cuisines) | 화면 | 세부 (cuisineDetails) |
+| --- | --- | --- |
+| KOREAN | 한식 | 고기, 국밥, 찌개·전골, 국수, 해물·생선 |
+| JAPANESE | 일식 | 초밥·롤, 라멘, 돈까스·우동, 덮밥 |
+| WESTERN | 양식 | 이탈리안, 피자, 햄버거, 스테이크, 멕시칸 |
+| CHINESE | 중식 | 중국요리, 양꼬치 |
+| BUNSIK | 분식 | 떡볶이, 김밥 |
+| ASIAN | 아시아 | 동남아, 인도 |
+| CHICKEN | 치킨 | - |
+| BAR | 술집 | 호프·요리주점, 이자카야, 칵테일바, 와인바, 포장마차 |
+| (CAFE) | 카페 | 디저트카페, 개인카페, 프랜차이즈, 갤러리·북카페, 차·음료 |
+
+- 큰 종류 골랐으면 **식사 칸은 그 종류 음식점만** (카페·놀거리 칸은 상관없음). CAFE·ETC는 거르기 코드로 안 받음
+- 세부 골랐으면 사용자 요구 점수에 가점: 세부 딱 맞음 1.0 / 같은 큰 종류인데 세부 없음 0.5 / 같은 큰 종류인데 다른 세부 0.2 / 다른 큰 종류는 계산 안 함
+  - 분위기 점수들이랑 같이 평균 ((분위기 점수 합 + 세부 점수) ÷ (분위기 수 + 1)), 분위기 요청 없으면 세부 점수만 - **윤경 확정 전 임시** (@이윤경)
+- 장소별 종류·세부: 카카오 분류에서 뽑고, 세부 없으면 가게 이름으로 추측 (예: "○○스시" → 초밥·롤)
+  - 음식점 1,856곳: 한식 634 · 술집 366 · 일식 234 · 양식 233 · 중식 130 · 분식 91 · 기타 73 · 아시아 53 · 치킨 42, 세부 있는 곳 1,181곳
+  - 초안 `place_cuisine_draft.csv` (2,460줄, 카카오 1,717 · 이름 추측 68 · 못 정함 675) → **예린 확정본 `blog_tag/place_cuisine.csv` 넣으면 그걸 우선 사용** (@최예린, 열: place_id, name, region, category, kakao_category, cuisine, detail, source)
+- 문장에서도 찾음 (규칙 기반): "일식 먹고 싶어 초밥이나 라멘" → cuisines [JAPANESE], cuisineDetails [초밥·롤, 라멘]. "일식 말고"처럼 빼는 말은 취향 아님 (excludedFoods로)
+  - 세부만 말하면("초밥 먹고 싶어") 거르지 않고 가점만 → 초밥집이 위로 올라옴
+
+**코스 키워드 (`courses[].keywords`, 서버에서 생성, 최대 4개)**
+
+1. 원하는 분위기 중 코스 안 2곳 이상 태그 있는 것 (예: 조용함)
+2. 2곳 이상 도착 때 한산 → "한산", 북적 → "북적"
+3. 식사 칸 음식 세부 (없으면 큰 종류 이름, 예: 라멘·한식)
+4. 총 도보 5분 이하 → "도보 5분 이내"
+
+- 같은 계산인지 확인: 파이썬(가짜 JSON)과 서버 결과 검색 3개(코스 10개씩·키워드·음식 종류 포함)·코스 수정·공유·장소 상세 전부 같음 + 음식 취향 넣은 검색 3가지(일식+라멘 / 초밥·이탈리안 / 한식·중식+국밥) 코스·점수 같음
+
+## v0.4에서 바뀐 점 (10주차)
+
+| 바뀐 것 | v0.3 | v0.4 | 근거 |
+| --- | --- | --- | --- |
+| 장소 점수 | 임시 점수 (사용자 요구·타깃은 가짜) | 윤경 장소 점수 모듈 그대로 (서버 `search/PlaceScoreModel`) | 이윤경 place_score.py |
+| 태그 | 가짜 태그 | 예린 블로그 태그 7개 (조용함·데이트·단체·혼자가능·디저트·사진·가성비) | 최예린 blog_tag/place_tag.csv |
+| 분위기 이름 | 단체석·사진·인테리어·혼밥·작업하기 좋음 등 | 위 태그 7개 이름으로 통일 (검색 조건·내 설정·Gemini 출력 전부) | 태그랑 이름 같아야 점수 계산됨 |
+| 혼잡도 | 가짜 유동인구(LG 데이터 모양)만 | + 서울시 생활인구 버전, 서버 설정으로 고름 | 이윤경 cell_congestion_seoul.csv |
+| 장소 추천 이유 | 태그 없는 곳도 "'' 언급이 많고" | 태그 없는 곳은 혼잡도 문구만 | 태그 있는 장소 2,459 / 3,306곳 |
+
+**장소 점수 (윤경 모듈, 숫자는 place_score.py 맨 위)**
+
+- 장소 점수 = 0.45 × 사용자 요구 + 0.30 × 타깃 특성 + 0.25 × 혼잡도 적합도
+- 사용자 요구: 요청 분위기마다 min(태그 언급 수, 3) ÷ 3 → 평균. 분위기 요청 없으면 0.5, 태그 없는 장소는 0
+- 타깃 특성: (칸 성·연령 비율 ÷ 지역 평균) 성별 × 연령 → 배수 ÷ (1 + 배수). 같은 셀 유형 평균과 반반 섞음. 성별·연령 없으면 0.5
+- 혼잡도 적합도: 도착 시각 level_same_time × 아래 '혼잡도 적합도' 표 (확정)
+- 같은 계산인지 확인: 윤경 테스트 10개 Java로 옮겨서 통과 + 파이썬(가짜 JSON)과 서버 결과 검색 3개·코스 수정·공유·장소 상세 전부 같음 + 성별·연령 넣은 타깃 점수 3,306곳 × 4가지 같음
+
+**혼잡도 파일 고르기 (서버)**
+
+- `application.properties` → `odiga.congestion-file=congestion.tsv` (기본, 가짜 유동인구) / `congestion_seoul.tsv` (서울시 생활인구)
+- 배포 서버는 환경변수 `ODIGA_CONGESTION_FILE`로도 바꿀 수 있음
+- 서울시 버전은 행정동 단위라 지역마다 셀 값 종류가 3~5개뿐 (같은 동 안은 같은 값), 홍대 주말 저녁은 '혼잡' 칸이 없음 → 활기 시나리오 차이가 작음
 
 ## v0.3에서 바뀐 점 (9주차)
 
@@ -22,7 +95,7 @@
 
 | API | 상태 | 담당 |
 | --- | --- | --- |
-| POST /api/search (+ 확인용 GET /api/search?q=) | ✅ 동작. 조건 추출은 규칙 기반(Gemini 자리 있음), 장소 점수는 임시(윤경 모듈 자리 있음) | 김예민 · 최예린 · 이윤경 |
+| POST /api/search (+ 확인용 GET /api/search?q=) | ✅ 동작. 조건 추출은 규칙 기반(Gemini 자리 있음), 장소 점수는 윤경 모듈 (v0.4) | 김예민 · 최예린 · 이윤경 |
 | GET /api/places, GET /api/places/{placeId} | ✅ 동작. 지금은 resources/data 파일에서 읽음 → ERD 확정 후 DB | 김예민 (9주차에 가져옴) |
 | PUT /api/courses/{courseId} | ✅ 동작. 코스는 서버 메모리에 저장 (서버 끄면 사라짐) → ERD 확정 후 DB | 김예민 |
 | POST /api/courses/{courseId}/share, GET /api/share/{shareCode} | ✅ 동작 | 김예민 |
@@ -108,7 +181,7 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 
 ## 검색·추천 POST /api/search
 
-문장 한 줄 보내면 추천 장소 최대 10곳 + 코스 최대 3개 한 번에 반환. 전체 형식은 `mocks/search_seongsu_weekend_quiet.json` 참고.
+문장 한 줄 보내면 추천 장소 최대 10곳 + 코스 최대 10개(v0.5) 한 번에 반환. 전체 형식은 `mocks/search_seongsu_weekend_quiet.json` 참고.
 
 ```json
 {
@@ -132,9 +205,9 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 | 응답 data 필드 | 설명 |
 | --- | --- |
 | searchId | 검색 1회 ID (로그·평가용) |
-| conditions | 추출된 조건: region, date, dayType, startTime, partySize, categories, atmospheres(내 설정과 같은 이름), crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy(GEMINI / RULE / USER) |
+| conditions | 추출된 조건: region, date, dayType, startTime, partySize, categories, atmospheres(내 설정과 같은 이름), crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy(GEMINI / RULE / USER), cuisines, cuisineDetails (v0.5) |
 | places | 추천 장소 최대 10곳, 점수 높은 순 |
-| courses | 코스 최대 3개, rank 1이 1등. 코스끼리 장소 안 겹침 |
+| courses | 코스 최대 10개(v0.5), rank 1이 1등. 코스끼리 장소 안 겹침 |
 | notice | 결과가 없거나 조건을 바꿨을 때 안내 문구, 평소엔 null |
 
 **헷갈릴 만한 필드**
@@ -151,6 +224,9 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 | courses[].title | 코스 카드 제목 (예: "성수 오후 전시 코스"), 서버에서 생성 |
 | conditions.excludedFoods | 빼고 싶은 음식 단어 (예: ["매운", "고기"]) → 식사 칸에서 해당 식당 제외 |
 | conditions.companionType | 동행 유형. 연인이면 '데이트' 분위기 자동 추가 |
+| conditions.cuisines / cuisineDetails | (v0.5) 음식 큰 종류(식사 칸 거르기) / 세부(점수 가점). 코드는 위 '음식 취향' 표 |
+| places[].cuisine / cuisineDetail | (v0.5) 그 장소 음식 큰 종류 / 세부, 모르면 null |
+| courses[].keywords | (v0.5) 코스 카드 칩 최대 4개 (예: ["조용함", "한산", "분식", "도보 5분 이내"]) |
 | courses[].reason | 코스 추천 이유 한 줄 (예: "'조용함' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 6분"), 서버에서 생성 |
 
 **코스 안 장소 하나(stops[ ]) 예시** - 이름·좌표는 실제 수집 데이터, 혼잡도는 윤경 데이터, 점수는 가짜 값
@@ -169,18 +245,18 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 
 ## 장소·코스 API
 
-- 검색 때 만든 코스 3개는 서버에 저장하고 courseId 반환 → 로그인 없이도 수정·공유 가능, 로그인하면 내 코스로 연결
+- 검색 때 만든 코스(최대 10개)는 서버에 저장하고 courseId 반환 → 로그인 없이도 수정·공유 가능, 로그인하면 내 코스로 연결
 
 **장소 목록 GET /api/places?region=SEONGSU&category=CAFE&date=2026-10-31&hour=15&limit=50** (v0.3)
 
 - region 필수, 나머지 선택 (category 없으면 전부, date 없으면 오늘, hour 없으면 지금 시각, limit 기본 50·최대 500)
-- 응답 data: date, dayType, hour, total(전체 개수), places[] = placeId, name, category, region, address, lat, lng, tags, congestion(hour, level, percentile)
+- 응답 data: date, dayType, hour, total(전체 개수), places[] = placeId, name, category, region, address, lat, lng, tags, cuisine, cuisineDetail(v0.5), congestion(hour, level, percentile)
 - 혼잡도는 같은 시간끼리 비교(pct_same_time) → 지도 마커 색에 사용
 
 **장소 상세 GET /api/places/{placeId}?date=2026-10-17**
 
 - `date`는 선택. 해당 날짜의 요일 구분으로 시간대별 혼잡도 반환, 없으면 오늘 기준
-- 응답: 장소 기본 정보(placeId, name, category, region, address, roadAddress, phone, lat, lng, kakaoCategory, placeUrl) + `tags` + `congestionByHour`(9~23시, level·percentile, basis = ALL_DAY: 하루 전체 기준 비교라 몇 시가 붐비는지 확인 가능) + `openingHours`
+- 응답: 장소 기본 정보(placeId, name, category, region, address, roadAddress, phone, lat, lng, kakaoCategory, placeUrl) + `tags` + `cuisine`·`cuisineDetail`(v0.5) + `congestionByHour`(9~23시, level·percentile, basis = ALL_DAY: 하루 전체 기준 비교라 몇 시가 붐비는지 확인 가능) + `openingHours`
 - `openingHours`는 구글 Places 연동 전까지 null → 화면에는 "영업시간 정보 없음" 표시
 - 가짜 JSON: `mocks/place_detail.json`
 
@@ -239,22 +315,18 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 - 토큰 비밀키: `odiga.jwt.secret`, 로컬은 기본값으로 켜짐. **배포 서버는 `JWT_SECRET` 환경변수에 32자 이상 새 값** (@성정헌, 깃허브에 올리지 않기)
 - 이메일은 공백 빼고 소문자로 저장. 로그인 실패는 이메일이 없든 비번이 틀리든 똑같이 LOGIN_FAILED
 - 회원가입 성공은 HTTP 201, 형식 틀림(이메일 모양·비번 8자 미만·지역 코드)은 INVALID_INPUT 400
-- 내 설정 PUT 검사: region은 지역 코드 또는 null, atmospheres는 공백·중복 빼고 최대 10개·각 30자, allergies는 아래 코드 6개만
+- 내 설정 PUT 검사: region은 지역 코드 또는 null, atmospheres는 공백·중복 빼고 최대 10개·각 30자, allergies는 아래 코드 2개만 (v0.5)
 - 로그인하고 검색(토큰 넣고 POST /api/search): 문장에 지역 없으면 내 설정 지역, 분위기 없으면 내 설정 분위기(혼잡 선호도 따라감), 알레르기는 항상 합침. 조건 화면에서 직접 고친 조건(conditions)이면 알레르기만 합침. 토큰이 틀리거나 만료면 그냥 비로그인 검색
 - region은 지역 코드(SEONGSU 등)로 저장
-- atmospheres는 블로그 태그 사전의 태그 이름 그대로(조용함, 디저트, 사진·인테리어, 데이트, 단체석 등) user_preference.atmosphere에 한 줄씩 저장. 태그 목록은 최예린 확정
+- atmospheres는 예린 블로그 태그 이름 그대로(조용함·데이트·단체·혼자가능·디저트·사진·가성비) user_preference.atmosphere에 한 줄씩 저장 (v0.4)
 - allergies는 아래 코드 그대로 user_allergy.allergy_name에 저장
 
 | 알레르기 코드 | 화면 표시 | v0.1 처리 |
 | --- | --- | --- |
 | SHELLFISH | 갑각류 | 해물·조개·게 음식점 제외 |
 | SEAFOOD | 해산물·생선 | 해물·생선·회·초밥 음식점 제외 |
-| PEANUT | 땅콩·견과류 | 블로그 메뉴 언급 시 경고만 |
-| MILK | 우유·유제품 | 블로그 메뉴 언급 시 경고만 |
-| EGG | 달걀 | 블로그 메뉴 언급 시 경고만 |
-| WHEAT | 밀·글루텐 | 블로그 메뉴 언급 시 경고만 |
 
-- 카카오에 메뉴 정보가 없어서 음식점 종류로 거를 수 있는 건 갑각류·해산물뿐 → 나머지는 블로그 메뉴 경고로 보완 (최예린)
+- 카카오에 메뉴 정보가 없어서 음식점 종류로 거를 수 있는 건 갑각류·해산물뿐 → v0.5에서 2개로 줄임 (10/31 회의). 땅콩·우유·달걀·밀은 향후 보완점 (블로그 메뉴 경고 등)
 
 ## 저장 코스·저장한 장소 (v0.3, 로그인 필요)
 
@@ -276,7 +348,7 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 
 ## 코스 생성 규칙 v0.1
 
-- 칸 3개(식사·카페·놀거리)를 시작 시각에 맞는 순서로 채우고, 총 3시간 ±30분 안에서 점수 가장 높은 조합 3개 선택
+- 칸 3개(식사·카페·놀거리)를 시작 시각에 맞는 순서로 채우고, 총 3시간 ±30분 안에서 점수 가장 높은 조합 최대 10개 선택 (v0.5, 원래 3개)
 - 숫자는 전부 초기값, LG 데이터 받은 뒤 조정
 - 구현: `capstone-backend/src/main/java/com/capstone/backend/course/` (`CourseGenerator`가 시작점, 숫자는 전부 `CourseRules`에)
   - 같은 장소·점수 넣었을 때 `mocks/` 가짜 JSON 코스(성수·홍대·강남 3개씩 + 코스 수정·경고)와 결과 똑같은 거 확인함
@@ -290,7 +362,7 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 3. **시간 계산:** 도착 = 이전 장소 출발 + 도보 시간, 출발 = 도착 + 체류 시간
 4. **시간 걸러내기:** 총 소요시간 150~210분만 남기기
 5. **점수:** 장소마다 실제 도착 시각 혼잡도로 다시 계산 후 코스 점수 산출
-6. **상위 3개:** 점수 순으로, 앞에서 고른 코스와 장소 안 겹치는 것만 선택
+6. **상위 10개 (v0.5):** 점수 순으로, 앞에서 고른 코스와 장소 안 겹치는 것만 선택 → 장소가 모자라면 10개보다 적게 나옴 (성수 조용함 9개)
 
 | 시작 시각 | 기본 순서 | 이유 |
 | --- | --- | --- |
@@ -316,7 +388,7 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 
 **칸 채우는 규칙**
 
-- 식사 칸: FOOD (간식은 v0.3부터 SNACK으로 따로 분류돼서 자동 제외). 술집은 도착이 18시 이후일 때만. excludedFoods에 걸리는 식당 제외
+- 식사 칸: FOOD (간식은 v0.3부터 SNACK으로 따로 분류돼서 자동 제외). 술집은 도착이 18시 이후일 때만. excludedFoods에 걸리는 식당 제외. (v0.5) cuisines 골랐으면 그 종류 음식점만
 - 카페 칸: CAFE (SNACK은 코스 생성엔 안 쓰고, 사용자가 직접 추가하면 카페 칸으로 표시)
 - 놀거리 칸: 문장에 놀거리 종류가 있으면 그 카테고리(예: 방탈출 → ACTIVITY), 없으면 나머지 6개 전부
 - (v0.3) 조용한 곳 원하면(crowdPreference QUIET 또는 분위기 '조용함') 놀거리 칸에서 노래방·코인노래방·멀티방·오락실·PC방·볼링·당구·클럽·VR·사격 제외
@@ -330,11 +402,17 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 - 이동 효율 = 1 − 총 도보 시간 ÷ 40분 (0보다 작으면 0)
 - 시간 적합도 = 1 − |총 소요시간 − 180| ÷ 30 (0보다 작으면 0)
 
-| 혼잡도 적합도 (이윤경 확정 전 초안) | 도착 때 한산 | 보통 | 혼잡 |
+| 혼잡도 적합도 (이윤경 확정) | 도착 때 한산 | 보통 | 혼잡 |
 | --- | --- | --- | --- |
 | QUIET 조용한 곳 | 1.0 | 0.5 | 0.1 |
 | DEFAULT 상관없음 | 0.8 | 1.0 | 0.5 |
 | LIVELY 활기찬 곳 | 0.2 | 0.6 | 1.0 |
+
+**v0.4 결과 (예린 태그 + 윤경 점수 + 가짜 유동인구 혼잡도)**
+
+- 성수 주말 조용함 1등: 코사이어티 서울숲점(전시) → 아이안(카페) → 입소문(식당), 173분·도보 3분, 세 곳 다 도착 때 한산
+- 홍대 주말 저녁 활기 1등: 강강술래 → 저스트단비 → 943킹스크로스(테마카페), 세 곳 다 북적
+- 강남 평일 4명 갑각류: 더플라잉팬 레드 → 바나프레소 → 더홀릭보드게임카페, '단체' 후기 많은 곳 3곳
 
 **가짜 데이터로 돌려본 결과 (v0.3 데이터)**
 

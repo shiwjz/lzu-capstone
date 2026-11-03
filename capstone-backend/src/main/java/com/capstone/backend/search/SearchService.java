@@ -1,6 +1,7 @@
 package com.capstone.backend.search;
 
 import com.capstone.backend.course.CourseGenerator;
+import com.capstone.backend.course.Cuisine;
 import com.capstone.backend.course.CoursePlace;
 import com.capstone.backend.course.CoursePlan;
 import com.capstone.backend.course.CourseRequest;
@@ -40,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 3. 지역 없으면 CONDITION_MISSING → 앱이 지역 다시 물어봄
  * 4. 장소 점수(윤경 모듈 자리) → 칸별 후보 → 추천 장소 10곳 + 코스 3개
  * 5. 코스는 courseId로 저장 → 수정(PUT)·공유(POST share) 가능
+ * - v0.5 (10/31 회의): 인원 → 분위기 자동, 음식 큰 종류 거르기·세부 가점, 코스 10개 + 키워드, 알레르기 2개
  */
 @Service
 public class SearchService {
@@ -127,6 +129,9 @@ public class SearchService {
         if (req.date() != null) c = c.withDate(req.date(), null);
         if (req.startTime() != null) c = c.withStartTime(req.startTime());
 
+        // 인원 → 분위기 자동 (인원 모를 때는 안 붙임 → 기본값 넣기 전에)
+        c = c.withPartyMoods();
+
         // 기본값·검사
         if (c.date() == null) c = c.withDate(now.toLocalDate().toString(), null);
         LocalDate date = parseDate(c.date());
@@ -144,7 +149,10 @@ public class SearchService {
 
         CourseRequest courseRequest = c.toCourseRequest();
         PlaceScorer scorer = scorers.forConditions(c);
-        List<CoursePlace> places = filterExcludedFoods(store.coursePlaces(), c.excludedFoods());
+        List<String> cuisines = c.cuisines();
+        List<CoursePlace> places = filterExcludedFoods(store.coursePlaces(), c.excludedFoods()).stream()
+                .filter(p -> Cuisine.wanted(p, cuisines))      // 음식 큰 종류 골랐으면 식사 칸은 그 종류만
+                .toList();
 
         // 추천 장소: 칸별 후보를 모아서 점수 높은 순 10곳
         CourseGenerator.Candidates cands = generator.candidates(courseRequest, places, scorer);
@@ -162,7 +170,7 @@ public class SearchService {
         placeCards.sort(Comparator.comparingDouble(m -> -((Score) m.get("score")).total()));
         if (placeCards.size() > 10) placeCards = new ArrayList<>(placeCards.subList(0, 10));
 
-        // 코스 3개 → 저장
+        // 코스 (최대 10개) → 저장
         int seq = searchSeq.incrementAndGet();
         List<CoursePlan> plans = new ArrayList<>();
         for (CoursePlan p : generator.generate(courseRequest, places, scorer)) {
@@ -202,6 +210,8 @@ public class SearchService {
         m.put("phone", p.phone());
         m.put("placeUrl", p.placeUrl());
         m.put("tags", p.tags());
+        m.put("cuisine", p.cuisine());
+        m.put("cuisineDetail", p.cuisineDetail());
         m.put("congestion", cong);
         m.put("score", new Score(CourseRules.round2(s.total()), CourseRules.round2(s.request()),
                 CourseRules.round2(s.target()), CourseRules.round2(s.congestionFit())));
@@ -214,9 +224,10 @@ public class SearchService {
         List<PlaceStore.Tag> tags = new ArrayList<>(p.tags());
         tags.sort(Comparator.comparingInt(t -> -t.mentions()));
         String top = tags.stream().map(PlaceStore.Tag::tag).filter(c.atmospheres()::contains).findFirst()
-                .orElse(tags.isEmpty() ? "" : tags.get(0).tag());
+                .orElse(tags.isEmpty() ? null : tags.get(0).tag());
         String day = c.dayType().equals("WEEKEND") ? "주말" : "평일";
-        return "블로그 후기에서 '" + top + "' 언급이 많고, " + day + " " + hour + "시 주변이 " + LEVEL_TEXT.get(level);
+        String where = day + " " + hour + "시 주변이 " + LEVEL_TEXT.get(level);
+        return top == null ? where : "블로그 후기에서 '" + top + "' 언급이 많고, " + where;   // 태그 없는 곳은 혼잡도만
     }
 
     // ---------- 코스 수정 ----------
@@ -306,6 +317,7 @@ public class SearchService {
         m.put("rank", p.rank());
         m.put("title", p.title());
         m.put("reason", p.reason());
+        m.put("keywords", p.keywords());
         m.put("startAt", p.startAt());
         m.put("endAt", p.endAt());
         m.put("totalMinutes", p.totalMinutes());
@@ -319,7 +331,7 @@ public class SearchService {
     private static SearchConditions withExtractedBy(SearchConditions c, String by) {
         return new SearchConditions(c.region(), c.date(), c.dayType(), c.startTime(), c.partySize(), c.categories(),
                 c.atmospheres(), c.crowdPreference(), c.allergies(), c.gender(), c.ageGroup(), c.companionType(),
-                c.excludedFoods(), c.extractedBy() == null ? by : c.extractedBy());
+                c.excludedFoods(), c.extractedBy() == null ? by : c.extractedBy(), c.cuisines(), c.cuisineDetails());
     }
 
     private static List<CoursePlace> filterExcludedFoods(List<CoursePlace> places, List<String> excluded) {
@@ -349,12 +361,16 @@ public class SearchService {
     private static final Set<String> CROWD = Set.of("QUIET", "DEFAULT", "LIVELY");
     private static final Set<String> CATEGORY = Set.of("FOOD", "CAFE", "CULTURE", "ACTIVITY", "EXPERIENCE",
             "SHOPPING", "TOUR", "NATURE", "SNACK");
-    private static final Set<String> ALLERGY = Set.of("SHELLFISH", "SEAFOOD", "PEANUT", "MILK", "EGG", "WHEAT");
+    private static final Set<String> ALLERGY = Set.of("SHELLFISH", "SEAFOOD");     // 10/31 회의: 갑각류·해산물만
 
     private static void checkCodes(SearchConditions c) {
         if (!CROWD.contains(c.crowdPreference())) throw ApiException.invalid("crowdPreference 값을 확인해 주세요.");
         if (!CATEGORY.containsAll(c.categories())) throw ApiException.invalid("categories 값을 확인해 주세요.");
-        if (!ALLERGY.containsAll(c.allergies())) throw ApiException.invalid("allergies 값을 확인해 주세요.");
+        if (!ALLERGY.containsAll(c.allergies())) throw ApiException.invalid("allergies는 SHELLFISH / SEAFOOD만 돼요.");
+        if (!Cuisine.FILTER_CODES.containsAll(c.cuisines())) throw ApiException.invalid("cuisines 값을 확인해 주세요.");
+        if (!Cuisine.DETAIL_FAMILY.keySet().containsAll(c.cuisineDetails())) {
+            throw ApiException.invalid("cuisineDetails 값을 확인해 주세요.");
+        }
         if (c.partySize() < 1 || c.partySize() > 20) throw ApiException.invalid("partySize는 1~20명이에요.");
     }
 

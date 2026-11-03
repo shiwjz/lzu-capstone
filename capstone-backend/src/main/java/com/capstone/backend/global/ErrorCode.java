@@ -1,4 +1,3 @@
-
 package com.capstone.backend.global;
 
 import org.springframework.http.HttpStatus;
@@ -23,18 +22,16 @@ public enum ErrorCode {
             "이미 사용 중인 이메일입니다."
     ),
 
-    // ---- 9주차 추가 (명세 v0.3 에러 코드표, 예민) ----
-
     UNAUTHORIZED(
             HttpStatus.UNAUTHORIZED,
             "UNAUTHORIZED",
-            "로그인이 필요합니다."
+            "로그인이 필요하거나 인증이 만료되었습니다."
     ),
 
     LOGIN_FAILED(
             HttpStatus.UNAUTHORIZED,
             "LOGIN_FAILED",
-            "이메일 또는 비밀번호가 맞지 않습니다."
+            "이메일 또는 비밀번호가 올바르지 않습니다."
     ),
 
     PLACE_NOT_FOUND(
@@ -52,7 +49,7 @@ public enum ErrorCode {
     SHARE_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "SHARE_NOT_FOUND",
-            "공유 코스를 찾을 수 없습니다."
+            "공유 코드를 찾을 수 없습니다."
     ),
 
     CONDITION_MISSING(
@@ -64,7 +61,7 @@ public enum ErrorCode {
     AI_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE,
             "AI_UNAVAILABLE",
-            "조건 분석을 잠시 할 수 없습니다."
+            "AI 서비스를 사용할 수 없습니다."
     ),
 
     // 서버에 없는 주소 → 앱은 '준비 중인 기능'으로 표시 (예전엔 500으로 나감)
@@ -84,11 +81,7 @@ public enum ErrorCode {
     private final String code;
     private final String message;
 
-    ErrorCode(
-            HttpStatus status,
-            String code,
-            String message
-    ) {
+    ErrorCode(HttpStatus status, String code, String message) {
         this.status = status;
         this.code = code;
         this.message = message;

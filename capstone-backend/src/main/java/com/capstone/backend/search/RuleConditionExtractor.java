@@ -40,16 +40,15 @@ public class RuleConditionExtractor implements ConditionExtractor {
             "NATURE", List.of("산책", "공원", "한강", "숲"),
             "TOUR", List.of("명소", "관광"));
 
-    // 분위기 = 블로그 태그 이름 그대로
+    // 분위기 = 예린 블로그 태그 이름 그대로 (tag_dictionary.py 7개: 조용함·데이트·단체·혼자가능·디저트·사진·가성비)
     private static final Map<String, List<String>> MOOD_WORDS = orderedList(
             "조용함", List.of("조용", "한적", "여유", "차분", "시끄럽지 않", "안 시끄", "덜 붐", "사람 적"),
             "디저트", List.of("디저트", "케이크", "빵"),
-            "사진·인테리어", List.of("사진", "인스타", "감성", "예쁜"),
+            "사진", List.of("사진", "인스타", "감성", "예쁜", "포토"),
             "데이트", List.of("데이트", "남자친구", "여자친구", "남친", "여친", "애인", "연인"),
-            "단체석", List.of("단체", "모임", "회식", "동기", "동료"),
+            "단체", List.of("단체", "모임", "회식", "동기", "동료"),
             "가성비", List.of("가성비", "저렴", "싼 "),
-            "작업하기 좋음", List.of("작업", "공부", "노트북"),
-            "혼밥", List.of("혼밥"));
+            "혼자가능", List.of("혼밥", "혼자", "혼카페"));
 
     private static final List<String> QUIET_WORDS = MOOD_WORDS.get("조용함");
     private static final List<String> LIVELY_WORDS = List.of("신나", "활기", "사람 많", "북적", "핫한", "시끌", "힙한");
@@ -125,8 +124,10 @@ public class RuleConditionExtractor implements ConditionExtractor {
         if (q.contains("모레")) return today.plusDays(2);
         if (q.contains("내일")) return today.plusDays(1);
         if (q.contains("오늘")) return today;
-        boolean nextWeek = q.contains("다음 주") || q.contains("다음주");
-        int best = Integer.MAX_VALUE;
+       boolean nextWeek = q.contains("다음 주") || q.contains("다음주");
+       boolean thisWeek = q.contains("이번 주") || q.contains("이번주");
+       LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+       int best = Integer.MAX_VALUE;
         DayOfWeek day = null;
         for (Map.Entry<String, DayOfWeek> e : DAYS.entrySet()) {
             int i = q.indexOf(e.getKey());
@@ -136,11 +137,15 @@ public class RuleConditionExtractor implements ConditionExtractor {
             }
         }
         if (day != null) {
-            LocalDate d = today.with(TemporalAdjusters.nextOrSame(day));
-            return nextWeek ? d.plusWeeks(1) : d;
+            if (nextWeek) return monday.plusWeeks(1).with(TemporalAdjusters.nextOrSame(day));
+            LocalDate d = monday.with(TemporalAdjusters.nextOrSame(day));
+            if (thisWeek && !d.isBefore(today)) return d;
+            return today.with(TemporalAdjusters.nextOrSame(day));   // 그냥 '토요일' = 가장 가까운 토요일 (오늘이면 오늘)
         }
         if (q.contains("주말")) {
-            return dayType(today).equals("WEEKEND") ? today : today.with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
+            LocalDate saturday = monday.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+            if (nextWeek) return saturday.plusWeeks(1);
+            return dayType(today).equals("WEEKEND") ? today : saturday;
         }
         if (q.contains("평일")) {
             return dayType(today).equals("WEEKDAY") ? today : today.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
