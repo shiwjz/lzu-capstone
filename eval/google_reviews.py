@@ -17,6 +17,7 @@
   python eval/google_reviews.py fetch eval/eval_places.csv            # → eval/google_flags.csv
   python eval/google_reviews.py fetch eval/eval_places.csv --dry-run  # 요청 내용만 보기 (API 안 부름, 키 없어도 됨)
   python eval/google_reviews.py score eval/eval_ranking.csv           # → 화면에 표
+  python eval/google_reviews.py fetch output/places.csv --limit 10    # 전체 장소용 (반려견 등 필터 정보), 먼저 10곳만
 
 입력 파일
 - eval_places.csv: place_id 열(또는 placeId)만 있으면 됨, 중복은 알아서 뺌
@@ -45,7 +46,13 @@ DEFAULT_OUT = os.path.join(ROOT, 'eval', 'google_flags.csv')
 
 API_URL = 'https://places.googleapis.com/v1/places:searchText'
 FIELD_MASK = ','.join(['places.id', 'places.displayName', 'places.location', 'places.rating',
-                       'places.userRatingCount', 'places.priceLevel', 'places.reviews'])
+                       'places.userRatingCount', 'places.priceLevel', 'places.reviews']
+                      + [f'places.{a}' for a in ('allowsDogs', 'outdoorSeating', 'goodForGroups',
+                                                 'goodForChildren', 'reservable', 'servesDessert')])
+# 구글이 예/아니오로 주는 장소 정보 (리뷰 추측 아님 → 필터용, 11/4 회의: 반려견 동반)
+# - 값 없으면 빈칸 (구글이 모름), 저장값은 1 / 0 / 빈칸
+ATTRS = {'allowsDogs': 'dogs', 'outdoorSeating': 'outdoor', 'goodForGroups': 'groups',
+         'goodForChildren': 'children', 'reservable': 'reservable', 'servesDessert': 'dessert'}
 BIAS_RADIUS_M = 200.0     # 검색 치우치게 하는 반경
 MATCH_MAX_M = 150.0       # 이 거리 넘으면 다른 가게로 봄
 SLEEP_SEC = 0.2           # 요청 사이 쉬기
@@ -65,7 +72,7 @@ TAG_WORDS = {
 BUSY_WORDS = ['시끄', '북적', '웨이팅', '줄 서', '줄서', '복잡', '사람 많']
 
 OUT_COLS = (['place_id', 'name', 'google_place_id', 'match_m', 'rating', 'rating_count', 'price_level', 'n_reviews']
-            + [f'flag_{t}' for t in TAG_WORDS] + ['flag_busy', 'status'])
+            + [f'flag_{t}' for t in TAG_WORDS] + ['flag_busy'] + [f'attr_{v}' for v in ATTRS.values()] + ['status'])
 
 PRICE = {'PRICE_LEVEL_FREE': 0, 'PRICE_LEVEL_INEXPENSIVE': 1, 'PRICE_LEVEL_MODERATE': 2,
          'PRICE_LEVEL_EXPENSIVE': 3, 'PRICE_LEVEL_VERY_EXPENSIVE': 4}
@@ -146,6 +153,8 @@ def row_for(place, g, m):
            'price_level': PRICE.get(g.get('priceLevel'), ''), 'n_reviews': n, 'flag_busy': f['busy'], 'status': 'OK'}
     for t in TAG_WORDS:
         row[f'flag_{t}'] = f[t]
+    for k, v in ATTRS.items():
+        row[f'attr_{v}'] = '' if g.get(k) is None else int(bool(g[k]))
     return row
 
 
