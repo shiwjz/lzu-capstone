@@ -11,7 +11,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * 장소 점수 모듈 테스트 - 윤경 test_place_score.py 10개 그대로 Java로 (예민)
+ * 장소 점수 모듈 테스트 - 윤경 test_place_score.py 17개 그대로 Java로 (예민)
  * - 파이썬이랑 같은 입력 → 같은 값이면 옮기기 성공
  * - 실행: ./gradlew test --tests "com.capstone.backend.search.PlaceScoreModelTest"
  */
@@ -60,5 +60,22 @@ class PlaceScoreModelTest {
         double fit = PlaceScoreModel.congestionFit(CrowdPreference.QUIET, CongestionLevel.QUIET);
         double total = PlaceScoreModel.W_REQUEST * req + PlaceScoreModel.W_TARGET * tgt + PlaceScoreModel.W_FIT * fit;
         near(0.45 * 1.0 + 0.30 * (1.6 / 2.6) + 0.25 * 1.0, total);
+    }
+
+    @Test
+    @DisplayName("11~12 태그 없는 장소: 태그 하나도 없음 0.5 / 태그는 있는데 요청 태그 없음 0")
+    void noTags() {
+        near(0.5, PlaceScoreModel.requestScore(List.of("조용한"), Map.of()));
+        near(0.0, PlaceScoreModel.requestScore(List.of("조용한"), Map.of("디저트", 5)));
+    }
+
+    @Test
+    @DisplayName("13~17 음식 세부: 딱 맞음 1.0 / 세부 없음 0.5 / 다른 세부 0.2 / 다른 큰 종류 0.5(계산 안 함) / (분위기 1/3 + 세부 1.0) ÷ 2")
+    void detail() {
+        near(1.0, PlaceScoreModel.requestScore(List.of(), Map.of(), List.of("라멘"), "JAPANESE", "라멘"));
+        near(0.5, PlaceScoreModel.requestScore(List.of(), Map.of(), List.of("라멘"), "JAPANESE", null));
+        near(0.2, PlaceScoreModel.requestScore(List.of(), Map.of(), List.of("라멘"), "JAPANESE", "초밥·롤"));
+        near(0.5, PlaceScoreModel.requestScore(List.of(), Map.of(), List.of("라멘"), "KOREAN", "국밥"));
+        near((1.0 / 3 + 1.0) / 2, PlaceScoreModel.requestScore(List.of("조용한"), Map.of("조용한", 1), List.of("라멘"), "JAPANESE", "라멘"));
     }
 }

@@ -52,10 +52,10 @@ public final class Cuisine {
      * - 사용자가 고른 세부가 속한 큰 종류에서만 판단 (일식 세부만 골랐으면 카페는 계산 안 함)
      */
     public static Double detailFit(String placeCuisine, String placeDetail, List<String> wanted) {
-        if (wanted == null || wanted.isEmpty() || placeCuisine == null) return null;
-        boolean family = wanted.stream().anyMatch(d -> placeCuisine.equals(DETAIL_FAMILY.get(d)));
+        if (wanted == null || wanted.isEmpty()) return null;
+        if (placeDetail != null && wanted.contains(placeDetail)) return 1.0;        // 윤경 place_score.py detail_score 순서 그대로
+        boolean family = placeCuisine != null && wanted.stream().anyMatch(d -> placeCuisine.equals(DETAIL_FAMILY.get(d)));
         if (!family) return null;
-        if (placeDetail != null && wanted.contains(placeDetail)) return 1.0;
         return placeDetail == null ? 0.5 : 0.2;
     }
 

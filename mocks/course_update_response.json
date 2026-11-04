@@ -18,8 +18,8 @@
     "totalWalkMinutes": 20,
     "totalDistanceMeters": 960,
     "score": {
-      "total": 0.54,
-      "placeAvg": 0.62,
+      "total": 0.59,
+      "placeAvg": 0.7,
       "moveEfficiency": 0.5,
       "timeFit": 0.0
     },
@@ -60,7 +60,7 @@
           "level": "BUSY",
           "percentile": 92
         },
-        "placeScore": 0.17
+        "placeScore": 0.4
       },
       {
         "order": 3,

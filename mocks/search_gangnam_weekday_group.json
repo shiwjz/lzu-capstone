@@ -824,262 +824,21 @@
         "courseId": "c_gangnam_6",
         "rank": 6,
         "title": "강남 저녁 보드게임 코스",
-        "reason": "'단체' 후기 많은 곳 3곳 · 총 도보 8분",
-        "keywords": [
-          "단체",
-          "북적",
-          "고기"
-        ],
-        "startAt": "19:00",
-        "endAt": "21:58",
-        "totalMinutes": 178,
-        "totalWalkMinutes": 8,
-        "totalDistanceMeters": 363,
-        "score": {
-          "total": 0.75,
-          "placeAvg": 0.71,
-          "moveEfficiency": 0.8,
-          "timeFit": 0.93
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "MEAL",
-            "placeId": "878079854",
-            "name": "화설 강남직영점",
-            "category": "FOOD",
-            "lat": 37.5006811,
-            "lng": 127.0245667,
-            "arriveAt": "19:00",
-            "leaveAt": "20:00",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 57
-            },
-            "placeScore": 0.85
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "1047198266",
-            "name": "투썸플레이스 강남KI타워점",
-            "category": "CAFE",
-            "lat": 37.5018524,
-            "lng": 127.0246768,
-            "arriveAt": "20:03",
-            "leaveAt": "20:53",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 3,
-            "distanceMetersFromPrev": 131,
-            "congestion": {
-              "level": "BUSY",
-              "percentile": 85
-            },
-            "placeScore": 0.57
-          },
-          {
-            "order": 3,
-            "slot": "PLAY",
-            "placeId": "1143207364",
-            "name": "데블다이스 강남시티점",
-            "category": "ACTIVITY",
-            "lat": 37.501131,
-            "lng": 127.0271419,
-            "arriveAt": "20:58",
-            "leaveAt": "21:58",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 5,
-            "distanceMetersFromPrev": 232,
-            "congestion": {
-              "level": "BUSY",
-              "percentile": 80
-            },
-            "placeScore": 0.72
-          }
-        ]
-      },
-      {
-        "courseId": "c_gangnam_7",
-        "rank": 7,
-        "title": "강남 저녁 보드게임 코스",
-        "reason": "'단체' 후기 많은 곳 2곳 · 총 도보 11분",
-        "keywords": [
-          "단체",
-          "고기"
-        ],
-        "startAt": "19:00",
-        "endAt": "22:01",
-        "totalMinutes": 181,
-        "totalWalkMinutes": 11,
-        "totalDistanceMeters": 528,
-        "score": {
-          "total": 0.7,
-          "placeAvg": 0.65,
-          "moveEfficiency": 0.72,
-          "timeFit": 0.97
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "MEAL",
-            "placeId": "17805965",
-            "name": "춘자야",
-            "category": "FOOD",
-            "lat": 37.500937,
-            "lng": 127.0245815,
-            "arriveAt": "19:00",
-            "leaveAt": "20:00",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 57
-            },
-            "placeScore": 0.85
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "617129801",
-            "name": "영커피 강남해커스점",
-            "category": "CAFE",
-            "lat": 37.4986718,
-            "lng": 127.0247266,
-            "arriveAt": "20:05",
-            "leaveAt": "20:55",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 5,
-            "distanceMetersFromPrev": 252,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 51
-            },
-            "placeScore": 0.4
-          },
-          {
-            "order": 3,
-            "slot": "PLAY",
-            "placeId": "920171764",
-            "name": "레드버튼 시네마강남점",
-            "category": "ACTIVITY",
-            "lat": 37.5003941,
-            "lng": 127.0269845,
-            "arriveAt": "21:01",
-            "leaveAt": "22:01",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 6,
-            "distanceMetersFromPrev": 276,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 70
-            },
-            "placeScore": 0.7
-          }
-        ]
-      },
-      {
-        "courseId": "c_gangnam_8",
-        "rank": 8,
-        "title": "강남 저녁 테마카페 코스",
-        "reason": "'단체' 후기 많은 곳 2곳 · 총 도보 18분",
-        "keywords": [
-          "단체",
-          "고기"
-        ],
-        "startAt": "19:00",
-        "endAt": "22:08",
-        "totalMinutes": 188,
-        "totalWalkMinutes": 18,
-        "totalDistanceMeters": 923,
-        "score": {
-          "total": 0.64,
-          "placeAvg": 0.65,
-          "moveEfficiency": 0.55,
-          "timeFit": 0.73
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "MEAL",
-            "placeId": "194854751",
-            "name": "닭갈비전",
-            "category": "FOOD",
-            "lat": 37.5019967,
-            "lng": 127.0240367,
-            "arriveAt": "19:00",
-            "leaveAt": "20:00",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 47
-            },
-            "placeScore": 0.85
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "19232112",
-            "name": "장꼬방",
-            "category": "CAFE",
-            "lat": 37.4983314,
-            "lng": 127.0238071,
-            "arriveAt": "20:08",
-            "leaveAt": "20:58",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 8,
-            "distanceMetersFromPrev": 408,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 36
-            },
-            "placeScore": 0.4
-          },
-          {
-            "order": 3,
-            "slot": "PLAY",
-            "placeId": "1062621432",
-            "name": "헬로룸카페",
-            "category": "ACTIVITY",
-            "lat": 37.5021077,
-            "lng": 127.027183,
-            "arriveAt": "21:08",
-            "leaveAt": "22:08",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 10,
-            "distanceMetersFromPrev": 515,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 56
-            },
-            "placeScore": 0.7
-          }
-        ]
-      },
-      {
-        "courseId": "c_gangnam_9",
-        "rank": 9,
-        "title": "강남 저녁 보드게임 코스",
-        "reason": "'단체' 후기 많은 곳 2곳 · 총 도보 17분",
+        "reason": "'단체' 후기 많은 곳 2곳 · 총 도보 9분",
         "keywords": [
           "단체",
           "초밥·롤"
         ],
         "startAt": "19:00",
-        "endAt": "22:07",
-        "totalMinutes": 187,
-        "totalWalkMinutes": 17,
-        "totalDistanceMeters": 860,
+        "endAt": "21:59",
+        "totalMinutes": 179,
+        "totalWalkMinutes": 9,
+        "totalDistanceMeters": 433,
         "score": {
-          "total": 0.62,
-          "placeAvg": 0.61,
-          "moveEfficiency": 0.57,
-          "timeFit": 0.77
+          "total": 0.76,
+          "placeAvg": 0.73,
+          "moveEfficiency": 0.78,
+          "timeFit": 0.97
         },
         "stops": [
           {
@@ -1104,62 +863,62 @@
           {
             "order": 2,
             "slot": "CAFE",
-            "placeId": "8105437",
-            "name": "커피빈 삼성생명강남사옥점",
+            "placeId": "884273892",
+            "name": "우지커피 강남역사점",
             "category": "CAFE",
-            "lat": 37.4969669,
-            "lng": 127.025771,
-            "arriveAt": "20:08",
-            "leaveAt": "20:58",
+            "lat": 37.4986233,
+            "lng": 127.0280661,
+            "arriveAt": "20:03",
+            "leaveAt": "20:53",
             "stayMinutes": 50,
-            "walkMinutesFromPrev": 8,
-            "distanceMetersFromPrev": 402,
+            "walkMinutesFromPrev": 3,
+            "distanceMetersFromPrev": 142,
             "congestion": {
               "level": "NORMAL",
-              "percentile": 70
+              "percentile": 65
             },
-            "placeScore": 0.4
+            "placeScore": 0.62
           },
           {
             "order": 3,
             "slot": "PLAY",
-            "placeId": "1820591202",
-            "name": "히어로보드게임카페 강남점",
+            "placeId": "1143207364",
+            "name": "데블다이스 강남시티점",
             "category": "ACTIVITY",
-            "lat": 37.5009058,
-            "lng": 127.0272764,
-            "arriveAt": "21:07",
-            "leaveAt": "22:07",
+            "lat": 37.501131,
+            "lng": 127.0271419,
+            "arriveAt": "20:59",
+            "leaveAt": "21:59",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 9,
-            "distanceMetersFromPrev": 458,
+            "walkMinutesFromPrev": 6,
+            "distanceMetersFromPrev": 291,
             "congestion": {
               "level": "BUSY",
-              "percentile": 81
+              "percentile": 80
             },
-            "placeScore": 0.57
+            "placeScore": 0.72
           }
         ]
       },
       {
-        "courseId": "c_gangnam_10",
-        "rank": 10,
-        "title": "강남 저녁 볼링장 코스",
-        "reason": "'단체' 후기 많은 곳 2곳 · 총 도보 21분",
+        "courseId": "c_gangnam_7",
+        "rank": 7,
+        "title": "강남 저녁 보드게임 코스",
+        "reason": "'단체' 후기 많은 곳 2곳 · 총 도보 9분",
         "keywords": [
           "단체",
           "양꼬치"
         ],
         "startAt": "19:00",
-        "endAt": "22:11",
-        "totalMinutes": 191,
-        "totalWalkMinutes": 21,
-        "totalDistanceMeters": 1050,
+        "endAt": "21:59",
+        "totalMinutes": 179,
+        "totalWalkMinutes": 9,
+        "totalDistanceMeters": 403,
         "score": {
-          "total": 0.62,
-          "placeAvg": 0.66,
-          "moveEfficiency": 0.47,
-          "timeFit": 0.63
+          "total": 0.76,
+          "placeAvg": 0.72,
+          "moveEfficiency": 0.78,
+          "timeFit": 0.97
         },
         "stops": [
           {
@@ -1184,21 +943,260 @@
           {
             "order": 2,
             "slot": "CAFE",
-            "placeId": "21546418",
-            "name": "소스페소",
+            "placeId": "622489987",
+            "name": "메가MGC커피 강남역신분당선점",
             "category": "CAFE",
-            "lat": 37.4982304,
-            "lng": 127.024377,
-            "arriveAt": "20:08",
-            "leaveAt": "20:58",
+            "lat": 37.4981574,
+            "lng": 127.0283056,
+            "arriveAt": "20:03",
+            "leaveAt": "20:53",
             "stayMinutes": 50,
-            "walkMinutesFromPrev": 8,
-            "distanceMetersFromPrev": 388,
+            "walkMinutesFromPrev": 3,
+            "distanceMetersFromPrev": 128,
             "congestion": {
               "level": "NORMAL",
-              "percentile": 31
+              "percentile": 37
             },
-            "placeScore": 0.4
+            "placeScore": 0.62
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "920171764",
+            "name": "레드버튼 시네마강남점",
+            "category": "ACTIVITY",
+            "lat": 37.5003941,
+            "lng": 127.0269845,
+            "arriveAt": "20:59",
+            "leaveAt": "21:59",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 6,
+            "distanceMetersFromPrev": 275,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 66
+            },
+            "placeScore": 0.7
+          }
+        ]
+      },
+      {
+        "courseId": "c_gangnam_8",
+        "rank": 8,
+        "title": "강남 저녁 테마카페 코스",
+        "reason": "'단체' 후기 많은 곳 2곳 · 총 도보 16분",
+        "keywords": [
+          "단체",
+          "고기"
+        ],
+        "startAt": "19:00",
+        "endAt": "22:06",
+        "totalMinutes": 186,
+        "totalWalkMinutes": 16,
+        "totalDistanceMeters": 768,
+        "score": {
+          "total": 0.71,
+          "placeAvg": 0.72,
+          "moveEfficiency": 0.6,
+          "timeFit": 0.8
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "878079854",
+            "name": "화설 강남직영점",
+            "category": "FOOD",
+            "lat": 37.5006811,
+            "lng": 127.0245667,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 57
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "18822088",
+            "name": "크림vip라운지",
+            "category": "CAFE",
+            "lat": 37.4981075,
+            "lng": 127.025924,
+            "arriveAt": "20:07",
+            "leaveAt": "20:57",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 7,
+            "distanceMetersFromPrev": 310,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 64
+            },
+            "placeScore": 0.62
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "1062621432",
+            "name": "헬로룸카페",
+            "category": "ACTIVITY",
+            "lat": 37.5021077,
+            "lng": 127.027183,
+            "arriveAt": "21:06",
+            "leaveAt": "22:06",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 9,
+            "distanceMetersFromPrev": 458,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 56
+            },
+            "placeScore": 0.7
+          }
+        ]
+      },
+      {
+        "courseId": "c_gangnam_9",
+        "rank": 9,
+        "title": "강남 저녁 테마카페 코스",
+        "reason": "'단체' 후기 많은 곳 1곳 · 총 도보 14분",
+        "keywords": [
+          "고기"
+        ],
+        "startAt": "19:00",
+        "endAt": "22:04",
+        "totalMinutes": 184,
+        "totalWalkMinutes": 14,
+        "totalDistanceMeters": 672,
+        "score": {
+          "total": 0.7,
+          "placeAvg": 0.7,
+          "moveEfficiency": 0.65,
+          "timeFit": 0.87
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "17805965",
+            "name": "춘자야",
+            "category": "FOOD",
+            "lat": 37.500937,
+            "lng": 127.0245815,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 57
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "501187071",
+            "name": "카페빛",
+            "category": "CAFE",
+            "lat": 37.4981075,
+            "lng": 127.025924,
+            "arriveAt": "20:07",
+            "leaveAt": "20:57",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 7,
+            "distanceMetersFromPrev": 336,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 64
+            },
+            "placeScore": 0.62
+          },
+          {
+            "order": 3,
+            "slot": "PLAY",
+            "placeId": "1345840219",
+            "name": "제로월드 강남점",
+            "category": "ACTIVITY",
+            "lat": 37.5009334,
+            "lng": 127.0245815,
+            "arriveAt": "21:04",
+            "leaveAt": "22:04",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 7,
+            "distanceMetersFromPrev": 336,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 53
+            },
+            "placeScore": 0.62
+          }
+        ]
+      },
+      {
+        "courseId": "c_gangnam_10",
+        "rank": 10,
+        "title": "강남 저녁 볼링장 코스",
+        "reason": "'단체' 후기 많은 곳 2곳 · 총 도보 28분",
+        "keywords": [
+          "단체",
+          "고기"
+        ],
+        "startAt": "19:00",
+        "endAt": "22:18",
+        "totalMinutes": 198,
+        "totalWalkMinutes": 28,
+        "totalDistanceMeters": 1380,
+        "score": {
+          "total": 0.61,
+          "placeAvg": 0.73,
+          "moveEfficiency": 0.3,
+          "timeFit": 0.4
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "MEAL",
+            "placeId": "194854751",
+            "name": "닭갈비전",
+            "category": "FOOD",
+            "lat": 37.5019967,
+            "lng": 127.0240367,
+            "arriveAt": "19:00",
+            "leaveAt": "20:00",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 47
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "8105437",
+            "name": "커피빈 삼성생명강남사옥점",
+            "category": "CAFE",
+            "lat": 37.4969669,
+            "lng": 127.025771,
+            "arriveAt": "20:12",
+            "leaveAt": "21:02",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 12,
+            "distanceMetersFromPrev": 580,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 70
+            },
+            "placeScore": 0.62
           },
           {
             "order": 3,
@@ -1208,11 +1206,11 @@
             "category": "ACTIVITY",
             "lat": 37.504148,
             "lng": 127.025148,
-            "arriveAt": "21:11",
-            "leaveAt": "22:11",
+            "arriveAt": "21:18",
+            "leaveAt": "22:18",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 13,
-            "distanceMetersFromPrev": 662,
+            "walkMinutesFromPrev": 16,
+            "distanceMetersFromPrev": 800,
             "congestion": {
               "level": "BUSY",
               "percentile": 84

@@ -826,7 +826,7 @@
         "courseId": "c_hongdae_5",
         "rank": 5,
         "title": "홍대 저녁 테마카페 코스",
-        "reason": "'활기찬' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 3분",
+        "reason": "'활기찬' 후기 많은 곳 2곳 · 3곳 중 2곳이 도착 시간에 북적 · 총 도보 9분",
         "keywords": [
           "활기찬",
           "데이트",
@@ -834,15 +834,15 @@
           "고기"
         ],
         "startAt": "19:00",
-        "endAt": "21:53",
-        "totalMinutes": 173,
-        "totalWalkMinutes": 3,
-        "totalDistanceMeters": 114,
+        "endAt": "21:59",
+        "totalMinutes": 179,
+        "totalWalkMinutes": 9,
+        "totalDistanceMeters": 386,
         "score": {
           "total": 0.75,
-          "placeAvg": 0.7,
-          "moveEfficiency": 0.93,
-          "timeFit": 0.77
+          "placeAvg": 0.71,
+          "moveEfficiency": 0.78,
+          "timeFit": 0.97
         },
         "stops": [
           {
@@ -867,38 +867,38 @@
           {
             "order": 2,
             "slot": "CAFE",
-            "placeId": "1355870988",
-            "name": "헤이티 홍대점",
+            "placeId": "295926805",
+            "name": "알누오보",
             "category": "CAFE",
-            "lat": 37.5554374,
-            "lng": 126.9239305,
-            "arriveAt": "20:01",
-            "leaveAt": "20:51",
+            "lat": 37.5535757,
+            "lng": 126.9250019,
+            "arriveAt": "20:05",
+            "leaveAt": "20:55",
             "stayMinutes": 50,
-            "walkMinutesFromPrev": 1,
-            "distanceMetersFromPrev": 12,
+            "walkMinutesFromPrev": 5,
+            "distanceMetersFromPrev": 221,
             "congestion": {
-              "level": "BUSY",
-              "percentile": 70
+              "level": "QUIET",
+              "percentile": 7
             },
-            "placeScore": 0.62
+            "placeScore": 0.65
           },
           {
             "order": 3,
             "slot": "PLAY",
-            "placeId": "1620800014",
-            "name": "망고룸카페",
+            "placeId": "1967230587",
+            "name": "모펀 서교점",
             "category": "ACTIVITY",
-            "lat": 37.555115,
-            "lng": 126.9228478,
-            "arriveAt": "20:53",
-            "leaveAt": "21:53",
+            "lat": 37.5542594,
+            "lng": 126.9233353,
+            "arriveAt": "20:59",
+            "leaveAt": "21:59",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 2,
-            "distanceMetersFromPrev": 102,
+            "walkMinutesFromPrev": 4,
+            "distanceMetersFromPrev": 165,
             "congestion": {
               "level": "BUSY",
-              "percentile": 83
+              "percentile": 79
             },
             "placeScore": 0.62
           }
@@ -907,8 +907,8 @@
       {
         "courseId": "c_hongdae_6",
         "rank": 6,
-        "title": "홍대 저녁 사주카페 코스",
-        "reason": "'활기찬' 후기 많은 곳 2곳 · 3곳 중 2곳이 도착 시간에 북적 · 총 도보 9분",
+        "title": "홍대 저녁 테마카페 코스",
+        "reason": "'활기찬' 후기 많은 곳 2곳 · 3곳 중 2곳이 도착 시간에 북적 · 총 도보 10분",
         "keywords": [
           "활기찬",
           "데이트",
@@ -916,15 +916,15 @@
           "이자카야"
         ],
         "startAt": "19:00",
-        "endAt": "21:59",
-        "totalMinutes": 179,
-        "totalWalkMinutes": 9,
-        "totalDistanceMeters": 440,
+        "endAt": "22:00",
+        "totalMinutes": 180,
+        "totalWalkMinutes": 10,
+        "totalDistanceMeters": 499,
         "score": {
           "total": 0.75,
           "placeAvg": 0.72,
-          "moveEfficiency": 0.78,
-          "timeFit": 0.97
+          "moveEfficiency": 0.75,
+          "timeFit": 1.0
         },
         "stops": [
           {
@@ -968,16 +968,16 @@
           {
             "order": 3,
             "slot": "PLAY",
-            "placeId": "144696587",
-            "name": "에로스 사주 타로 카페",
+            "placeId": "1620800014",
+            "name": "망고룸카페",
             "category": "ACTIVITY",
-            "lat": 37.5556335,
-            "lng": 126.9234652,
-            "arriveAt": "20:59",
-            "leaveAt": "21:59",
+            "lat": 37.555115,
+            "lng": 126.9228478,
+            "arriveAt": "21:00",
+            "leaveAt": "22:00",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 7,
-            "distanceMetersFromPrev": 343,
+            "walkMinutesFromPrev": 8,
+            "distanceMetersFromPrev": 402,
             "congestion": {
               "level": "BUSY",
               "percentile": 84
@@ -1071,8 +1071,8 @@
       {
         "courseId": "c_hongdae_8",
         "rank": 8,
-        "title": "홍대 저녁 보드게임 코스",
-        "reason": "'활기찬' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 7분",
+        "title": "홍대 저녁 사주카페 코스",
+        "reason": "'활기찬' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 2분",
         "keywords": [
           "활기찬",
           "데이트",
@@ -1080,15 +1080,15 @@
           "중국요리"
         ],
         "startAt": "19:00",
-        "endAt": "21:57",
-        "totalMinutes": 177,
-        "totalWalkMinutes": 7,
-        "totalDistanceMeters": 277,
+        "endAt": "21:52",
+        "totalMinutes": 172,
+        "totalWalkMinutes": 2,
+        "totalDistanceMeters": 85,
         "score": {
-          "total": 0.71,
-          "placeAvg": 0.65,
-          "moveEfficiency": 0.82,
-          "timeFit": 0.9
+          "total": 0.73,
+          "placeAvg": 0.67,
+          "moveEfficiency": 0.95,
+          "timeFit": 0.73
         },
         "stops": [
           {
@@ -1113,40 +1113,40 @@
           {
             "order": 2,
             "slot": "CAFE",
-            "placeId": "669493979",
-            "name": "카페345",
+            "placeId": "1355870988",
+            "name": "헤이티 홍대점",
             "category": "CAFE",
-            "lat": 37.5542278,
-            "lng": 126.9233093,
-            "arriveAt": "20:04",
-            "leaveAt": "20:54",
+            "lat": 37.5554374,
+            "lng": 126.9239305,
+            "arriveAt": "20:01",
+            "leaveAt": "20:51",
             "stayMinutes": 50,
-            "walkMinutesFromPrev": 4,
-            "distanceMetersFromPrev": 166,
+            "walkMinutesFromPrev": 1,
+            "distanceMetersFromPrev": 39,
             "congestion": {
               "level": "BUSY",
-              "percentile": 77
+              "percentile": 70
             },
             "placeScore": 0.62
           },
           {
             "order": 3,
             "slot": "PLAY",
-            "placeId": "1493237095",
-            "name": "홈즈앤루팡 홍대점",
+            "placeId": "144696587",
+            "name": "에로스 사주 타로 카페",
             "category": "ACTIVITY",
-            "lat": 37.5541414,
-            "lng": 126.9220589,
-            "arriveAt": "20:57",
-            "leaveAt": "21:57",
+            "lat": 37.5556335,
+            "lng": 126.9234652,
+            "arriveAt": "20:52",
+            "leaveAt": "21:52",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 3,
-            "distanceMetersFromPrev": 111,
+            "walkMinutesFromPrev": 1,
+            "distanceMetersFromPrev": 46,
             "congestion": {
               "level": "BUSY",
-              "percentile": 87
+              "percentile": 84
             },
-            "placeScore": 0.55
+            "placeScore": 0.62
           }
         ]
       },
@@ -1154,22 +1154,22 @@
         "courseId": "c_hongdae_9",
         "rank": 9,
         "title": "홍대 저녁 테마카페 코스",
-        "reason": "'활기찬' 후기 많은 곳 3곳 · 3곳 중 1곳이 도착 시간에 북적 · 총 도보 14분",
+        "reason": "'활기찬' 후기 많은 곳 2곳 · 3곳 중 2곳이 도착 시간에 북적 · 총 도보 9분",
         "keywords": [
           "활기찬",
-          "데이트",
+          "북적",
           "일식"
         ],
         "startAt": "19:00",
-        "endAt": "22:04",
-        "totalMinutes": 184,
-        "totalWalkMinutes": 14,
-        "totalDistanceMeters": 649,
+        "endAt": "21:59",
+        "totalMinutes": 179,
+        "totalWalkMinutes": 9,
+        "totalDistanceMeters": 377,
         "score": {
-          "total": 0.67,
-          "placeAvg": 0.65,
-          "moveEfficiency": 0.65,
-          "timeFit": 0.87
+          "total": 0.72,
+          "placeAvg": 0.66,
+          "moveEfficiency": 0.78,
+          "timeFit": 0.97
         },
         "stops": [
           {
@@ -1194,40 +1194,40 @@
           {
             "order": 2,
             "slot": "CAFE",
-            "placeId": "295926805",
-            "name": "알누오보",
+            "placeId": "669493979",
+            "name": "카페345",
             "category": "CAFE",
-            "lat": 37.5535757,
-            "lng": 126.9250019,
-            "arriveAt": "20:06",
-            "leaveAt": "20:56",
+            "lat": 37.5542278,
+            "lng": 126.9233093,
+            "arriveAt": "20:07",
+            "leaveAt": "20:57",
             "stayMinutes": 50,
-            "walkMinutesFromPrev": 6,
-            "distanceMetersFromPrev": 274,
+            "walkMinutesFromPrev": 7,
+            "distanceMetersFromPrev": 312,
             "congestion": {
-              "level": "QUIET",
-              "percentile": 7
+              "level": "BUSY",
+              "percentile": 77
             },
-            "placeScore": 0.65
+            "placeScore": 0.62
           },
           {
             "order": 3,
             "slot": "PLAY",
-            "placeId": "53292857",
-            "name": "943킹스크로스",
+            "placeId": "1743886829",
+            "name": "상상의문 홍대점",
             "category": "ACTIVITY",
-            "lat": 37.5529891,
-            "lng": 126.9208095,
-            "arriveAt": "21:04",
-            "leaveAt": "22:04",
+            "lat": 37.5540066,
+            "lng": 126.9226249,
+            "arriveAt": "20:59",
+            "leaveAt": "21:59",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 8,
-            "distanceMetersFromPrev": 375,
+            "walkMinutesFromPrev": 2,
+            "distanceMetersFromPrev": 65,
             "congestion": {
               "level": "BUSY",
-              "percentile": 78
+              "percentile": 85
             },
-            "placeScore": 0.55
+            "placeScore": 0.62
           }
         ]
       },
@@ -1235,7 +1235,7 @@
         "courseId": "c_hongdae_10",
         "rank": 10,
         "title": "홍대 저녁 테마카페 코스",
-        "reason": "'활기찬' 후기 많은 곳 3곳 · 3곳 중 2곳이 도착 시간에 북적 · 총 도보 24분",
+        "reason": "'활기찬' 후기 많은 곳 2곳 · 3곳 중 2곳이 도착 시간에 북적 · 총 도보 23분",
         "keywords": [
           "활기찬",
           "데이트",
@@ -1243,15 +1243,15 @@
           "양식"
         ],
         "startAt": "19:00",
-        "endAt": "22:14",
-        "totalMinutes": 194,
-        "totalWalkMinutes": 24,
-        "totalDistanceMeters": 1186,
+        "endAt": "22:13",
+        "totalMinutes": 193,
+        "totalWalkMinutes": 23,
+        "totalDistanceMeters": 1177,
         "score": {
-          "total": 0.62,
-          "placeAvg": 0.69,
-          "moveEfficiency": 0.4,
-          "timeFit": 0.53
+          "total": 0.64,
+          "placeAvg": 0.72,
+          "moveEfficiency": 0.43,
+          "timeFit": 0.57
         },
         "stops": [
           {
@@ -1295,21 +1295,21 @@
           {
             "order": 3,
             "slot": "PLAY",
-            "placeId": "2048640934",
-            "name": "비밀의숲 홍대점",
+            "placeId": "64956517",
+            "name": "머더파커 WOW 홍대점",
             "category": "ACTIVITY",
-            "lat": 37.5522161,
-            "lng": 126.9208409,
-            "arriveAt": "21:14",
-            "leaveAt": "22:14",
+            "lat": 37.5523744,
+            "lng": 126.9205556,
+            "arriveAt": "21:13",
+            "leaveAt": "22:13",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 20,
-            "distanceMetersFromPrev": 983,
+            "walkMinutesFromPrev": 19,
+            "distanceMetersFromPrev": 974,
             "congestion": {
               "level": "BUSY",
-              "percentile": 87
+              "percentile": 78
             },
-            "placeScore": 0.55
+            "placeScore": 0.62
           }
         ]
       }

@@ -203,18 +203,6 @@ def wants_cuisine(p, cond):
     return not cond.get('cuisines') or p['category'] != 'FOOD' or p['cuisine'] in cond['cuisines']
 
 
-def detail_fit(p, cond):
-    """세부 취향 가점: 딱 맞음 1.0 / 큰 종류만 맞고 세부 없음 0.5 / 같은 큰 종류인데 다른 세부 0.2 / 해당 없음 None
-    - 사용자가 고른 세부가 속한 큰 종류에서만 판단 (일식 세부만 골랐으면 카페는 가점 계산 안 함)"""
-    wanted = cond.get('cuisineDetails') or []
-    if not wanted or p['cuisine'] is None:
-        return None
-    families = {DETAIL_FAMILY.get(d) for d in wanted}
-    if p['cuisine'] not in families:
-        return None
-    if p['cuisineDetail'] in wanted:
-        return 1.0
-    return 0.5 if p['cuisineDetail'] is None else 0.2
 
 
 DETAIL_FAMILY = {}   # 세부 → 큰 종류 (아래에서 채움)
@@ -252,11 +240,8 @@ def place_score(p, cond, hour):
     cong = congestion(p, cond['dayType'], hour)
     cell = p['cellId']
     cluster = TARGET['cluster_avg'].get(TARGET['cell_cluster'].get(cell))
-    req = ps.request_score(cond['moods'], {t['tag']: t['mentions'] for t in p['tags']})
-    fit_d = detail_fit(p, cond)
-    if fit_d is not None:   # 세부 취향 가점: 분위기 점수들과 같이 평균 (분위기 없으면 세부 점수만) - 윤경 확정 전 임시
-        n = len(cond['moods'])
-        req = (req * n + fit_d) / (n + 1) if n else fit_d
+    req = ps.request_score(cond['moods'], {t['tag']: t['mentions'] for t in p['tags']},   # 윤경 11/4: 세부 음식 포함
+                           cond.get('cuisineDetails'), p['cuisine'], p['cuisineDetail'])
     tgt = ps.target_score(TARGET['cells'].get(cell), cluster, TARGET['region_avg'][p['region']],
                           cond.get('gender'), cond.get('ageGroup'))
     fit = ps.congestion_fit(cond['crowdPreference'], cong['level'])

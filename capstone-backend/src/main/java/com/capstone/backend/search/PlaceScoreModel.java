@@ -18,10 +18,11 @@ import java.util.Map;
 /**
  * 장소 점수 모듈 (윤경 place_score.py → Java로 옮김, 예민)
  * - 장소 점수 = 0.45 × 사용자 요구 + 0.30 × 타깃 특성 + 0.25 × 혼잡도 적합도 (각 0~1)
- * - v0.5: 사용자 요구에 세부 음식 취향 가점 섞음 (course/Cuisine.detailFit)
+ * - v0.5: 사용자 요구에 세부 음식 취향 섞음 (course/Cuisine.detailFit), 11/4 윤경 확정
+ * - 11/4: 태그가 하나도 없는 장소는 분위기 점수 0 → 0.5 (모르니까 중립, 윤경 B안)
  * - 11/4: 점수 같으면 원하는 분위기 태그 언급 많은 곳 먼저 (tieBreak) → 윤경 평가 9개 시나리오 구글 리뷰 채점 Precision@5 0.40 → 0.76
  * - 계산식·숫자는 place_score.py랑 똑같이 → 바꿀 때는 둘 다 바꾸기 (@이윤경)
- *   · 같은 입력이면 같은 값인지: PlaceScoreModelTest (윤경 test_place_score.py 10개 그대로)
+ *   · 같은 입력이면 같은 값인지: PlaceScoreModelTest (윤경 test_place_score.py 17개 그대로)
  *   · 가짜 JSON(generate_mocks.py가 place_score.py import)이랑 서버 결과 비교로도 확인
  * - 데이터: 태그 = 예린 place_tag.csv, 성·연령·유형 = 윤경 cell_gender_age_fake.csv·cell_cluster.csv,
  *   혼잡 등급 = 도착 시각의 level_same_time (같은 시간끼리 비교)
@@ -64,13 +65,7 @@ public class PlaceScoreModel implements PlaceScorerFactory {
             PlaceStore.Place p = store.find(place.placeId()).orElseThrow();
             Map<String, Integer> tags = new HashMap<>();
             p.tags().forEach(t -> tags.put(t.tag(), t.mentions()));
-            double request = requestScore(c.atmospheres(), tags);
-            // v0.5 세부 음식 취향 가점: 분위기 점수들과 같이 평균 (분위기 없으면 세부 점수만) - 윤경 확정 전 임시, generate_mocks.py랑 같게
-            Double fitD = Cuisine.detailFit(p.cuisine(), p.cuisineDetail(), c.cuisineDetails());
-            if (fitD != null) {
-                int n = c.atmospheres() == null ? 0 : c.atmospheres().size();
-                request = n > 0 ? (request * n + fitD) / (n + 1) : fitD;
-            }
+            double request = requestScore(c.atmospheres(), tags, c.cuisineDetails(), p.cuisine(), p.cuisineDetail());
 
             PlaceStore.CellProfile cell = store.cellProfile(p.placeId());
             Map<String, Double> cluster = cell == null ? null : store.clusterAverage(cell.cluster());
@@ -90,14 +85,35 @@ public class PlaceScoreModel implements PlaceScorerFactory {
         return p.tags().stream().filter(t -> atmospheres.contains(t.tag())).mapToInt(PlaceStore.Tag::mentions).sum();
     }
 
-    /** 사용자 요구: 요청 분위기마다 min(언급 수, 3) ÷ 3 → 평균. 분위기 요청 없으면 0.5 */
-    static double requestScore(List<String> atmospheres, Map<String, Integer> placeTags) {
-        if (atmospheres == null || atmospheres.isEmpty()) return NEUTRAL;
+    /** 분위기 하나: min(언급 수, 3) ÷ 3. 태그가 하나도 없는 장소는 모르니까 0.5 (11/4 윤경 B안) */
+    static double moodScore(String atmosphere, Map<String, Integer> placeTags) {
+        if (placeTags == null || placeTags.isEmpty()) return NEUTRAL;
+        return Math.min(placeTags.getOrDefault(atmosphere, 0), MENTION_FULL) / (double) MENTION_FULL;
+    }
+
+    /**
+     * 사용자 요구 (place_score.py request_score): (분위기 점수 합 + 음식 세부 점수) ÷ (분위기 수 + 1)
+     * - 세부 점수 계산 안 하면 분위기 점수 평균, 분위기도 없으면 0.5
+     */
+    static double requestScore(List<String> atmospheres, Map<String, Integer> placeTags,
+                               List<String> cuisineDetails, String placeCuisine, String placeDetail) {
         double total = 0;
-        for (String a : atmospheres) {
-            total += Math.min(placeTags.getOrDefault(a, 0), MENTION_FULL) / (double) MENTION_FULL;
+        int n = 0;
+        for (String a : atmospheres == null ? List.<String>of() : atmospheres) {
+            total += moodScore(a, placeTags);
+            n++;
         }
-        return total / atmospheres.size();
+        Double d = Cuisine.detailFit(placeCuisine, placeDetail, cuisineDetails);
+        if (d != null) {
+            total += d;
+            n++;
+        }
+        return n == 0 ? NEUTRAL : total / n;
+    }
+
+    /** 분위기만 (음식 세부 없음) */
+    static double requestScore(List<String> atmospheres, Map<String, Integer> placeTags) {
+        return requestScore(atmospheres, placeTags, null, null, null);
     }
 
     /** 칸 값 꺼내기 ("female_ratio", "age_20s" …) */
