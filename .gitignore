@@ -2,3 +2,6 @@
 .venv/
 __pycache__/
 *.pyc
+lzu_data/
+*_lg.csv
+*_lg_*.csv
