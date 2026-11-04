@@ -42,7 +42,7 @@ class SearchServiceTest {
 
     private static SearchConditions seongsuQuiet() {
         return new SearchConditions("SEONGSU", "2026-10-17", null, "15:00", 2, List.of("CAFE", "FOOD"),
-                List.of("조용함"), "QUIET", List.of(), null, null, "FRIEND", List.of(), "GEMINI");
+                List.of("조용한"), "QUIET", List.of(), null, null, "FRIEND", List.of(), "GEMINI");
     }
 
     @SuppressWarnings("unchecked")
@@ -79,20 +79,26 @@ class SearchServiceTest {
         assertEquals(173, best.totalMinutes());
         assertEquals(0.86, best.score().total());
         assertEquals(8, courses(data).size());                       // v0.5 최대 10개, 가짜 JSON도 8개 (11/4 동점 정렬 후)
-        assertEquals(List.of("조용함", "한산", "분식", "도보 5분 이내"), best.keywords());
+        assertEquals(List.of("조용한", "한산", "분식", "도보 5분 이내"), best.keywords());
         assertTrue(((List<?>) data.get("places")).size() <= 10);
     }
 
     @Test
-    @DisplayName("v0.5 인원 → 분위기: 1명 혼자가능, 2명 데이트(친구면 안 붙임), 4명 단체, 인원 모르면 안 붙임")
+    @DisplayName("상황 태그 자동 (예린 태그 v3): 1명·혼자 → 혼자, 연인 → 데이트, 4명·회사 → 단체, 가족 → 아이")
     void partyMoods() {
-        assertEquals(List.of("혼자가능"), ((Map<?, ?>) service().search(query("토요일 점심 홍대에서 혼자 밥 먹을 곳")).get("conditions")).get("atmospheres"));
-        assertEquals(List.of("조용함"), ((Map<?, ?>) service().search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet())).get("conditions")).get("atmospheres"));
+        assertEquals(List.of("혼자"), ((Map<?, ?>) service().search(query("토요일 점심 홍대에서 혼자 밥 먹을 곳")).get("conditions")).get("atmospheres"));
+        assertEquals(List.of("조용한"), ((Map<?, ?>) service().search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet())).get("conditions")).get("atmospheres"));
         assertEquals(List.of("단체"), ((Map<?, ?>) service().search(query("토요일 저녁 강남 4명 밥집")).get("conditions")).get("atmospheres"));
         assertEquals(List.of(), ((Map<?, ?>) service().search(query("토요일 저녁 강남 밥집")).get("conditions")).get("atmospheres"));
         SearchConditions two = new SearchConditions("HONGDAE", "2026-10-17", null, "19:00", 2, List.of(), List.of(),
                 "DEFAULT", List.of(), null, null, null, List.of(), "USER");
-        assertEquals(List.of("데이트"), two.withPartyMoods().atmospheres());
+        assertEquals(List.of(), two.withPartyMoods().atmospheres());                    // 2명이어도 연인 아니면 안 붙임
+        SearchConditions couple = new SearchConditions("HONGDAE", "2026-10-17", null, "19:00", 2, List.of(), List.of("활기찬"),
+                "DEFAULT", List.of(), null, null, "COUPLE", List.of(), "USER");
+        assertEquals(List.of("활기찬", "데이트"), couple.withPartyMoods().atmospheres());
+        SearchConditions family = new SearchConditions("HONGDAE", "2026-10-17", null, "12:00", 5, List.of(), List.of(),
+                "DEFAULT", List.of(), null, null, "FAMILY", List.of(), "USER");
+        assertEquals(List.of("단체", "아이"), family.withPartyMoods().atmospheres());
     }
 
     @Test
@@ -159,17 +165,17 @@ class SearchServiceTest {
     @Test
     @DisplayName("로그인: 문장에 지역·분위기 없으면 내 설정으로, 알레르기는 합치기, 문장 지역이 우선")
     void myPreferences() {
-        SearchService.MyPreferences my = new SearchService.MyPreferences("SEONGSU", List.of("조용함"), List.of("SHELLFISH"));
+        SearchService.MyPreferences my = new SearchService.MyPreferences("SEONGSU", List.of("조용한"), List.of("SHELLFISH"));
         Map<?, ?> cond = (Map<?, ?>) service().search(query("토요일 오후 3시에 카페 가고 싶어"), my).get("conditions");
         assertEquals("SEONGSU", cond.get("region"));
-        assertEquals(List.of("조용함"), cond.get("atmospheres"));
+        assertEquals(List.of("조용한"), cond.get("atmospheres"));
         assertEquals("QUIET", cond.get("crowdPreference"));
         assertEquals(List.of("SHELLFISH"), cond.get("allergies"));
 
         Map<?, ?> hongdae = (Map<?, ?>) service().search(
                 query("토요일 저녁 7시 홍대에서 남자친구랑 신나게 놀 수 있는 사람 많은 곳"), my).get("conditions");
         assertEquals("HONGDAE", hongdae.get("region"));
-        assertEquals(List.of("데이트"), hongdae.get("atmospheres"));
+        assertEquals(List.of("데이트", "활기찬"), hongdae.get("atmospheres"));
         assertEquals("LIVELY", hongdae.get("crowdPreference"));
         assertEquals(List.of("SHELLFISH"), hongdae.get("allergies"));
 

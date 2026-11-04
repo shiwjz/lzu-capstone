@@ -56,22 +56,26 @@ public record SearchConditions(
     }
 
     /**
-     * 인원 → 분위기 자동 (10/31 회의) - 인원을 알 때만
-     * - 1명 혼자가능, 2명 데이트(동행이 친구·가족·회사면 안 붙임), 4명 이상 단체, 3명은 없음
+     * 동행·인원 → 상황 태그 자동 (예린 tag_dictionary.py v3 SITUATION_RULES, 11/4)
+     * - 데이트: 동행 COUPLE / 단체: 4명 이상 또는 COWORKER / 혼자: 1명 또는 SOLO / 아이: FAMILY
+     * - 사용자가 고르는 태그가 아니라 점수용 (앱 분위기 칩에는 없음)
      */
     public SearchConditions withPartyMoods() {
-        if (partySize == null) return this;
-        String add = null;
-        if (partySize == 1) add = "혼자가능";
-        else if (partySize == 2 && !Set.of("FRIEND", "FAMILY", "COWORKER").contains(String.valueOf(companionType))) add = "데이트";
-        else if (partySize >= 4) add = "단체";
         List<String> moods = atmospheres == null ? List.of() : atmospheres;
-        if (add == null || moods.contains(add)) return this;
         List<String> next = new ArrayList<>(moods);
-        next.add(add);
+        String comp = String.valueOf(companionType);
+        if (comp.equals("COUPLE")) addOnce(next, "데이트");
+        if ((partySize != null && partySize >= 4) || comp.equals("COWORKER")) addOnce(next, "단체");
+        if ((partySize != null && partySize == 1) || comp.equals("SOLO")) addOnce(next, "혼자");
+        if (comp.equals("FAMILY")) addOnce(next, "아이");
+        if (next.size() == moods.size()) return this;
         return new SearchConditions(region, date, dayType, startTime, partySize, categories, List.copyOf(next),
                 crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy,
                 cuisines, cuisineDetails);
+    }
+
+    private static void addOnce(List<String> list, String tag) {
+        if (!list.contains(tag)) list.add(tag);
     }
 
     public SearchConditions withDate(String newDate, String newDayType) {
@@ -113,12 +117,12 @@ public record SearchConditions(
                 cuisines, cuisineDetails);
     }
 
-    /** 빈 값 채우기: 인원 2명, 목록은 빈 목록, 혼잡 선호는 분위기 태그로 ('조용함' → QUIET, '활기' → LIVELY) */
+    /** 빈 값 채우기: 인원 2명, 목록은 빈 목록, 혼잡 선호는 분위기 태그로 ('조용한' → QUIET, '활기찬' → LIVELY) */
     public SearchConditions withDefaults() {
         List<String> moods = atmospheres == null ? List.of() : atmospheres;
         String crowd = crowdPreference;
         if (crowd == null) {
-            crowd = moods.contains("조용함") ? "QUIET" : moods.contains("활기") ? "LIVELY" : "DEFAULT";
+            crowd = moods.contains("조용한") ? "QUIET" : moods.contains("활기찬") ? "LIVELY" : "DEFAULT";
         }
         return new SearchConditions(region, date, dayType, startTime, partySize == null ? 2 : partySize,
                 categories == null ? List.of() : categories, moods, crowd,

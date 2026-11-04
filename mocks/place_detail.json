@@ -19,19 +19,15 @@
     "openingHours": null,
     "tags": [
       {
-        "tag": "디저트",
-        "mentions": 20
+        "tag": "감성적인",
+        "mentions": 11
       },
       {
-        "tag": "조용함",
+        "tag": "조용한",
         "mentions": 7
       },
       {
-        "tag": "데이트",
-        "mentions": 6
-      },
-      {
-        "tag": "사진",
+        "tag": "활기찬",
         "mentions": 2
       }
     ],

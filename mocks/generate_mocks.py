@@ -21,7 +21,7 @@
     · 음식 취향: 장소마다 큰 종류(cuisine)·세부(detail) → place_cuisine.csv(예린 확정본) 있으면 그걸, 없으면 임시 분류
       (카카오 분류 → 없으면 가게 이름 → 그것도 없으면 큰 종류만) → 저장소 맨 위 place_cuisine_draft.csv로도 저장
     · 음식 큰 종류 고르면 식사 칸은 그 종류만, 세부 고르면 사용자 요구 점수에 가점 (딱 맞음 1.0 / 세부 없음 0.5 / 다른 세부 0.2)
-    · 인원 → 분위기 자동 (1명 혼자가능, 2명 데이트(친구·가족·회사 빼고), 4명 이상 단체)
+    · 동행·인원 → 상황 태그 자동 (데이트: 연인 / 단체: 4명 이상·회사 / 혼자: 1명 / 아이: 가족) - 예린 태그 v3
     · 코스 최대 10개, 코스마다 keywords
 - 거리·도보 시간·도착 시각·코스 조합: 코스 생성 규칙대로 실제 계산
 - SNACK(베이커리·아이스크림 등)은 코스 칸에 안 넣음. 장소 추천·코스에 직접 추가만 가능
@@ -227,18 +227,17 @@ DETAIL_FAMILY.update({'해물·생선': 'KOREAN', '중국요리': 'CHINESE', '�
 
 
 def party_moods(cond):
-    """인원 → 분위기 자동 (10/31 회의): 1명 혼자가능, 2명 데이트(친구·가족·회사 빼고), 4명 이상 단체"""
-    n = cond.get('partySize')
-    add = None
-    if n == 1:
-        add = '혼자가능'
-    elif n == 2 and cond.get('companionType') not in ('FRIEND', 'FAMILY', 'COWORKER'):
-        add = '데이트'
-    elif n is not None and n >= 4:
-        add = '단체'
-    if add and add not in cond['moods']:
-        cond = {**cond, 'moods': cond['moods'] + [add]}
-    return cond
+    """동행·인원 → 상황 태그 자동 (예린 tag_dictionary.py v3 SITUATION_RULES, 11/4, 서버 withPartyMoods랑 같게)
+    데이트: COUPLE / 단체: 4명 이상 또는 COWORKER / 혼자: 1명 또는 SOLO / 아이: FAMILY"""
+    n, comp = cond.get('partySize'), cond.get('companionType')
+    moods = list(cond['moods'])
+    for tag, ok in (('데이트', comp == 'COUPLE'),
+                    ('단체', (n is not None and n >= 4) or comp == 'COWORKER'),
+                    ('혼자', n == 1 or comp == 'SOLO'),
+                    ('아이', comp == 'FAMILY')):
+        if ok and tag not in moods:
+            moods.append(tag)
+    return {**cond, 'moods': moods}
 
 
 def congestion(p, day_type, hour, basis='same_time'):
@@ -385,7 +384,7 @@ def allowed(p, cond, arrive_hour):
 
 
 def wants_quiet(cond):
-    return cond['crowdPreference'] == 'QUIET' or '조용함' in cond['moods']
+    return cond['crowdPreference'] == 'QUIET' or '조용한' in cond['moods']
 
 
 def is_noisy(p):
@@ -415,7 +414,10 @@ def build_course(stops_in, cond, start):
         t += stay
         prev = p
     total = t - start
-    place_avg = sum(s['placeScore'] for s in stops) / len(stops)
+    acc = 0.0
+    for s in stops:                 # sum() 대신 하나씩 더하기: 파이썬 3.12 sum()은 보정 덧셈이라 Java(+=)랑 끝자리가 달라짐
+        acc += s['placeScore']
+    place_avg = acc / len(stops)
     move_eff = max(0.0, 1 - walk_total / WALK_ZERO_MIN)
     time_fit = max(0.0, 1 - abs(total - TARGET_MIN) / TOL_MIN)
     course_total = (W_COURSE['placeAvg'] * place_avg + W_COURSE['moveEfficiency'] * move_eff
@@ -634,15 +636,15 @@ def write_congestion(path, cells, cong):
 SCENARIOS = [
     ('search_seongsu_weekend_quiet.json', '토요일 오후 3시에 성수에서 친구랑 조용한 카페 가고 저녁도 먹고 싶어',
      {'region': 'SEONGSU', 'date': '2026-10-17', 'dayType': 'WEEKEND', 'startTime': '15:00', 'partySize': 2,
-      'categories': ['CAFE', 'FOOD'], 'moods': ['조용함'], 'crowdPreference': 'QUIET', 'allergies': [],
+      'categories': ['CAFE', 'FOOD'], 'moods': ['조용한'], 'crowdPreference': 'QUIET', 'allergies': [],
       'gender': None, 'ageGroup': None, 'companionType': 'FRIEND', 'excludedFoods': [], 'cuisines': [], 'cuisineDetails': []}),
     ('search_hongdae_weekend_lively.json', '토요일 저녁 7시 홍대에서 남자친구랑 신나게 놀 수 있는 사람 많은 곳',
      {'region': 'HONGDAE', 'date': '2026-10-17', 'dayType': 'WEEKEND', 'startTime': '19:00', 'partySize': 2,
-      'categories': ['FOOD', 'ACTIVITY'], 'moods': ['데이트'], 'crowdPreference': 'LIVELY', 'allergies': [],
+      'categories': ['FOOD', 'ACTIVITY'], 'moods': ['활기찬'], 'crowdPreference': 'LIVELY', 'allergies': [],
       'gender': None, 'ageGroup': None, 'companionType': 'COUPLE', 'excludedFoods': [], 'cuisines': [], 'cuisineDetails': []}),
     ('search_gangnam_weekday_group.json', '금요일 저녁 7시 강남역 근처에서 회사 동기 4명 모임, 한 명이 갑각류 알레르기 있어',
      {'region': 'GANGNAM', 'date': '2026-10-16', 'dayType': 'WEEKDAY', 'startTime': '19:00', 'partySize': 4,
-      'categories': ['FOOD'], 'moods': ['단체'], 'crowdPreference': 'DEFAULT', 'allergies': ['SHELLFISH'],
+      'categories': ['FOOD'], 'moods': [], 'crowdPreference': 'DEFAULT', 'allergies': ['SHELLFISH'],
       'gender': None, 'ageGroup': None, 'companionType': 'COWORKER', 'excludedFoods': [], 'cuisines': [], 'cuisineDetails': []}),
 ]
 
@@ -725,7 +727,7 @@ def main(root, out_dir):
     dump(out_dir, 'auth_login_response.json', wrap({'accessToken': 'eyJhbGciOiJIUzI1NiJ9.mock.token', 'tokenType': 'Bearer',
          'expiresIn': 3600, 'user': user}))
     dump(out_dir, 'auth_error_duplicate_email.json', error('DUPLICATE_EMAIL', '이미 사용 중인 이메일입니다.'))
-    dump(out_dir, 'preferences.json', wrap({'region': 'SEONGSU', 'atmospheres': ['조용함', '사진'],
+    dump(out_dir, 'preferences.json', wrap({'region': 'SEONGSU', 'atmospheres': ['조용한', '감성적인'],
          'allergies': ['SHELLFISH']}))
 
     # 에러 예시

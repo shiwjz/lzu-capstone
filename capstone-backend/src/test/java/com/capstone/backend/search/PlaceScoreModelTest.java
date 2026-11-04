@@ -31,10 +31,10 @@ class PlaceScoreModelTest {
     @Test
     @DisplayName("1~4 사용자 요구: 언급 충분 1 / 2개 중 1개 0.5 / 언급 1번 1/3 / 분위기 없음 0.5")
     void request() {
-        near(1.0, PlaceScoreModel.requestScore(List.of("조용함"), Map.of("조용함", 3)));
-        near(0.5, PlaceScoreModel.requestScore(List.of("조용함", "데이트"), Map.of("조용함", 3)));
-        near(1.0 / 3, PlaceScoreModel.requestScore(List.of("조용함"), Map.of("조용함", 1)));
-        near(0.5, PlaceScoreModel.requestScore(List.of(), Map.of("조용함", 3)));
+        near(1.0, PlaceScoreModel.requestScore(List.of("조용한"), Map.of("조용한", 3)));
+        near(0.5, PlaceScoreModel.requestScore(List.of("조용한", "데이트"), Map.of("조용한", 3)));
+        near(1.0 / 3, PlaceScoreModel.requestScore(List.of("조용한"), Map.of("조용한", 1)));
+        near(0.5, PlaceScoreModel.requestScore(List.of(), Map.of("조용한", 3)));
     }
 
     @Test
@@ -55,7 +55,7 @@ class PlaceScoreModelTest {
     @Test
     @DisplayName("10 장소 점수 전체: 0.45×1.0 + 0.30×(1.6/2.6) + 0.25×1.0 = 0.8846")
     void total() {
-        double req = PlaceScoreModel.requestScore(List.of("조용함"), Map.of("조용함", 3));
+        double req = PlaceScoreModel.requestScore(List.of("조용한"), Map.of("조용한", 3));
         double tgt = PlaceScoreModel.targetScore(CELL_SHARES, CLUSTER, AVG, "F", "20s");
         double fit = PlaceScoreModel.congestionFit(CrowdPreference.QUIET, CongestionLevel.QUIET);
         double total = PlaceScoreModel.W_REQUEST * req + PlaceScoreModel.W_TARGET * tgt + PlaceScoreModel.W_FIT * fit;

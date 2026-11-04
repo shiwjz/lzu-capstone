@@ -40,18 +40,23 @@ public class RuleConditionExtractor implements ConditionExtractor {
             "NATURE", List.of("산책", "공원", "한강", "숲"),
             "TOUR", List.of("명소", "관광"));
 
-    // 분위기 = 예린 블로그 태그 이름 그대로 (tag_dictionary.py 7개: 조용함·데이트·단체·혼자가능·디저트·사진·가성비)
+    // 분위기 = 예린 블로그 태그 이름 그대로 (tag_dictionary.py v3, 11/4)
+    // - 사용자가 고르는 6개: 조용한·활기찬·감성적인·가성비좋은·넓고편한·뷰좋은
+    // - 상황 4개(데이트·단체·혼자·아이)는 동행·인원 보고 서버가 자동으로 붙임 (SearchConditions.withPartyMoods) → 문장에 직접 써도 붙음
     private static final Map<String, List<String>> MOOD_WORDS = orderedList(
-            "조용함", List.of("조용", "한적", "여유", "차분", "시끄럽지 않", "안 시끄", "덜 붐", "사람 적"),
-            "디저트", List.of("디저트", "케이크", "빵"),
-            "사진", List.of("사진", "인스타", "감성", "예쁜", "포토"),
+            "조용한", List.of("조용", "한적", "여유", "차분", "시끄럽지 않", "안 시끄", "덜 붐", "사람 적"),
+            "활기찬", List.of("활기", "신나", "북적", "시끌", "핫한", "힙한", "핫플"),
+            "감성적인", List.of("감성", "분위기 좋", "분위기좋", "아늑", "사진", "인스타", "예쁜", "포토"),
+            "가성비좋은", List.of("가성비", "저렴", "싼 ", "합리적"),
+            "넓고편한", List.of("넓은", "넓고", "자리 넉넉", "편한 자리", "편하게 앉", "소파", "대형 카페", "대형카페"),
+            "뷰좋은", List.of("뷰 좋", "뷰가 좋", "뷰맛집", "뷰 맛집", "전망", "루프탑", "야경", "테라스", "통창"),
             "데이트", List.of("데이트", "남자친구", "여자친구", "남친", "여친", "애인", "연인"),
             "단체", List.of("단체", "모임", "회식", "동기", "동료"),
-            "가성비", List.of("가성비", "저렴", "싼 "),
-            "혼자가능", List.of("혼밥", "혼자", "혼카페"));
+            "혼자", List.of("혼밥", "혼자", "혼카페", "혼술"),
+            "아이", List.of("아이랑", "아이와", "아기", "애기", "키즈", "유모차"));
 
-    private static final List<String> QUIET_WORDS = MOOD_WORDS.get("조용함");
-    private static final List<String> LIVELY_WORDS = List.of("신나", "활기", "사람 많", "북적", "핫한", "시끌", "힙한");
+    private static final List<String> QUIET_WORDS = MOOD_WORDS.get("조용한");
+    private static final List<String> LIVELY_WORDS = List.of("신나", "활기", "사람 많", "북적", "핫한", "시끌", "힙한", "핫플");
 
     // 알레르기 (문장에 '알레르기·알러지·못 먹'이 있을 때만)
     private static final Map<String, List<String>> ALLERGY_WORDS = orderedList(
@@ -219,7 +224,7 @@ public class RuleConditionExtractor implements ConditionExtractor {
     private static String companion(String q) {
         if (anyOf(q, List.of("남자친구", "여자친구", "남친", "여친", "애인", "연인", "데이트"))) return "COUPLE";
         if (anyOf(q, List.of("회사", "동기", "동료", "팀원", "회식"))) return "COWORKER";
-        if (anyOf(q, List.of("가족", "엄마", "아빠", "부모님", "동생"))) return "FAMILY";
+        if (anyOf(q, List.of("가족", "엄마", "아빠", "부모님", "동생", "아이랑", "아이와", "아기", "애기"))) return "FAMILY";
         if (anyOf(q, List.of("혼자", "혼밥"))) return "SOLO";
         if (q.contains("친구")) return "FRIEND";
         return null;
