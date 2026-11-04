@@ -12,7 +12,7 @@ def check(no, got, expected):
     return ok
 
 results = [
-    # 사용자 요구
+    # 사용자 요구: 분위기
     check(1, request_score(["조용함"], {"조용함": 3}), 1.0),                      # 언급 충분 → 1
     check(2, request_score(["조용함", "데이트"], {"조용함": 3}), 0.5),            # 2개 중 1개 일치
     check(3, request_score(["조용함"], {"조용함": 1}), 1 / 3),                    # 언급 1번 → 1/3
@@ -29,5 +29,15 @@ results = [
                            "crowdPreference": "QUIET"},
                           {"조용함": 3}, CELL, CLUSTER, AVG, "QUIET")["total"],
           0.45 * 1.0 + 0.30 * (1.6 / 2.6) + 0.25 * 1.0),                          # = 0.8846
+    # 태그 없는 장소 (B안: 모르니까 중립)
+    check(11, request_score(["조용함"], {}), 0.5),                                # 태그 하나도 없음 → 0.5
+    check(12, request_score(["조용함"], {"디저트": 5}), 0.0),                     # 태그는 있는데 조용함 없음 → 0
+    # 음식 세부 (명세 v0.5)
+    check(13, request_score([], {}, ["라멘"], "JAPANESE", "라멘"), 1.0),          # 세부 딱 맞음
+    check(14, request_score([], {}, ["라멘"], "JAPANESE", None), 0.5),            # 같은 큰 종류, 세부 없음
+    check(15, request_score([], {}, ["라멘"], "JAPANESE", "초밥·롤"), 0.2),       # 같은 큰 종류, 다른 세부
+    check(16, request_score([], {}, ["라멘"], "KOREAN", "국밥"), 0.5),            # 다른 큰 종류 → 계산 안 함 → 중립
+    check(17, request_score(["조용함"], {"조용함": 1}, ["라멘"], "JAPANESE", "라멘"),
+          (1 / 3 + 1.0) / 2),                                                     # (분위기 1/3 + 세부 1.0) ÷ 2
 ]
-print(f"\n{sum(results)}/10 통과")
+print(f"\n{sum(results)}/{len(results)} 통과")
