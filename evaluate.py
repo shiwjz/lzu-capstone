@@ -34,7 +34,8 @@ cong_idx = cong.set_index(["cell_id", "day_type", "hour"])[["level_same_time", "
 
 mentions = {pid: dict(zip(g["tag"], g["mentions"])) for pid, g in tags.groupby("place_id")}
 popularity = tags.groupby("place_id")["mentions"].sum().to_dict()
-
+ratios = {pid: dict(zip(g["tag"], g["ratio"])) for pid, g in tags.groupby("place_id")}
+bloggers = tags.groupby("place_id")["blogger_count"].max().to_dict()
 
 def congestion_of(cell_id, day, hour):
     key = (str(cell_id), day, hour % 24)
@@ -75,6 +76,9 @@ def candidates(s):
     c["pct"] = [i[1] for i in info]
     c["rel"] = [relevance(pid, lv, s) for pid, lv in zip(c["place_id"], c["level"])]
     c["popularity"] = c["place_id"].map(popularity).fillna(0)
+    c["tag_ratio"] = [max((ratios.get(pid, {}).get(a, 0) for a in s["atmospheres"]), default=0)
+                      for pid in c["place_id"]]
+    c["bloggers"] = c["place_id"].map(bloggers).fillna(0)
     cond = {"atmospheres": s["atmospheres"], "crowdPreference": s["crowdPreference"],
             "gender": None, "ageGroup": None}               # 성·연령은 가짜라 평가에서 제외 → 타깃 0.5
     parts = [place_score(cond, mentions.get(pid, {}), None, None, None, lv)
@@ -86,8 +90,11 @@ def candidates(s):
 
 def odiga_top(c, w):
     total = w["request"] * c["request"] + w["target"] * c["target"] + w["congestion"] * c["congestion"]
-    return c.assign(total=total).sort_values("total", ascending=False, kind="stable").head(K)
-
+    # 동점이면: 요청 태그 비율 높은 순 → 블로그 글 수 많은 순 → place_id 순 (서버와 같은 규칙)
+    return (c.assign(total=total)
+             .sort_values(["total", "tag_ratio", "bloggers", "place_id"],
+                          ascending=[False, False, False, True], kind="stable")
+             .head(K))
 
 def evaluate_method(c, method):
     all_rels = list(c["rel"])
@@ -157,3 +164,20 @@ for key in BASE_W:
 sens = pd.DataFrame(sens)
 sens.to_csv("eval_sensitivity.csv", index=False, encoding="utf-8-sig")
 print(sens.to_string(index=False))
+
+# ---------- 4. 시나리오별 상위 5곳 목록 (구글 리뷰 재채점용) ----------
+out = []
+for s in SCENARIOS:
+    c = cache[(s["region"], s["name"])]
+    picks = {
+        "랜덤": c.sample(n=min(K, len(c)), random_state=42),     # 랜덤은 한 번 뽑은 결과
+        "인기순": c.sort_values("popularity", ascending=False, kind="stable").head(K),
+        "거리순": c.sort_values("dist_m", kind="stable").head(K),
+        "오디가": odiga_top(c, BASE_W),
+    }
+    for m, top in picks.items():
+        for rank, pid in enumerate(top["place_id"], 1):
+            out.append({"scenario": f'{s["region"]} {s["name"]}', "method": m, "rank": rank,
+                        "place_id": pid, "moods": ",".join(s["atmospheres"])})
+pd.DataFrame(out).to_csv("eval_top5.csv", index=False, encoding="utf-8-sig")
+print("\n상위 5곳 목록:", len(out), "행 → eval_top5.csv")
