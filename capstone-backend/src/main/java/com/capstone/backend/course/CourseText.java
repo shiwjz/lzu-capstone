@@ -48,6 +48,29 @@ public final class CourseText {
                 .orElse(regionLabel + " " + when + " 코스");
     }
 
+    /**
+     * 코스 키워드 태그 (최대 4개, v0.5) - 예령 추천 리스트용
+     * 원하는 분위기 중 2곳 이상 태그 있는 것 → 한산/북적(2곳 이상) → 식사 음식 종류(세부 우선) → 도보 5분 이내
+     */
+    public static List<String> keywords(CoursePlan plan, CourseRequest request, Map<String, CoursePlace> placesById) {
+        List<String> out = new ArrayList<>();
+        List<CoursePlan.Stop> stops = plan.stops();
+        for (String mood : request.atmospheres() == null ? List.<String>of() : request.atmospheres()) {
+            long n = stops.stream().filter(s -> placesById.get(s.placeId()).tags().contains(mood)).count();
+            if (n >= 2) out.add(mood);
+        }
+        long quiet = stops.stream().filter(s -> s.congestion().level() == CongestionLevel.QUIET).count();
+        long busy = stops.stream().filter(s -> s.congestion().level() == CongestionLevel.BUSY).count();
+        if (quiet >= 2) out.add("한산");
+        else if (busy >= 2) out.add("북적");
+        stops.stream().filter(s -> s.slot() == Slot.MEAL).findFirst()
+                .map(s -> placesById.get(s.placeId()))
+                .filter(p -> p.cuisine() != null && !p.cuisine().equals("ETC"))
+                .ifPresent(p -> out.add(p.cuisineDetail() != null ? p.cuisineDetail() : Cuisine.LABEL.get(p.cuisine())));
+        if (plan.totalWalkMinutes() <= 5) out.add("도보 5분 이내");
+        return List.copyOf(out.subList(0, Math.min(4, out.size())));
+    }
+
     public static String reason(CoursePlan plan, CourseRequest request, Map<String, CoursePlace> placesById) {
         List<String> parts = new ArrayList<>();
         List<CoursePlan.Stop> stops = plan.stops();

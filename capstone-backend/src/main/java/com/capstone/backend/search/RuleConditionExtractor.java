@@ -40,28 +40,65 @@ public class RuleConditionExtractor implements ConditionExtractor {
             "NATURE", List.of("산책", "공원", "한강", "숲"),
             "TOUR", List.of("명소", "관광"));
 
-    // 분위기 = 블로그 태그 이름 그대로
+    // 분위기 = 예린 블로그 태그 이름 그대로 (tag_dictionary.py v3, 11/4)
+    // - 사용자가 고르는 6개: 조용한·활기찬·감성적인·가성비좋은·넓고편한·뷰좋은
+    // - 상황 4개(데이트·단체·혼자·아이)는 동행·인원 보고 서버가 자동으로 붙임 (SearchConditions.withPartyMoods) → 문장에 직접 써도 붙음
     private static final Map<String, List<String>> MOOD_WORDS = orderedList(
-            "조용함", List.of("조용", "한적", "여유", "차분", "시끄럽지 않", "안 시끄", "덜 붐", "사람 적"),
-            "디저트", List.of("디저트", "케이크", "빵"),
-            "사진·인테리어", List.of("사진", "인스타", "감성", "예쁜"),
+            "조용한", List.of("조용", "한적", "여유", "차분", "시끄럽지 않", "안 시끄", "덜 붐", "사람 적"),
+            "활기찬", List.of("활기", "신나", "북적", "시끌", "핫한", "힙한", "핫플"),
+            "감성적인", List.of("감성", "분위기 좋", "분위기좋", "아늑", "사진", "인스타", "예쁜", "포토"),
+            "가성비좋은", List.of("가성비", "저렴", "싼 ", "합리적"),
+            "넓고편한", List.of("넓은", "넓고", "자리 넉넉", "편한 자리", "편하게 앉", "소파", "대형 카페", "대형카페"),
+            "뷰좋은", List.of("뷰 좋", "뷰가 좋", "뷰맛집", "뷰 맛집", "전망", "루프탑", "야경", "테라스", "통창"),
             "데이트", List.of("데이트", "남자친구", "여자친구", "남친", "여친", "애인", "연인"),
-            "단체석", List.of("단체", "모임", "회식", "동기", "동료"),
-            "가성비", List.of("가성비", "저렴", "싼 "),
-            "작업하기 좋음", List.of("작업", "공부", "노트북"),
-            "혼밥", List.of("혼밥"));
+            "단체", List.of("단체", "모임", "회식", "동기", "동료"),
+            "혼자", List.of("혼밥", "혼자", "혼카페", "혼술"),
+            "아이", List.of("아이랑", "아이와", "아기", "애기", "키즈", "유모차"));
 
-    private static final List<String> QUIET_WORDS = MOOD_WORDS.get("조용함");
-    private static final List<String> LIVELY_WORDS = List.of("신나", "활기", "사람 많", "북적", "핫한", "시끌", "힙한");
+    private static final List<String> QUIET_WORDS = MOOD_WORDS.get("조용한");
+    private static final List<String> LIVELY_WORDS = List.of("신나", "활기", "사람 많", "북적", "핫한", "시끌", "힙한", "핫플");
 
     // 알레르기 (문장에 '알레르기·알러지·못 먹'이 있을 때만)
     private static final Map<String, List<String>> ALLERGY_WORDS = orderedList(
             "SHELLFISH", List.of("갑각류", "새우", "꽃게", "대게", "랍스터", "게 알레르기"),
-            "SEAFOOD", List.of("해산물", "생선", "해물"),
-            "PEANUT", List.of("땅콩", "견과"),
-            "MILK", List.of("우유", "유제품", "유당"),
-            "EGG", List.of("계란", "달걀"),
-            "WHEAT", List.of("밀가루", "글루텐", "밀 알레르기"));
+            "SEAFOOD", List.of("해산물", "생선", "해물"));     // 10/31 회의: 2개로 줄임 (땅콩·우유 등은 향후 보완)
+
+    // 음식 취향 v0.5 - 큰 종류(거르기)·세부(가점), 코드는 course/Cuisine이랑 같게
+    // - "일식 말고"처럼 빼는 말은 먼저 지우고 찾음 (빼는 건 excludedFoods)
+    private static final Map<String, List<String>> CUISINE_WORDS = orderedList(
+            "KOREAN", List.of("한식", "한정식", "백반"),
+            "JAPANESE", List.of("일식", "일본 음식", "일본음식"),
+            "WESTERN", List.of("양식", "서양 음식"),
+            "CHINESE", List.of("중식", "중국집", "중화"),
+            "BUNSIK", List.of("분식"),
+            "ASIAN", List.of("아시안", "동남아 음식"),
+            "CHICKEN", List.of("치킨", "통닭", "치맥"),
+            "BAR", List.of("술집", "한잔", "한 잔", "술 마시"));
+    private static final Map<String, List<String>> DETAIL_WORDS = orderedList(
+            "고기", List.of("고기", "삼겹살", "갈비", "고깃집"),
+            "국밥", List.of("국밥", "순대국", "설렁탕"),
+            "찌개·전골", List.of("찌개", "전골"),
+            "국수", List.of("국수", "냉면", "칼국수"),
+            "초밥·롤", List.of("초밥", "스시", "오마카세"),
+            "라멘", List.of("라멘"),
+            "돈까스·우동", List.of("돈까스", "돈가스", "우동"),
+            "덮밥", List.of("덮밥", "규동"),
+            "이탈리안", List.of("파스타", "이탈리안", "리조또"),
+            "피자", List.of("피자"),
+            "햄버거", List.of("햄버거", "버거"),
+            "스테이크", List.of("스테이크"),
+            "멕시칸", List.of("타코", "멕시칸", "부리또"),
+            "중국요리", List.of("짜장", "짬뽕", "마라", "탕수육"),
+            "양꼬치", List.of("양꼬치"),
+            "떡볶이", List.of("떡볶이"),
+            "김밥", List.of("김밥"),
+            "동남아", List.of("쌀국수", "팟타이", "베트남", "태국"),
+            "인도", List.of("커리", "카레", "인도"),
+            "이자카야", List.of("이자카야"),
+            "칵테일바", List.of("칵테일"),
+            "와인바", List.of("와인"),
+            "포장마차", List.of("포차", "포장마차"),
+            "호프·요리주점", List.of("호프"));
 
     // 제외 음식 ("매운 거 말고", "고기 빼고")
     private static final List<String> FOOD_WORDS = List.of(
@@ -113,7 +150,9 @@ public class RuleConditionExtractor implements ConditionExtractor {
                 age(q),
                 companion,
                 excludedFoods(q),
-                "RULE");
+                "RULE",
+                firstAppearance(withoutExcluded(q), CUISINE_WORDS),
+                firstAppearance(withoutExcluded(q), DETAIL_WORDS));
     }
 
     public static String dayType(LocalDate date) {
@@ -125,7 +164,10 @@ public class RuleConditionExtractor implements ConditionExtractor {
         if (q.contains("모레")) return today.plusDays(2);
         if (q.contains("내일")) return today.plusDays(1);
         if (q.contains("오늘")) return today;
-        boolean nextWeek = q.contains("다음 주") || q.contains("다음주");
+        // 주는 월요일 시작 (달력 기준): 다음 주 = 다음 월~일, 이번 주 = 이번 월~일 (10/31 예린 제보 반영)
+        boolean nextWeek = anyOf(q, List.of("다음 주", "다음주", "담주", "차주"));
+        boolean thisWeek = anyOf(q, List.of("이번 주", "이번주", "금주"));
+        LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         int best = Integer.MAX_VALUE;
         DayOfWeek day = null;
         for (Map.Entry<String, DayOfWeek> e : DAYS.entrySet()) {
@@ -136,11 +178,15 @@ public class RuleConditionExtractor implements ConditionExtractor {
             }
         }
         if (day != null) {
-            LocalDate d = today.with(TemporalAdjusters.nextOrSame(day));
-            return nextWeek ? d.plusWeeks(1) : d;
+            if (nextWeek) return monday.plusWeeks(1).with(TemporalAdjusters.nextOrSame(day));
+            LocalDate d = monday.with(TemporalAdjusters.nextOrSame(day));
+            if (thisWeek && !d.isBefore(today)) return d;
+            return today.with(TemporalAdjusters.nextOrSame(day));   // 그냥 '토요일' = 가장 가까운 토요일 (오늘이면 오늘)
         }
         if (q.contains("주말")) {
-            return dayType(today).equals("WEEKEND") ? today : today.with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
+            LocalDate saturday = monday.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+            if (nextWeek) return saturday.plusWeeks(1);
+            return dayType(today).equals("WEEKEND") ? today : saturday;
         }
         if (q.contains("평일")) {
             return dayType(today).equals("WEEKDAY") ? today : today.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
@@ -178,7 +224,7 @@ public class RuleConditionExtractor implements ConditionExtractor {
     private static String companion(String q) {
         if (anyOf(q, List.of("남자친구", "여자친구", "남친", "여친", "애인", "연인", "데이트"))) return "COUPLE";
         if (anyOf(q, List.of("회사", "동기", "동료", "팀원", "회식"))) return "COWORKER";
-        if (anyOf(q, List.of("가족", "엄마", "아빠", "부모님", "동생"))) return "FAMILY";
+        if (anyOf(q, List.of("가족", "엄마", "아빠", "부모님", "동생", "아이랑", "아이와", "아기", "애기"))) return "FAMILY";
         if (anyOf(q, List.of("혼자", "혼밥"))) return "SOLO";
         if (q.contains("친구")) return "FRIEND";
         return null;
@@ -236,6 +282,11 @@ public class RuleConditionExtractor implements ConditionExtractor {
             }
         }
         return out;
+    }
+
+    /** "일식 말고", "고기 빼고" 같은 빼는 말 지운 문장 (음식 취향 찾을 때 헷갈리지 않게) */
+    private static String withoutExcluded(String q) {
+        return EXCLUDE.matcher(q).replaceAll(" ");
     }
 
     // ---------- 도우미 ----------

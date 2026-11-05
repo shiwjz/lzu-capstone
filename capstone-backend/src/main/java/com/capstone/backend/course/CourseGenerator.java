@@ -17,7 +17,7 @@ import java.util.Set;
  * 2. 조합: 10 × 10 × 10 = 1,000개
  * 3. 시간 계산 + 도착 시각 혼잡도로 점수 다시 계산 (CourseCalculator)
  * 4. 총 소요시간 150~210분만 남기기
- * 5. 코스 점수 순으로, 앞에서 고른 코스와 장소 안 겹치는 것만 3개 선택
+ * 5. 코스 점수 순으로, 앞에서 고른 코스와 장소 안 겹치는 것만 최대 10개 선택 (v0.5, 예전 3개)
  *
  * 장소 목록은 PlaceStore(지금은 resources/data 파일, ERD 확정 후 DB), 점수는 PlaceScorer(이윤경 모듈 자리)에서 받아서 사용
  * Spring 빈 아님 → SearchService에서 new 해서 사용
@@ -57,7 +57,9 @@ public class CourseGenerator {
                     scoreById.put(place.placeId(), CourseRules.round2(scorer.score(place, hour).total()));
                 }
             }
-            pool.sort(Comparator.comparingDouble(p -> -scoreById.get(p.placeId())));
+            // 점수 높은 순, 같으면 tieBreak 큰 순 (원하는 분위기 태그 언급 많은 곳)
+            pool.sort(Comparator.<CoursePlace>comparingDouble(p -> -scoreById.get(p.placeId()))
+                    .thenComparingDouble(p -> -scorer.tieBreak(p)));
             perSlot.add(List.copyOf(pool.subList(0, Math.min(CourseRules.CANDIDATES_PER_SLOT, pool.size()))));
         }
         return new Candidates(order, nominalHour, perSlot);
@@ -71,7 +73,7 @@ public class CourseGenerator {
         List<CoursePlan> plans = new ArrayList<>();
         combine(candidates, 0, new ArrayList<>(), start, scorer, plans);
 
-        // 5. 점수 순 (같으면 조합 순서 유지), 장소 안 겹치게 3개
+        // 5. 점수 순 (같으면 조합 순서 유지), 장소 안 겹치게 최대 COURSE_COUNT개
         plans.sort(Comparator.comparingDouble(p -> -p.score().total()));
         Map<String, CoursePlace> placesById = new HashMap<>();
         places.forEach(p -> placesById.put(p.placeId(), p));
@@ -84,7 +86,8 @@ public class CourseGenerator {
             int rank = chosen.size() + 1;
             chosen.add(plan.withMeta(null, rank,
                     CourseText.title(plan, request.region(), start, placesById),
-                    CourseText.reason(plan, request, placesById)));
+                    CourseText.reason(plan, request, placesById),
+                    CourseText.keywords(plan, request, placesById)));
             used.addAll(ids);
             if (chosen.size() == CourseRules.COURSE_COUNT) break;
         }
@@ -97,7 +100,8 @@ public class CourseGenerator {
         CoursePlan plan = calculator.calculate(stops, request.startMinute(), scorer);
         return plan.withMeta(null, null,
                 CourseText.title(plan, request.region(), request.startMinute(), placesById),
-                CourseText.reason(plan, request, placesById));
+                CourseText.reason(plan, request, placesById),
+                CourseText.keywords(plan, request, placesById));
     }
 
     public List<CourseWarning> warnings(CoursePlan plan, CrowdPreference crowdPreference) {

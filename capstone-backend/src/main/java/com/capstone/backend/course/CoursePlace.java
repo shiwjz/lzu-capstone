@@ -16,8 +16,16 @@ public record CoursePlace(
         String kakaoCategory,
         double lat,
         double lng,
-        List<String> tags
+        List<String> tags,
+        String cuisine,          // 음식 큰 종류 (KOREAN·CAFE …, 음식점·카페 아니면 null) - v0.5
+        String cuisineDetail     // 세부 (초밥·롤 …, 모르면 null)
 ) {
+    /** 음식 취향 없는 예전 모양 (테스트용) */
+    public CoursePlace(String placeId, String name, String region, String category, String kakaoCategory,
+                       double lat, double lng, List<String> tags) {
+        this(placeId, name, region, category, kakaoCategory, lat, lng, tags, null, null);
+    }
+
     public Slot slot() {
         return Slot.of(category);
     }

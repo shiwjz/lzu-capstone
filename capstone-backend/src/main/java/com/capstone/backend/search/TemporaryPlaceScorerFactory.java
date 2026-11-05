@@ -5,7 +5,6 @@ import com.capstone.backend.course.CrowdPreference;
 import com.capstone.backend.course.PlaceScore;
 import com.capstone.backend.course.PlaceScorer;
 import com.capstone.backend.place.PlaceStore;
-import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -13,13 +12,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.StringJoiner;
 
 /**
- * 임시 장소 점수 (윤경 장소 점수 모듈 오기 전까지) - 김예민
+ * (안 씀) 임시 장소 점수 - 김예민
+ * - 10/31부터 윤경 장소 점수 모듈(PlaceScoreModel)로 바뀜, @Component 뺌 → 서버에서 안 쓰임
+ * - 옛날 가짜 JSON 결과 확인용으로만 남겨둠, 필요 없으면 지워도 됨
  * - 사용자 요구: 분위기 태그 맞으면 0.9대, 아니면 0.5대 (태그도 아직 가짜)
  * - 타깃 특성: 장소·인원별 고정 랜덤값 (성·연령 데이터 전)
  * - 혼잡도 적합도: 윤경 혼잡도(같은 시간끼리 비교) → 혼잡 선호별 구간 점수 ← 이것만 진짜 데이터
  * - generate_mocks.py place_score랑 같은 계산 → 가짜 JSON이랑 결과 같음
  */
-@Component
 public class TemporaryPlaceScorerFactory implements PlaceScorerFactory {
 
     private final PlaceStore store;

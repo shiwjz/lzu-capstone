@@ -5,29 +5,72 @@
 """
 import pandas as pd
 
-#계산에 쓰는 숫자 모아둔 거여서 혹시 비중 바꾸면 여기 수정!!
 W_REQUEST, W_TARGET, W_FIT = 0.45, 0.30, 0.25
 NEUTRAL = 0.5          # 정보가 없을 때 주는 중립 점수 (= 전체 평균 수준)
 MENTION_FULL = 3       # (가정) 태그 언급 3번 이상이면 확실한 태그로 봄
 CLUSTER_WEIGHT = 0.5   # (가정) 칸 비율과 같은 유형 칸들의 평균 비율을 섞는 비율
 
-# 혼잡도 적합도 (명세 v0.3 초안)
+# 혼잡도 적합도 (명세 v0.4 확정)
 CONGESTION_FIT = {
     "QUIET":   {"QUIET": 1.0, "NORMAL": 0.5, "BUSY": 0.1},
     "DEFAULT": {"QUIET": 0.8, "NORMAL": 1.0, "BUSY": 0.5},
     "LIVELY":  {"QUIET": 0.2, "NORMAL": 0.6, "BUSY": 1.0},
 }
 
+# 음식 세부 → 큰 종류 (명세 v0.5 음식 취향 표, Cuisine.java와 같음)
+CUISINE_DETAILS = {
+    "KOREAN":   ["고기", "국밥", "찌개·전골", "국수", "해물·생선"],
+    "JAPANESE": ["초밥·롤", "라멘", "돈까스·우동", "덮밥"],
+    "WESTERN":  ["이탈리안", "피자", "햄버거", "스테이크", "멕시칸"],
+    "CHINESE":  ["중국요리", "양꼬치"],
+    "BUNSIK":   ["떡볶이", "김밥"],
+    "ASIAN":    ["동남아", "인도"],
+    "BAR":      ["호프·요리주점", "이자카야", "칵테일바", "와인바", "포장마차"],
+    "CAFE":     ["디저트카페", "개인카페", "프랜차이즈", "갤러리·북카페", "차·음료"],
+}
+DETAIL_TO_CUISINE = {d: c for c, ds in CUISINE_DETAILS.items() for d in ds}
 
-def request_score(atmospheres, place_tags):
-    """사용자 요구: 요청 분위기 중 장소 태그와 일치하는 비율 (언급 수로 확실한 정도 반영)
-    - atmospheres: ["조용함", "데이트"]
-    - place_tags: {"조용함": 6, "디저트": 2}  (태그: 언급 수)
-    """
-    if not atmospheres:
+# 음식 세부 점수 (명세 v0.5)
+DETAIL_EXACT, DETAIL_NONE, DETAIL_OTHER = 1.0, 0.5, 0.2
+
+
+def mood_score(atmosphere, place_tags):
+    """분위기 하나 점수: 언급 수 ÷ 3 (최대 1). 태그가 하나도 없는 장소는 모르니까 중립 0.5"""
+    if not place_tags:
         return NEUTRAL
-    total = sum(min(place_tags.get(a, 0), MENTION_FULL) / MENTION_FULL for a in atmospheres)
-    return total / len(atmospheres)
+    return min(place_tags.get(atmosphere, 0), MENTION_FULL) / MENTION_FULL
+
+
+def detail_score(cuisine_details, place_cuisine, place_detail):
+    """음식 세부 점수 (명세 v0.5). 계산 안 하는 경우는 None
+    - 장소 세부가 요청 세부에 있음 → 1.0
+    - 요청 세부 중 장소와 같은 큰 종류가 있음: 장소 세부 없음 → 0.5 / 다른 세부 → 0.2
+    - 요청 세부가 모두 다른 큰 종류 → None (계산 안 함)
+    """
+    if not cuisine_details:
+        return None
+    if place_detail is not None and place_detail in cuisine_details:
+        return DETAIL_EXACT
+    same_kind = [d for d in cuisine_details if DETAIL_TO_CUISINE.get(d) == place_cuisine]
+    if not same_kind:
+        return None
+    return DETAIL_NONE if place_detail is None else DETAIL_OTHER
+
+
+def request_score(atmospheres, place_tags, cuisine_details=None, place_cuisine=None, place_detail=None):
+    """사용자 요구: (분위기 점수 합 + 음식 세부 점수) ÷ (분위기 수 + 1)
+    - atmospheres: ["조용함", "데이트"]
+    - place_tags: {"조용함": 6, "디저트": 2}  (태그: 언급 수, 태그 없는 장소는 {})
+    - 세부 점수를 계산 안 하면 분위기 점수 평균, 분위기도 없으면 0.5
+    """
+    moods = atmospheres or []
+    scores = [mood_score(a, place_tags) for a in moods]
+    d = detail_score(cuisine_details, place_cuisine, place_detail)
+    if d is not None:
+        scores.append(d)
+    if not scores:
+        return NEUTRAL
+    return sum(scores) / len(scores)
 
 
 def target_score(cell, cluster, region_avg, gender, age_group):
@@ -49,10 +92,10 @@ def target_score(cell, cluster, region_avg, gender, age_group):
     index = 1.0
     if gender is not None:
         f, f_avg = share("female_ratio"), region_avg["female_ratio"]
-        index *= (f / f_avg) if gender == "F" else ((1 - f) / (1 - f_avg)) #여성이면
+        index *= (f / f_avg) if gender == "F" else ((1 - f) / (1 - f_avg))
     if age_group is not None:
         col = f"age_{age_group}"
-        index *= share(col) / region_avg[col] #20대면
+        index *= share(col) / region_avg[col]
     return index / (1 + index)
 
 
@@ -63,12 +106,15 @@ def congestion_fit(crowd_preference, level):
     return CONGESTION_FIT[crowd_preference][level]
 
 
-def place_score(conditions, place_tags, cell, cluster, region_avg, level):
+def place_score(conditions, place_tags, cell, cluster, region_avg, level,
+                place_cuisine=None, place_detail=None):
     """장소 점수 하나 계산
-    - conditions: {"atmospheres", "gender", "ageGroup", "crowdPreference"}
+    - conditions: {"atmospheres", "gender", "ageGroup", "crowdPreference", "cuisineDetails"}
     - level: 도착 시각의 혼잡 등급 (QUIET/NORMAL/BUSY, 같은 시간끼리 비교한 level_same_time)
+    - place_cuisine / place_detail: 장소 음식 큰 종류 / 세부 (모르면 None)
     """
-    req = request_score(conditions.get("atmospheres"), place_tags)
+    req = request_score(conditions.get("atmospheres"), place_tags,
+                        conditions.get("cuisineDetails"), place_cuisine, place_detail)
     tgt = target_score(cell, cluster, region_avg, conditions.get("gender"), conditions.get("ageGroup"))
     fit = congestion_fit(conditions.get("crowdPreference", "DEFAULT"), level)
     total = W_REQUEST * req + W_TARGET * tgt + W_FIT * fit
