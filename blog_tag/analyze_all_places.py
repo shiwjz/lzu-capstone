@@ -183,6 +183,7 @@ def analyze_place(place, blogs):
         "other_branch": reason_counter["OTHER_BRANCH"],
         "other_region": reason_counter["OTHER_REGION"],
         "short_name_no_region": reason_counter["SHORT_NAME_WITHOUT_REGION"],
+        "name_part_of_word": reason_counter["NAME_PART_OF_OTHER_WORD"],
         "self_paid_count": self_paid_count,
         "blogger_count": blogger_count,
         "tag_count": len(tag_rows)
