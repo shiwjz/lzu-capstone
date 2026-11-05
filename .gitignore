@@ -2,6 +2,16 @@
 .venv/
 __pycache__/
 *.pyc
+
+# LG 데이터 (원본·가공 결과 둘 다 깃허브에 올리지 않기) - 예민·윤경 합침 11/6
 lzu_data/
+lzu-private-data/
+*_TBL.csv
 *_lg.csv
 *_lg_*.csv
+*_lg.tsv
+lg.csv
+check_lg.txt
+*_lg.png
+eval/google_flags.csv
+_tmp_claude/

@@ -275,7 +275,11 @@ def main():
     cells = pd.read_csv(os.path.join(ROOT, 'grid_cells.csv'))
     cell_ids = set(cells['cell_id'])
     cell_dong = pd.read_csv(os.path.join(ROOT, 'cell_dong.csv'), dtype={'dong_code': str})
-    seoul = pd.read_csv(os.path.join(ROOT, 'seoul_dong_hourly.csv'), dtype={'dong_code': str})
+    # 서울시 생활인구: 윤경이 LG 기간(2025)에 맞춰 만든 파일 있으면 그걸, 없으면 예전 파일
+    seoul_name = next(n for n in ('seoul_dong_hourly_2025.csv', 'seoul_dong_hourly.csv')
+                      if os.path.exists(os.path.join(ROOT, n)))
+    seoul = pd.read_csv(os.path.join(ROOT, seoul_name), dtype={'dong_code': str})
+    log.append(f'서울시 생활인구: {seoul_name}')
 
     t = {k: read_table(find_table(args.lg, k)) for k in TABLES}
     for k, df in t.items():
@@ -311,7 +315,9 @@ def main():
         for c in ('STAY_POPL_CNT', 'WALK_POPL_CNT'):
             thrd[c] = thrd[c] / n
     thrd['day_type'] = np.where(thrd['dow'] >= 5, 'WEEKEND', 'WEEKDAY')
-    day_m = (thrd.groupby(['cell_id', 'P_YYYYMM', 'day_type'])[['STAY_POPL_CNT', 'WALK_POPL_CNT']].mean()
+    # 같은 칸·달·요일이 여러 줄이면(9·10월 행정동 나뉜 칸) 먼저 더하고 → 요일끼리 평균 → 달끼리 평균
+    day_m = (thrd.groupby(['cell_id', 'P_YYYYMM', 'dow', 'day_type'])[['STAY_POPL_CNT', 'WALK_POPL_CNT']].sum()
+             .groupby(['cell_id', 'P_YYYYMM', 'day_type']).mean()
              .groupby(['cell_id', 'day_type']).mean())
 
     # 월 합계인지 하루 평균인지 확인용: FST 24시간 합 vs THRD 7요일 합 (원래 값 기준)
@@ -361,12 +367,17 @@ def main():
     cong.to_csv(os.path.join(args.out, 'cell_congestion_lg.csv'), index=False, encoding='utf-8-sig')
     log.append(f'혼잡도 ({args.value}): {len(cong):,}행, 등급 분포 {cong["level_same_time"].value_counts().to_dict()}')
 
-    # 5) 성·연령
-    ga, sex_codes = gender_age(t['SECD'], args.value)
-    ga = ga.merge(cells[['cell_id', 'region']], on='cell_id')
-    ga = ga[['cell_id', 'region', 'female_ratio'] + [f'age_{a}s' for a in range(10, 70, 10)]]
-    ga.to_csv(os.path.join(args.out, 'cell_gender_age_lg.csv'), index=False, encoding='utf-8-sig')
-    log.append(f'성·연령: 칸 {len(ga)}개, 성별 코드 {sex_codes} (1·2면 1 = 남, 2 = 여로 봄 → 맞는지 확인)')
+    # 5) 성·연령: 윤경 make_gender_age_lg.py 결과(같은 폴더 cell_gender_age_lg.csv)가 있으면 그걸 씀 (덮어쓰지 않음)
+    ga_path = os.path.join(args.out, 'cell_gender_age_lg.csv')
+    if os.path.exists(ga_path):
+        ga = pd.read_csv(ga_path)
+        log.append(f'성·연령: 윤경 cell_gender_age_lg.csv 사용 (칸 {len(ga)}개, 열 {len(ga.columns)}개)')
+    else:
+        ga, sex_codes = gender_age(t['SECD'], args.value)
+        ga = ga.merge(cells[['cell_id', 'region']], on='cell_id')
+        ga = ga[['cell_id', 'region', 'female_ratio'] + [f'age_{a}s' for a in range(10, 70, 10)]]
+        ga.to_csv(ga_path, index=False, encoding='utf-8-sig')
+        log.append(f'성·연령: 칸 {len(ga)}개, 성별 코드 {sex_codes} (1·2면 1 = 남, 2 = 여로 봄 → 맞는지 확인)')
 
     # 6) 서버용 파일 (resources/data랑 같은 모양, 이 폴더에만)
     write_server_files(args.out, cong, ga, cells, log)
