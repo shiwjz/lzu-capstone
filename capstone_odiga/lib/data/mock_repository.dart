@@ -1,5 +1,6 @@
 import 'dart:math' as math;
-
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 
 import '../models/domain.dart';
@@ -156,16 +157,43 @@ class MockRepository {
     UserPreference preference, {
     bool group = false,
   }) async {
-    final response = await api.search(
-      SearchRequestDto(
-        query: conditions.query,
-        date: formatDate(conditions.start),
-        startTime: formatTime(conditions.start),
-        region: conditions.useSelectedRegion
-            ? RegionCode.parse(conditions.region).code
-            : null,
-      ),
-    );
+   
+final request = SearchRequestDto(
+  query: conditions.query.trim().isEmpty
+      ? conditions.region
+      : conditions.query,
+  date: formatDate(conditions.start),
+  startTime: formatTime(conditions.start),
+  region: conditions.useSelectedRegion
+      ? RegionCode.parse(conditions.region).code
+      : null,
+);
+
+const baseUrl = String.fromEnvironment(
+  'ODIGA_API',
+  defaultValue: 'https://lzu-capstone.onrender.com',
+);
+
+final result = await http.post(
+  Uri.parse('$baseUrl/api/search'),
+  headers: {'Content-Type': 'application/json'},
+  body: jsonEncode(request.toJson()),
+).timeout(const Duration(seconds: 120));
+
+final body = jsonDecode(utf8.decode(result.bodyBytes))
+    as Map<String, dynamic>;
+
+if (result.statusCode != 200 || body['success'] != true) {
+  throw ApiException(
+    body['code']?.toString() ?? 'API_ERROR',
+    body['message']?.toString() ?? '검색에 실패했습니다.',
+  );
+}
+
+final response = SearchResultDto.fromJson(
+  Map<String, dynamic>.from(body['data'] as Map),
+);
+  
     _rememberSearch(response);
     // The response's extracted region, rather than a stale screen selection, wins.
     final filteredConditions = conditions.copy()
