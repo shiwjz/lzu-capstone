@@ -162,8 +162,14 @@ final request = SearchRequestDto(
   query: conditions.query.trim().isEmpty
       ? conditions.region
       : conditions.query,
-  date: formatDate(conditions.start),
-  startTime: formatTime(conditions.start),
+  date: conditions.query.trim().isEmpty ||
+          conditions.useSelectedRegion
+      ? formatDate(conditions.start)
+      : null,
+  startTime: conditions.query.trim().isEmpty ||
+          conditions.useSelectedRegion
+      ? formatTime(conditions.start)
+      : null,
   region: conditions.useSelectedRegion
       ? RegionCode.parse(conditions.region).code
       : null,
