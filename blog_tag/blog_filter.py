@@ -88,12 +88,17 @@ BRANCH_EXCLUDE_WORDS = {
 
 
 def clean_html(text):
+    """
+    네이버가 붙이는 <b>, </b> 만 지움
+    (예전엔 <...> 를 다 지워서 "홍대 칵테일 바 <깃털>"의 상호명까지 사라졌음)
+    """
     text = text or ""
 
     text = re.sub(
-        r"<[^>]+>",
+        r"</?b>",
         "",
-        text
+        text,
+        flags=re.IGNORECASE
     )
 
     return html.unescape(text)
@@ -333,6 +338,43 @@ def make_name_variants(
     )
 
 
+# 이름 바로 뒤에 붙어도 되는 말 (조사·지점 등)
+ALLOWED_AFTER_NAME = (
+    "에서", "으로", "이랑", "은", "는", "이", "가", "을", "를", "에", "의",
+    "와", "과", "랑", "도", "만", "로", "점", "카페", "커피"
+)
+
+
+def is_separate_word(text, name):
+    """
+    짧은 이름이 다른 단어의 일부가 아니라 따로 쓰였는지 확인
+
+    예: 소노 → "소노관리"(X), "신화랑풍류"(X), "소노에서 커피"(O), "#소노 "(O)
+    """
+
+    cleaned = clean_html(text).lower()
+    name = name.lower()
+    start = cleaned.find(name)
+
+    while start != -1:
+        before = cleaned[start - 1] if start > 0 else " "
+        after = cleaned[start + len(name):]
+
+        before_ok = not re.match(r"[가-힣]", before)
+        after_ok = (
+            after == ""
+            or not re.match(r"[가-힣]", after[0])
+            or after.startswith(ALLOWED_AFTER_NAME)
+        )
+
+        if before_ok and after_ok:
+            return True
+
+        start = cleaned.find(name, start + 1)
+
+    return False
+
+
 def find_place_name(
     text,
     place_name
@@ -524,6 +566,15 @@ def has_wrong_branch(
     if not target_branch:
         return False
 
+    # [개선] 우리 지점 이름이 글에 있으면 다른 지점 해시태그가 있어도 우리 글로 봄
+    #        예: "육몽 홍대본점 후기 #용산직영점 #방이직영점"
+    # (단, "#홍대점심"처럼 지점 이름 뒤에 한글이 이어지면 지점이 아님)
+    if re.search(
+        re.escape(normalize_text(target_branch)) + r"(?![가-힣])",
+        normalize_text(text)
+    ):
+        return False
+
     base_name = (
         get_base_place_name(
             place_name
@@ -624,6 +675,33 @@ def is_relevant_post(
         return (
             False,
             "PLACE_NAME_NOT_FOUND"
+        )
+
+    # [개선] 줄인 이름(3글자 이하)으로만 찾았으면 그것도 다른 단어의 일부인지 확인
+    #        예: "더스크 성수" → "더스크"로 찾았는데 글은 "나이트더스크블루"
+    if match == "SHORT":
+        _, short_names = make_name_variants(place_name)
+        found = [v for v in short_names if v in normalize_text(text)]
+        if found and all(len(v) <= 3 for v in found) and not any(
+            is_separate_word(text, v) for v in found
+        ):
+
+            return (
+                False,
+                "NAME_PART_OF_OTHER_WORD"
+            )
+
+    # [개선] 이름이 3글자 이하면 다른 단어의 일부인지 확인 (소노관리, 글렌그란트 등)
+    short_base = get_base_place_name(place_name).strip()
+    if (
+        len(normalize_text(short_base)) <= 3
+        and " " not in short_base
+        and not is_separate_word(text, short_base)
+    ):
+
+        return (
+            False,
+            "NAME_PART_OF_OTHER_WORD"
         )
 
     # 2. 다른 지점
