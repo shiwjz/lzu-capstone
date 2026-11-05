@@ -649,17 +649,8 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           return AppFrame(
             app: widget.app,
             title: p.name,
-            subtitle: p.rating == null
-                ? p.category
-                : '${p.category} · ★ ${p.rating}',
+            subtitle: p.category,
             child: stackItems([
-              if (p.id != widget.place.id)
-                label('현재는 선택한 장소와 관계없이 고정된 예시 상세를 표시합니다.', size: 11),
-              PlaceImage(
-                image: AssetImage(p.imageAsset),
-                width: double.infinity,
-                height: 148,
-              ),
               label(
                 '서울 · ${p.region} · ${p.openingHours}',
                 size: 11,
@@ -672,7 +663,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                   color: OdigaTokens.brand,
                 ),
                 label(
-                  '예시 지역 혼잡도 · ${level(congestion).label}',
+                  '예상 혼잡도 · ${level(congestion).label}',
                   size: 18,
                   bold: true,
                   color: level(congestion).color,
@@ -748,7 +739,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                 children: [
                   Expanded(
                     child: action(
-                      widget.app.savedPlaceIds.contains(p.id) ? '저장됨' : '저장',
+                      widget.app.savedPlaceIds.contains(p.id) ? '저장됨' : '저장하기',
                       () => widget.app.togglePlace(p.id),
                       secondary: true,
                     ),

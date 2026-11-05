@@ -68,8 +68,45 @@ class MockOdigaApi implements OdigaApi {
   }
 
   @override
-  Future<PlaceDetailDto> getPlace(String placeId, {String? date}) async =>
-      PlaceDetailDto.fromJson(await _read('place_detail.json'));
+  Future<PlaceDetailDto> getPlace(String placeId, {String? date}) async {
+    final detail = await _read('place_detail.json');
+    if (detail['placeId'] == placeId) {
+      return PlaceDetailDto.fromJson(detail);
+    }
+
+    const searchFiles = [
+      'search_seongsu_weekend_quiet.json',
+      'search_hongdae_weekend_lively.json',
+      'search_gangnam_weekday_group.json',
+    ];
+    for (final file in searchFiles) {
+      final result = await _read(file);
+      final conditions = result['conditions'] as Json;
+      final candidates = <Json>[
+        for (final place in result['places'] as List)
+          Map<String, dynamic>.from(place),
+        for (final course in result['courses'] as List)
+          for (final stop in course['stops'] as List)
+            Map<String, dynamic>.from(stop),
+      ];
+      for (final place in candidates) {
+        if (place['placeId'] != placeId) continue;
+        return PlaceDetailDto.fromJson({
+          ...place,
+          'region': place['region'] ?? conditions['region'],
+          'roadAddress': place['roadAddress'] ?? place['address'],
+          'openingHours': null,
+          'congestionByHour': {
+            'date': date ?? conditions['date'],
+            'dayType': conditions['dayType'],
+            'basis': 'UNAVAILABLE',
+            'hours': <Json>[],
+          },
+        });
+      }
+    }
+    throw const ApiException('PLACE_NOT_FOUND', '장소 정보를 찾을 수 없어요.');
+  }
   @override
   Future<CourseDto> updateCourse(
     String courseId,
