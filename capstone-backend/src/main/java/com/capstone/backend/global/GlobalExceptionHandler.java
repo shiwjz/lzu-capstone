@@ -32,16 +32,25 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ErrorCode.INVALID_INPUT));
     }
 
-    // 9주차 추가 (예민)
-    // - 없는 주소: 500 대신 404 NOT_READY → 앱이 '준비 중'으로 처리
-    @ExceptionHandler({NoResourceFoundException.class, HttpRequestMethodNotSupportedException.class})
+   // 존재하지 않는 API 주소는 404 NOT_FOUND 반환
+    @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(
-            Exception exception
+        NoResourceFoundException exception
     ) {
-        return ResponseEntity
-                .status(ErrorCode.NOT_READY.getStatus())
-                .body(ApiResponse.error(ErrorCode.NOT_READY));
-    }
+    return ResponseEntity
+            .status(ErrorCode.NOT_FOUND.getStatus())
+            .body(ApiResponse.error(ErrorCode.NOT_FOUND));
+}
+
+// 지원하지 않는 HTTP 메서드는 405 반환
+@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowed(
+        HttpRequestMethodNotSupportedException exception
+) {
+    return ResponseEntity
+            .status(405)
+            .body(ApiResponse.error(ErrorCode.INVALID_INPUT));
+}
 
     // - JSON 모양이 틀리거나 필수 파라미터 빠짐: 500 대신 400 INVALID_INPUT
     @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class})

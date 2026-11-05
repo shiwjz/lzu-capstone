@@ -23,10 +23,10 @@ public record CourseRequest(
         return (order == null || order.isEmpty()) ? CourseRules.slotOrder(startMinute) : order;
     }
 
-    /** 조용한 곳을 원하는지 (혼잡 선호 QUIET 또는 분위기 '조용함') */
+    /** 조용한 곳을 원하는지 (혼잡 선호 QUIET 또는 분위기 '조용한') */
     public boolean wantsQuiet() {
         return crowdPreference == CrowdPreference.QUIET
-                || (atmospheres != null && atmospheres.contains("조용함"));
+                || (atmospheres != null && atmospheres.contains("조용한"));
     }
 
     public List<String> playCategoriesOrAll() {

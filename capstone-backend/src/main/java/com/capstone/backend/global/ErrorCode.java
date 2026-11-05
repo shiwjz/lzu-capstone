@@ -66,7 +66,11 @@ public enum ErrorCode {
             "AI 서비스를 사용할 수 없습니다."
             "조건 분석을 잠시 할 수 없습니다."
     ),
-
+    NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        "NOT_FOUND",
+        "요청한 API를 찾을 수 없습니다."
+    ),
     // 서버에 없는 주소 → 앱은 '준비 중인 기능'으로 표시 (예전엔 500으로 나감)
     NOT_READY(
             HttpStatus.NOT_FOUND,

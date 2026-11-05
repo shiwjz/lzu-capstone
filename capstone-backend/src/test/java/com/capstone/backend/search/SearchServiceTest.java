@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * 검색·코스 수정·공유 테스트 (DB·Spring 없이) - 김예민
- * - 장소·혼잡도: resources/data (예린 장소 3,306곳 + 윤경 혼잡도), 점수는 임시 점수
+ * - 장소·혼잡도: resources/data (예린 장소 3,306곳·태그 + 윤경 혼잡도·성연령), 점수는 윤경 장소 점수 모듈
  * - 기대값 = mocks/search_seongsu_weekend_quiet.json 1등 코스 (파이썬 가짜 JSON이랑 서버 결과 같은지)
  * - 실행: ./gradlew test --tests "com.capstone.backend.search.*"
  */
@@ -30,7 +30,7 @@ class SearchServiceTest {
     private static final PlaceStore STORE = new PlaceStore();
 
     private SearchService service() {
-        SearchService s = new SearchService(STORE, new RuleConditionExtractor(), new TemporaryPlaceScorerFactory(STORE),
+        SearchService s = new SearchService(STORE, new RuleConditionExtractor(), new PlaceScoreModel(STORE),
                 new CourseStore());
         s.clock = Clock.fixed(Instant.parse("2026-10-16T11:00:00Z"), SearchService.KST);   // 10/16(금) 20시
         return s;
@@ -42,7 +42,7 @@ class SearchServiceTest {
 
     private static SearchConditions seongsuQuiet() {
         return new SearchConditions("SEONGSU", "2026-10-17", null, "15:00", 2, List.of("CAFE", "FOOD"),
-                List.of("조용함"), "QUIET", List.of(), null, null, "FRIEND", List.of(), "GEMINI");
+                List.of("조용한"), "QUIET", List.of(), null, null, "FRIEND", List.of(), "GEMINI");
     }
 
     @SuppressWarnings("unchecked")
@@ -73,13 +73,57 @@ class SearchServiceTest {
     void sameAsMock() {
         Map<String, Object> data = service().search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet()));
         CoursePlan best = courses(data).get(0);
-        assertEquals(List.of("462259510", "196139841", "1771596435"),
+        assertEquals(List.of("1292703398", "921699059", "1327766448"),
                 best.stops().stream().map(CoursePlan.Stop::placeId).toList());
-        assertEquals("성수 오후 전시 코스", best.title());
-        assertEquals(172, best.totalMinutes());
-        assertEquals(0.88, best.score().total());
-        assertEquals(3, courses(data).size());
+        assertEquals("성수 오후 전시관 코스", best.title());
+        assertEquals(173, best.totalMinutes());
+        assertEquals(0.86, best.score().total());
+        assertEquals(7, courses(data).size());                       // v0.5 최대 10개, 가짜 JSON도 7개 (11/5 예린 태그·음식 확정본 후)
+        assertEquals(List.of("조용한", "한산", "분식", "도보 5분 이내"), best.keywords());
         assertTrue(((List<?>) data.get("places")).size() <= 10);
+    }
+
+    @Test
+    @DisplayName("상황 태그 자동 (예린 태그 v3): 1명·혼자 → 혼자, 연인 → 데이트, 4명·회사 → 단체, 가족 → 아이")
+    void partyMoods() {
+        assertEquals(List.of("혼자"), ((Map<?, ?>) service().search(query("토요일 점심 홍대에서 혼자 밥 먹을 곳")).get("conditions")).get("atmospheres"));
+        assertEquals(List.of("조용한"), ((Map<?, ?>) service().search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet())).get("conditions")).get("atmospheres"));
+        assertEquals(List.of("단체"), ((Map<?, ?>) service().search(query("토요일 저녁 강남 4명 밥집")).get("conditions")).get("atmospheres"));
+        assertEquals(List.of(), ((Map<?, ?>) service().search(query("토요일 저녁 강남 밥집")).get("conditions")).get("atmospheres"));
+        SearchConditions two = new SearchConditions("HONGDAE", "2026-10-17", null, "19:00", 2, List.of(), List.of(),
+                "DEFAULT", List.of(), null, null, null, List.of(), "USER");
+        assertEquals(List.of(), two.withPartyMoods().atmospheres());                    // 2명이어도 연인 아니면 안 붙임
+        SearchConditions couple = new SearchConditions("HONGDAE", "2026-10-17", null, "19:00", 2, List.of(), List.of("활기찬"),
+                "DEFAULT", List.of(), null, null, "COUPLE", List.of(), "USER");
+        assertEquals(List.of("활기찬", "데이트"), couple.withPartyMoods().atmospheres());
+        SearchConditions family = new SearchConditions("HONGDAE", "2026-10-17", null, "12:00", 5, List.of(), List.of(),
+                "DEFAULT", List.of(), null, null, "FAMILY", List.of(), "USER");
+        assertEquals(List.of("단체", "아이"), family.withPartyMoods().atmospheres());
+    }
+
+    @Test
+    @DisplayName("v0.5 음식 취향: 큰 종류 고르면 식사 칸은 그 종류만, 세부 맞으면 사용자 요구 점수 올라감, 이상한 코드는 400")
+    void cuisines() {
+        SearchConditions c = new SearchConditions("HONGDAE", "2026-10-17", "WEEKEND", "19:00", 3, List.of(), List.of(),
+                "DEFAULT", List.of(), null, null, null, List.of(), "USER");
+        for (CoursePlan course : courses(service().search(new SearchService.SearchRequest("홍대", null, null, null,
+                c.withCuisines(List.of("JAPANESE"), List.of()))))) {
+            for (CoursePlan.Stop s : course.stops()) {
+                if (s.slot() == Slot.MEAL) assertEquals("JAPANESE", STORE.find(s.placeId()).orElseThrow().cuisine(), s.name());
+            }
+        }
+        PlaceScoreModel model = new PlaceScoreModel(STORE);
+        PlaceStore.Place sushi = STORE.all().stream()
+                .filter(p -> "초밥·롤".equals(p.cuisineDetail()) && p.region().equals("HONGDAE")).findFirst().orElseThrow();
+        double plain = model.forConditions(c.withDefaults()).score(sushi.toCoursePlace(), 19).request();
+        double liked = model.forConditions(c.withCuisines(List.of(), List.of("초밥·롤")).withDefaults()).score(sushi.toCoursePlace(), 19).request();
+        assertEquals(0.5, plain);
+        assertEquals(1.0, liked);
+        assertEquals("INVALID_INPUT", expectError(() -> service().search(new SearchService.SearchRequest("홍대", null, null, null,
+                c.withCuisines(List.of("PIZZA"), List.of())))).code());
+        assertEquals("INVALID_INPUT", expectError(() -> service().search(new SearchService.SearchRequest("홍대", null, null, null,
+                new SearchConditions("HONGDAE", "2026-10-17", null, "19:00", 3, List.of(), List.of(), "DEFAULT",
+                        List.of("PEANUT"), null, null, null, List.of(), "USER")))).code());   // 알레르기는 2개만
     }
 
     @Test
@@ -121,17 +165,17 @@ class SearchServiceTest {
     @Test
     @DisplayName("로그인: 문장에 지역·분위기 없으면 내 설정으로, 알레르기는 합치기, 문장 지역이 우선")
     void myPreferences() {
-        SearchService.MyPreferences my = new SearchService.MyPreferences("SEONGSU", List.of("조용함"), List.of("SHELLFISH"));
+        SearchService.MyPreferences my = new SearchService.MyPreferences("SEONGSU", List.of("조용한"), List.of("SHELLFISH"));
         Map<?, ?> cond = (Map<?, ?>) service().search(query("토요일 오후 3시에 카페 가고 싶어"), my).get("conditions");
         assertEquals("SEONGSU", cond.get("region"));
-        assertEquals(List.of("조용함"), cond.get("atmospheres"));
+        assertEquals(List.of("조용한"), cond.get("atmospheres"));
         assertEquals("QUIET", cond.get("crowdPreference"));
         assertEquals(List.of("SHELLFISH"), cond.get("allergies"));
 
         Map<?, ?> hongdae = (Map<?, ?>) service().search(
                 query("토요일 저녁 7시 홍대에서 남자친구랑 신나게 놀 수 있는 사람 많은 곳"), my).get("conditions");
         assertEquals("HONGDAE", hongdae.get("region"));
-        assertEquals(List.of("데이트"), hongdae.get("atmospheres"));
+        assertEquals(List.of("데이트", "활기찬"), hongdae.get("atmospheres"));
         assertEquals("LIVELY", hongdae.get("crowdPreference"));
         assertEquals(List.of("SHELLFISH"), hongdae.get("allergies"));
 

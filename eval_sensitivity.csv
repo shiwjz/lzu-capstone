@@ -1,0 +1,7 @@
+﻿change,top5_overlap_with_base,ndcg@5
+request -0.1,4.89,1.0
+request +0.1,5.0,0.99
+target -0.1,5.0,0.99
+target +0.1,5.0,0.99
+congestion -0.1,5.0,0.99
+congestion +0.1,4.89,1.0
