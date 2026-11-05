@@ -74,10 +74,11 @@ public class GeminiConditionExtractor implements ConditionExtractor {
         this.apiKey = apiKey;
         this.model = model;
 
-        // Gemini가 오래 걸리면 검색이 멈추니까 5초 넘으면 포기 → 규칙 기반으로
+        // Gemini가 오래 걸리면 검색이 멈추니까 6초 넘으면 포기 → 규칙 기반으로
+        // (앱 기다리는 시간 15초 안에 끝나게: 3 + 6, 503이면 1초 쉬고 한 번 더 = 최대 약 13초) - 예민 11/5
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(3));
-        factory.setReadTimeout(Duration.ofSeconds(10));
+        factory.setReadTimeout(Duration.ofSeconds(6));
         this.http = RestClient.builder().requestFactory(factory).build();
     }
 
@@ -158,14 +159,18 @@ public class GeminiConditionExtractor implements ConditionExtractor {
     static String prompt(LocalDateTime now) {
         LocalDate today = now.toLocalDate();
 
-        // "토요일", "다음 주 금요일"을 Gemini가 틀리지 않게 앞으로 14일 날짜를 알려줌
+        // "토요일", "다음 주 금요일"을 Gemini가 틀리지 않게 앞으로 14일 날짜 + 몇째 주인지 알려줌
+        // 주는 월요일 시작 (달력 기준, RuleConditionExtractor랑 같게) - 예민 11/5
+        LocalDate monday = today.minusDays(today.getDayOfWeek().getValue() - 1);
         StringBuilder calendar = new StringBuilder();
         for (int i = 0; i < 14; i++) {
             LocalDate d = today.plusDays(i);
+            long week = java.time.temporal.ChronoUnit.WEEKS.between(monday, d);
             calendar.append(d).append(" (")
                     .append(d.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.KOREAN))
-                    .append(")")
-                    .append(i == 0 ? " 오늘" : i == 1 ? " 내일" : i == 2 ? " 모레" : "")
+                    .append(") ")
+                    .append(week == 0 ? "이번 주" : week == 1 ? "다음 주" : "다다음 주")
+                    .append(i == 0 ? " · 오늘" : i == 1 ? " · 내일" : i == 2 ? " · 모레" : "")
                     .append("\n");
         }
 
@@ -178,8 +183,10 @@ public class GeminiConditionExtractor implements ConditionExtractor {
 
                 [날짜표] 요일·"내일"·"이번 주말" 같은 말은 이 표에서 골라서 YYYY-MM-DD로
                 %s
-                - 그냥 "토요일"은 가장 가까운 토요일(오늘이 토요일이면 오늘), "다음 주 토요일"은 그다음 주
-                - "주말"은 가장 가까운 토요일, "평일"은 가장 가까운 평일
+                - 주는 월요일 시작. "이번 주 ○요일"은 표에서 '이번 주', "다음 주 ○요일"·"담주"·"차주"는 표에서 '다음 주'인 그 요일
+                  (예: 오늘이 일요일이면 "다음 주 토요일"은 6일 뒤 토요일)
+                - 그냥 "토요일"은 가장 가까운 토요일(오늘이 토요일이면 오늘)
+                - "주말"·"이번 주말"은 가장 가까운 토요일(오늘이 일요일이면 오늘), "다음 주말"은 '다음 주' 토요일, "평일"은 가장 가까운 평일
                 - 날짜 말이 없으면 null
 
                 [JSON 형식]

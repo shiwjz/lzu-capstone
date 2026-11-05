@@ -24,11 +24,7 @@
       },
       {
         "tag": "조용한",
-        "mentions": 7
-      },
-      {
-        "tag": "활기찬",
-        "mentions": 2
+        "mentions": 4
       }
     ],
     "congestionByHour": {

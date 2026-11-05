@@ -13,6 +13,16 @@
 | 코스 개수 | 최대 3개 | **최대 10개** | 10/31 회의 |
 | 코스 키워드 | 없음 | `courses[].keywords` (최대 4개, 카드에 칩으로) | 10/31 회의 |
 
+**11/5 추가**
+
+- Gemini 조건 추출 합침 (예린 `search/GeminiConditionExtractor`, 환경변수 `GEMINI_API_KEY` 없거나 실패하면 규칙 기반)
+  - 음식 취향(cuisines·cuisineDetails), 태그 v3, 알레르기 2개 출력
+  - 날짜표에 '이번 주/다음 주'(월요일 시작) 같이 줘서 규칙 기반이랑 같은 날짜 나오게, 기다리는 시간 6초 (앱 15초 안에 끝나게)
+- 음식 취향 확정본 `blog_tag/place_cuisine.csv` (예린: 카카오 1,803 · 블로그 287 · 이름 71 · 세부 못 정함 299) → places.tsv 반영
+- 블로그 태그 정확도 개선본 반영 (태그 있는 장소 1,995곳)
+- DB 꺼져도 서버 켜짐: 검색·장소·코스는 계속, 회원·내 설정만 에러. 표 검사(validate)는 기본 끔 → 로컬에서 볼 때만 `DDL_AUTO=validate`
+- LG 진짜 데이터: `lg/make_lg_data.py`로 저장소 밖 폴더에 만들고, 서버는 `ODIGA_DATA_DIR=그 폴더`일 때만 읽음 (깃허브·jar엔 가짜만)
+
 **태그 v3 (11/4, 예린 `blog_tag/tag_dictionary.py`)** - 이름 글자 하나까지 앱·Gemini·서버 똑같이
 
 | 종류 | 태그 | 누가 정하나 |

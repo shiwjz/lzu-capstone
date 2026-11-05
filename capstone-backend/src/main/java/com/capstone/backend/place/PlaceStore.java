@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -89,10 +91,26 @@ public class PlaceStore {
     }
 
     /** 서버: odiga.congestion-file 설정으로 혼잡도 파일 고름 (congestion.tsv / congestion_seoul.tsv) */
-    @Autowired
-    public PlaceStore(@Value("${odiga.congestion-file:congestion.tsv}") String congestionFile) {
+    public PlaceStore(String congestionFile) {
         this("/data/places.tsv", "/data/" + congestionFile, "/data/cell_profile.tsv", congestionFile);
     }
+
+    /**
+     * 서버 시작할 때 쓰는 것
+     * - odiga.data-dir(환경변수 ODIGA_DATA_DIR)가 있으면 LG 진짜 데이터로 만든 혼잡도·성연령을 그 폴더에서 읽음
+     *   (lg/make_lg_data.py 결과 congestion_lg.tsv, cell_profile_lg.tsv - 깃허브·jar에는 안 들어감, 11/5 보안)
+     * - 없으면 지금처럼 jar 안 가짜 데이터 (odiga.congestion-file)
+     */
+    @Autowired
+    public PlaceStore(@Value("${odiga.congestion-file:congestion.tsv}") String congestionFile,
+                      @Value("${odiga.data-dir:}") String dataDir) {
+        this("/data/places.tsv",
+                dataDir.isBlank() ? "/data/" + congestionFile : FILE + Path.of(dataDir, "congestion_lg.tsv"),
+                dataDir.isBlank() ? "/data/cell_profile.tsv" : FILE + Path.of(dataDir, "cell_profile_lg.tsv"),
+                dataDir.isBlank() ? congestionFile : "congestion_lg.tsv (외부 폴더)");
+    }
+
+    private static final String FILE = "file:";
 
     PlaceStore(String placesPath, String congestionPath, String profilePath, String congestionFile) {
         this.congestionFile = congestionFile;
@@ -212,7 +230,16 @@ public class PlaceStore {
     }
 
     private static List<String[]> readTsv(String path, int columns) {
-        InputStream in = PlaceStore.class.getResourceAsStream(path);
+        InputStream in;
+        if (path.startsWith(FILE)) {
+            try {
+                in = Files.newInputStream(Path.of(path.substring(FILE.length())));
+            } catch (IOException e) {
+                throw new IllegalStateException(path + " 없음 → ODIGA_DATA_DIR 폴더에 lg/make_lg_data.py 결과가 있는지 확인", e);
+            }
+        } else {
+            in = PlaceStore.class.getResourceAsStream(path);
+        }
         if (in == null) {
             throw new IllegalStateException(path + " 없음 → 저장소 맨 위에서 python mocks/generate_mocks.py 실행");
         }

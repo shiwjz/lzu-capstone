@@ -333,7 +333,7 @@ def load_team_data(root):
             TAGS.setdefault(r['place_id'], []).append({'tag': r['tag'], 'mentions': int(r['mentions'])})
     for tags in TAGS.values():
         tags.sort(key=lambda t: -t['mentions'])       # 언급 많은 순 (같으면 파일 순서)
-    final = os.path.join(root, 'place_cuisine.csv')  # 예린 확정본 (place_id, cuisine, detail, source)
+    final = os.path.join(root, 'blog_tag', 'place_cuisine.csv')  # 예린 확정본 (place_id, cuisine, detail, source)
     if os.path.exists(final):
         with open(final, encoding='utf-8-sig', newline='') as f:
             for r in csv.DictReader(f):

@@ -78,7 +78,7 @@ class SearchServiceTest {
         assertEquals("성수 오후 전시관 코스", best.title());
         assertEquals(173, best.totalMinutes());
         assertEquals(0.86, best.score().total());
-        assertEquals(8, courses(data).size());                       // v0.5 최대 10개, 가짜 JSON도 8개 (11/4 동점 정렬 후)
+        assertEquals(7, courses(data).size());                       // v0.5 최대 10개, 가짜 JSON도 7개 (11/5 예린 태그·음식 확정본 후)
         assertEquals(List.of("조용한", "한산", "분식", "도보 5분 이내"), best.keywords());
         assertTrue(((List<?>) data.get("places")).size() <= 10);
     }
