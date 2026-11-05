@@ -1,5 +1,6 @@
 package com.capstone.backend.search;
 
+import com.capstone.backend.course.Cuisine;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.context.annotation.Primary;
@@ -24,6 +25,7 @@ import java.util.Set;
  * - @Primary: 서버가 RuleConditionExtractor 대신 이걸 씀
  * - 키가 없거나 Gemini가 실패하면 RuleConditionExtractor로 예비 처리 (extractedBy = RULE)
  * - API 키는 환경변수 GEMINI_API_KEY (깃허브에 올리지 않기)
+ * - v0.5: 음식 취향 cuisines(큰 종류) / cuisineDetails(세부) 추가, 코드는 course/Cuisine 그대로 씀
  */
 @Component
 @Primary
@@ -38,10 +40,21 @@ public class GeminiConditionExtractor implements ConditionExtractor {
     static final Set<String> CATEGORIES = Set.of(
             "FOOD", "CAFE", "CULTURE", "ACTIVITY", "EXPERIENCE", "SHOPPING", "TOUR", "NATURE", "SNACK");
     // 블로그 태그 이름과 똑같이 (최예린 확정)
+    // 분위기 태그 v3 (사용자가 고르는 6개) + 상황 태그 4개(문장에 직접 쓰면 그대로, 보통은 서버가 동행·인원 보고 붙임)
     static final List<String> ATMOSPHERES = List.of(
-            "조용함", "데이트", "단체", "혼자가능", "디저트", "사진", "가성비");
+            "조용한", "활기찬", "감성적인", "가성비좋은", "넓고편한", "뷰좋은");
+    static final List<String> SITUATIONS = List.of("데이트", "단체", "혼자", "아이");
+    // 음식 취향 (course/Cuisine 표 그대로, 카페 쪽 세부는 식사용이 아니라 뺌)
+    static final Set<String> CUISINES = Cuisine.FILTER_CODES;
+    static final List<String> DETAILS = Cuisine.DETAIL_FAMILY.entrySet().stream()
+            .filter(e -> Cuisine.FILTER_CODES.contains(e.getValue()))
+            .map(Map.Entry::getKey)
+            .sorted()
+            .toList();
+
     static final Set<String> CROWDS = Set.of("QUIET", "DEFAULT", "LIVELY");
-    static final Set<String> ALLERGIES = Set.of("SHELLFISH", "SEAFOOD", "PEANUT", "MILK", "EGG", "WHEAT");
+    // v0.5: 알레르기는 2개만 (카카오 음식점 종류로 거를 수 있는 것)
+    static final Set<String> ALLERGIES = Set.of("SHELLFISH", "SEAFOOD");
     static final Set<String> GENDERS = Set.of("F", "M");
     static final Set<String> AGES = Set.of("10s", "20s", "30s", "40s", "50s", "60s");
     static final Set<String> COMPANIONS = Set.of("FRIEND", "COUPLE", "FAMILY", "COWORKER", "SOLO");
@@ -64,7 +77,7 @@ public class GeminiConditionExtractor implements ConditionExtractor {
         // Gemini가 오래 걸리면 검색이 멈추니까 5초 넘으면 포기 → 규칙 기반으로
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(3));
-        factory.setReadTimeout(Duration.ofSeconds(60));
+        factory.setReadTimeout(Duration.ofSeconds(10));
         this.http = RestClient.builder().requestFactory(factory).build();
     }
 
@@ -79,7 +92,7 @@ public class GeminiConditionExtractor implements ConditionExtractor {
             return rule.extract(query, now);
         }
         try {
-            return callGemini(query, now);
+            return callGeminiWithRetry(query, now);
         } catch (Exception e) {
             // Gemini가 실패하면 규칙 기반으로 (서버 로그에 이유만 남김)
             Throwable root = e;
@@ -93,6 +106,20 @@ public class GeminiConditionExtractor implements ConditionExtractor {
     // =========================================================
     // 3. Gemini 호출
     // =========================================================
+
+    /** Gemini가 "지금 사람 많아요"(503)라고 하면 1초 쉬고 한 번만 더 시도 */
+    private SearchConditions callGeminiWithRetry(String query, LocalDateTime now) {
+        try {
+            return callGemini(query, now);
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            return callGemini(query, now);
+        }
+    }
 
     @SuppressWarnings("unchecked")
     private SearchConditions callGemini(String query, LocalDateTime now) {
@@ -121,7 +148,7 @@ public class GeminiConditionExtractor implements ConditionExtractor {
         String text = (String) parts.get(0).get("text");
 
         Map<String, Object> json = JsonParserFactory.getJsonParser().parseMap(text);
-        return toConditions(json, now);
+        return toConditions(json, now, query);
     }
 
     // =========================================================
@@ -168,7 +195,9 @@ public class GeminiConditionExtractor implements ConditionExtractor {
                   "gender": "F" / "M" / null,
                   "ageGroup": "10s"~"60s" / null,
                   "companionType": 동행 코드 또는 null,
-                  "excludedFoods": [빼고 싶은 음식 단어]
+                  "excludedFoods": [빼고 싶은 음식 단어],
+                  "cuisines": [음식 큰 종류 코드],
+                  "cuisineDetails": [음식 세부 이름]
                 }
 
                 [코드표] 반드시 이 값만 써
@@ -178,12 +207,24 @@ public class GeminiConditionExtractor implements ConditionExtractor {
                   ACTIVITY(방탈출·보드게임·노래방·오락실·만화카페), CULTURE(전시·미술관·공연),
                   EXPERIENCE(공방·원데이클래스), SHOPPING(쇼핑·소품샵·편집샵), NATURE(공원·산책), TOUR(관광 명소)
                 - atmospheres: %s 중에서만. 비슷한 말은 이 이름으로 바꿔
-                  (예: "조용한" → "조용함", "여자친구랑" → "데이트", "회식" → "단체", "혼밥" → "혼자가능",
-                   "인스타 감성" → "사진", "싼 곳" → "가성비")
+                  (예: "조용한 곳" → "조용한", "핫한 곳" → "활기찬", "분위기 좋은"·"인스타 감성" → "감성적인",
+                  "싼 곳" → "가성비좋은", "넓은 곳"·"오래 있기 편한" → "넓고편한", "루프탑"·"야경"·"테라스" → "뷰좋은")
+                  "여자친구랑", "회식", "혼밥", "아이랑"은 분위기가 아니라 companionType·partySize로만 표시
+                  (단, 동행·인원 말 없이 "단체로 갈 곳", "데이트 장소"처럼 상황만 말하면 %s 중에서 넣어)
+                - cuisines: 먹고 싶은 음식의 큰 종류. KOREAN(한식), JAPANESE(일식), WESTERN(양식), CHINESE(중식),
+                  BUNSIK(분식), ASIAN(아시아), CHICKEN(치킨), BAR(술집)
+                  "일식 먹고 싶어"처럼 큰 종류를 직접 말했을 때만 넣어
+                - cuisineDetails: 먹고 싶은 음식의 세부. 반드시 이 이름 중에서만: %s
+                  비슷한 음식은 가장 가까운 이름으로 (예: "스시" → "초밥·롤", "소머리국밥"·"순대국" → "국밥",
+                  "삼겹살"·"갈비" → "고기", "파스타" → "이탈리안", "쌀국수"·"팟타이" → "동남아", "하이볼" → "이자카야")
+                - 세부만 말하면 cuisines는 비우고 cuisineDetails만 채워
+                  ("초밥 먹고 싶어" → cuisines [], cuisineDetails ["초밥·롤"])
+                  ("일식 먹고 싶은데 초밥이나 라멘" → cuisines ["JAPANESE"], cuisineDetails ["초밥·롤", "라멘"])
+                - "일식 말고", "매운 거 빼고"처럼 빼는 말은 cuisines가 아니라 excludedFoods에
+                  
                 - crowdPreference: 한적한·사람 적은 곳 → QUIET, 북적이는·활기찬·핫한 곳 → LIVELY, 말 없으면 DEFAULT
-                - allergies: SHELLFISH(갑각류·새우·게), SEAFOOD(해산물·생선), PEANUT(땅콩·견과),
-                  MILK(우유·유제품), EGG(계란), WHEAT(밀가루·글루텐)
-                  "알레르기", "못 먹어"처럼 먹으면 안 된다고 할 때만
+                - allergies: SHELLFISH(갑각류·새우·게·랍스터), SEAFOOD(해산물·생선·해물) 두 개만
+                  "알레르기", "못 먹어"처럼 먹으면 안 된다고 할 때만 (땅콩·우유 등 다른 알레르기는 넣지 마)
                 - companionType: FRIEND(친구), COUPLE(연인·남자친구·여자친구·데이트), FAMILY(가족·부모님),
                   COWORKER(회사·동기·팀원), SOLO(혼자)
                 - gender: 사용자 일행의 성별이 문장에 있을 때만 ("여자 둘이" → F). "여자친구랑"은 성별 아님
@@ -191,7 +232,8 @@ public class GeminiConditionExtractor implements ConditionExtractor {
                 - partySize: "둘이" → 2, "혼자" → 1, "친구랑"(나+친구) → 2, "4명" → 4
                 - startTime: "3시" → "15:00"(1~8시는 오후로), "저녁" → "18:00", "점심" → "12:00"
                 - excludedFoods: "매운 거 말고" → ["매운"], "고기 빼고" → ["고기"]
-                """.formatted(now.withNano(0), calendar, String.join(", ", ATMOSPHERES));
+                """.formatted(now.withNano(0), calendar, String.join(", ", ATMOSPHERES),
+                String.join(", ", SITUATIONS), String.join(", ", DETAILS));
     }
 
     // =========================================================
@@ -199,16 +241,40 @@ public class GeminiConditionExtractor implements ConditionExtractor {
     //    목록에 없는 값은 버리고, 날짜·시간 모양이 이상하면 null
     // =========================================================
 
+    // 큰 종류를 직접 말했는지 확인용 (예민 명세: 세부만 말하면 cuisines는 비우기)
+    static final Map<String, List<String>> CUISINE_WORDS = Map.of(
+            "KOREAN", List.of("한식", "한정식", "백반", "한국 음식", "한국음식"),
+            "JAPANESE", List.of("일식", "일본"),
+            "WESTERN", List.of("양식", "서양", "경양식"),
+            "CHINESE", List.of("중식", "중국", "중화"),
+            "BUNSIK", List.of("분식"),
+            "ASIAN", List.of("아시아", "아시안"),
+            "CHICKEN", List.of("치킨", "통닭"),
+            "BAR", List.of("술집", "술 ", "술한잔", "술 한잔", "주점", "한잔"));
+
+    static List<String> keepSaidCuisines(List<String> cuisines, String query) {
+        if (query == null) return cuisines;
+        List<String> out = new ArrayList<>();
+        for (String c : cuisines) {
+            if (CUISINE_WORDS.getOrDefault(c, List.of()).stream().anyMatch(query::contains)) {
+                out.add(c);
+            }
+        }
+        return out;
+    }
+
     static SearchConditions toConditions(Map<String, Object> j, LocalDateTime now) {
+        return toConditions(j, now, null);
+    }
+
+    static SearchConditions toConditions(Map<String, Object> j, LocalDateTime now, String query) {
         String date = validDate(j.get("date"));
         String dayType = date == null ? null : RuleConditionExtractor.dayType(LocalDate.parse(date));
 
         String companion = pick(j.get("companionType"), COMPANIONS);
-        List<String> moods = pickList(j.get("atmospheres"), Set.copyOf(ATMOSPHERES));
-        // 명세: 연인이면 '데이트' 분위기 자동 추가
-        if ("COUPLE".equals(companion) && !moods.contains("데이트")) {
-            moods.add("데이트");
-        }
+        Set<String> allMoods = new java.util.HashSet<>(ATMOSPHERES);
+        allMoods.addAll(SITUATIONS);
+        List<String> moods = pickList(j.get("atmospheres"), allMoods);
 
         return new SearchConditions(
                 pick(j.get("region"), REGIONS),
@@ -224,7 +290,9 @@ public class GeminiConditionExtractor implements ConditionExtractor {
                 pick(j.get("ageGroup"), AGES),
                 companion,
                 stringList(j.get("excludedFoods")),
-                "GEMINI");
+                "GEMINI",
+                keepSaidCuisines(pickList(j.get("cuisines"), CUISINES), query),
+                pickList(j.get("cuisineDetails"), Set.copyOf(DETAILS)));
     }
 
     private static String pick(Object value, Set<String> allowed) {
