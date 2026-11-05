@@ -139,7 +139,7 @@ class SearchConditions {
     this.mood = '조용한',
     this.excluded = '',
     this.useSelectedRegion = true,
-  }) : start = start ?? DateTime(2026, 10, 17, 12);
+  }) : start = start ?? DateTime.now();
   String query, region, mood, excluded;
   DateTime start;
   int people;
