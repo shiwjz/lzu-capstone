@@ -31,6 +31,16 @@ String dateText(DateTime date) =>
 CongestionLevel level(Congestion c) => CongestionLevel.values[c.band.index];
 String summary(Course c) =>
     '${c.totalMinutes}분 · ${c.distanceKm.toStringAsFixed(1)}km · 장소 ${c.stops.length}개';
+String apiFailureMessage(Object? error) {
+  if (error is! ApiException) return '정보를 불러오지 못했어요. 다시 시도해 주세요.';
+  return switch (error.code) {
+    'NETWORK_ERROR' => '서버에 연결할 수 없어요. 연결 상태를 확인해 주세요.',
+    'CONDITION_MISSING' => '지역을 다시 선택해 주세요.',
+    'NOT_READY' => '아직 준비 중인 기능이에요.',
+    _ => error.message,
+  };
+}
+
 Text label(
   String text, {
   double size = 14,
@@ -123,6 +133,7 @@ class AppFrame extends StatelessWidget {
     this.subtitle = '',
     this.scroll = true,
     this.showBack = true,
+    this.showBottomNavigation = true,
     this.mapBackground = false,
   });
   final AppState app;
@@ -131,6 +142,7 @@ class AppFrame extends StatelessWidget {
   final String subtitle;
   final bool scroll, showBack;
   final bool mapBackground;
+  final bool showBottomNavigation;
   @override
   Widget build(BuildContext context) => ColoredBox(
     color: const Color(0xFFECE8F3),
@@ -141,7 +153,7 @@ class AppFrame extends StatelessWidget {
           backgroundColor: OdigaTokens.background,
           body: SafeArea(
             top: !mapBackground,
-            bottom: false,
+            bottom: !showBottomNavigation,
             child: Column(
               children: [
                 if (title != null)
@@ -189,10 +201,12 @@ class AppFrame extends StatelessWidget {
               ],
             ),
           ),
-          bottomNavigationBar: OdigaBottomNavigation(
-            currentIndex: app.tab,
-            onChanged: (i) => rootTab(context, app, i),
-          ),
+          bottomNavigationBar: showBottomNavigation
+              ? OdigaBottomNavigation(
+                  currentIndex: app.tab,
+                  onChanged: (i) => rootTab(context, app, i),
+                )
+              : null,
         ),
       ),
     ),
@@ -227,7 +241,24 @@ class PlaceCardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PlaceCard(
     title: place.name,
-    category: place.category,
+    category: [
+      place.category,
+      if (place.cuisineDetail?.isNotEmpty == true) place.cuisineDetail!,
+      if ((place.cuisineDetail == null || place.cuisineDetail!.isEmpty) &&
+          place.cuisine != null)
+        const {
+              'KOREAN': '한식',
+              'JAPANESE': '일식',
+              'WESTERN': '양식',
+              'CHINESE': '중식',
+              'BUNSIK': '분식',
+              'ASIAN': '아시아',
+              'CHICKEN': '치킨',
+              'BAR': '술집',
+              'CAFE': '카페',
+            }[place.cuisine] ??
+            place.cuisine!,
+    ].join(' · '),
     rating: place.rating,
     description: place.description,
     level: level(app.repository.congestion(place.id, app.conditions.start)),
@@ -246,6 +277,7 @@ class MapSheetFrame extends StatefulWidget {
     this.places,
     this.initialSize = RecommendationSheetSize.medium,
     this.onPin,
+    this.showBottomNavigation = true,
   });
   final AppState app;
   final String title;
@@ -254,6 +286,7 @@ class MapSheetFrame extends StatefulWidget {
   final List<Place>? places;
   final RecommendationSheetSize initialSize;
   final ValueChanged<Place>? onPin;
+  final bool showBottomNavigation;
   @override
   State<MapSheetFrame> createState() => _MapSheetFrameState();
 }
@@ -264,6 +297,7 @@ class _MapSheetFrameState extends State<MapSheetFrame> {
   Widget build(BuildContext context) => AppFrame(
     app: widget.app,
     scroll: false,
+    showBottomNavigation: widget.showBottomNavigation,
     child: LayoutBuilder(
       builder: (context, box) => Stack(
         children: [

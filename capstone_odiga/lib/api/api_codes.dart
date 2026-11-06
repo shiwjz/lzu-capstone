@@ -38,11 +38,7 @@ enum CongestionCode {
 
 enum AllergyCode {
   shellfish('SHELLFISH', '갑각류'),
-  seafood('SEAFOOD', '해산물·생선'),
-  peanut('PEANUT', '땅콩·견과류'),
-  milk('MILK', '우유·유제품'),
-  egg('EGG', '달걀'),
-  wheat('WHEAT', '밀·글루텐');
+  seafood('SEAFOOD', '해산물');
 
   const AllergyCode(this.code, this.label);
   final String code, label;

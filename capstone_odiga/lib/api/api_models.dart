@@ -13,14 +13,19 @@ class SearchRequestDto {
     this.date,
     this.startTime,
     this.region,
+    this.conditions,
   });
   final String query;
   final String? date, startTime, region;
+
+  /// Explicit filters from the editable conditions screen (API spec v0.5).
+  final Json? conditions;
   Json toJson() => {
     'query': query,
     if (date != null) 'date': date,
     if (startTime != null) 'startTime': startTime,
     if (region != null) 'region': region,
+    if (conditions != null) 'conditions': conditions,
   };
 }
 
@@ -34,6 +39,9 @@ class ConditionsDto extends ApiDto {
   List<String> get atmospheres => List<String>.from(json['atmospheres'] ?? []);
   List<String> get allergies => List<String>.from(json['allergies'] ?? []);
   List<String> get categories => List<String>.from(json['categories'] ?? []);
+  List<String> get cuisines => List<String>.from(json['cuisines'] ?? []);
+  List<String> get cuisineDetails =>
+      List<String>.from(json['cuisineDetails'] ?? []);
   String? get crowdPreference => json['crowdPreference'];
   String? get extractedBy => json['extractedBy'];
 }
@@ -84,6 +92,8 @@ class PlaceDto extends ApiDto {
   String get category => json['category'];
   String? get region => json['region'];
   String? get address => json['address'];
+  String? get cuisine => json['cuisine'];
+  String? get cuisineDetail => json['cuisineDetail'];
   String? get phone => json['phone'];
   String? get placeUrl => json['placeUrl'];
   double get lat => (json['lat'] as num).toDouble();
@@ -143,6 +153,7 @@ class CourseDto extends ApiDto {
   int? get rank => json['rank'];
   String? get title => json['title'];
   String? get reason => json['reason'];
+  List<String> get keywords => List<String>.from(json['keywords'] ?? []);
   String get startAt => json['startAt'];
   String get endAt => json['endAt'];
   int get totalMinutes => json['totalMinutes'];

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/mock_repository.dart';
@@ -20,6 +22,8 @@ class AppState extends ChangeNotifier {
   final MockRepository repository;
   int tab = 0;
   String userName = '윤경';
+  String? accountEmail;
+  String? accessToken;
   String groupName = '이번 주말 성수 모임';
   SearchConditions conditions = SearchConditions();
   UserPreference preference = UserPreference();
@@ -66,6 +70,9 @@ class AppState extends ChangeNotifier {
         moods: saved.atmospheres.toSet(),
         allergies: saved.allergies.join(', '),
         dislikedFood: value.dislikedFood,
+        cuisines: value.cuisines,
+        cuisineDetails: value.cuisineDetails,
+        crowdPreference: _crowdPreference(saved.atmospheres),
       ),
     );
   }
@@ -75,13 +82,73 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> login(String email, String password) async {
+    final result = await repository.api.login(
+      LoginRequestDto(email: email, password: password),
+    );
+    accountEmail = result.user.email;
+    accessToken = result.accessToken;
+    userName = result.user.email.split('@').first;
+    try {
+      final saved = await repository.api.getPreferences();
+      preference = UserPreference(
+        categories: preference.categories,
+        moods: saved.atmospheres.toSet(),
+        allergies: saved.allergies.join(', '),
+        cuisines: preference.cuisines,
+        cuisineDetails: preference.cuisineDetails,
+        crowdPreference: _crowdPreference(saved.atmospheres),
+      );
+    } on ApiException {
+      // A login remains valid when optional preference loading is unavailable.
+    }
+    try {
+      final placeRecords = await repository.api.getSavedPlaceRecords();
+      final courseRecords = await repository.api.getSavedCourseRecords();
+      final placeIds = <String>[];
+      for (final record in placeRecords) {
+        repository.rememberRemoteSavedPlace(record);
+        placeIds.add(record['placeId'] as String);
+      }
+      for (final record in courseRecords) {
+        final course = repository.rememberRemoteSavedCourse(record);
+        if (!savedCourses.any((saved) => saved.id == course.id)) {
+          savedCourses.add(course);
+        }
+      }
+      savedPlaceIds
+        ..clear()
+        ..addAll(placeIds);
+    } on ApiException {
+      // Keep the locally available saved items if sync is temporarily unavailable.
+    }
+    notifyListeners();
+  }
+
+  void logout() {
+    repository.api.clearSession();
+    accountEmail = null;
+    accessToken = null;
+    userName = '윤경';
+    notifyListeners();
+  }
+
   void createGroup(String name) {
     groupName = name;
     notifyListeners();
   }
 
   void togglePlace(String id) {
-    if (!savedPlaceIds.remove(id)) savedPlaceIds.add(id);
+    if (savedPlaceIds.remove(id)) {
+      if (accessToken != null) {
+        _syncRemote(() => repository.api.deleteSavedPlace(id));
+      }
+    } else {
+      savedPlaceIds.add(id);
+      if (accessToken != null) {
+        _syncRemote(() => repository.api.savePlaceId(id));
+      }
+    }
     notifyListeners();
   }
 
@@ -92,12 +159,35 @@ class AppState extends ChangeNotifier {
     } else {
       savedCourses[index] = course.copyWith();
     }
+    if (accessToken != null) {
+      _syncRemote(() => repository.api.saveCourseId(course.id));
+    }
     notifyListeners();
   }
 
   void deleteCourse(String id) {
     savedCourses.removeWhere((c) => c.id == id);
+    if (accessToken != null) {
+      _syncRemote(() => repository.api.deleteSavedCourse(id));
+    }
     notifyListeners();
+  }
+
+  void _syncRemote(Future<void> Function() action) {
+    unawaited(() async {
+      try {
+        await action();
+      } on ApiException {
+        // The local interaction stays responsive; a later login retries the sync.
+      }
+    }());
+  }
+
+  static String _crowdPreference(Iterable<String> atmospheres) {
+    final tags = atmospheres.toSet();
+    if (tags.contains('조용한')) return 'QUIET';
+    if (tags.contains('활기찬')) return 'LIVELY';
+    return 'DEFAULT';
   }
 
   void sendMessage(String text, {Course? course}) {

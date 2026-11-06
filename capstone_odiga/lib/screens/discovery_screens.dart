@@ -9,6 +9,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final query = TextEditingController();
+  bool _categoriesApplied = false;
+
+  Future<void> openCategorySettings() async {
+    final selected = await showDialog<Set<String>>(
+      context: context,
+      barrierColor: const Color(0x47000000),
+      builder: (_) => HomeCategorySettingsDialog(app: widget.app),
+    );
+    if (!mounted || selected == null) return;
+    query.text = widget.app.conditions.query;
+    setState(() => _categoriesApplied = true);
+  }
+
   @override
   void dispose() {
     query.dispose();
@@ -37,11 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     if (conditions.query.contains('조용')) conditions.mood = '조용한';
-    widget.app.setConditions(conditions);
     openPage(
       context,
-      RecommendationsScreen(app: widget.app),
-      '/recommendations',
+      ConditionsScreen(app: widget.app, initialConditions: conditions),
+      '/conditions',
     );
   }
 
@@ -54,10 +66,59 @@ class _HomeScreenState extends State<HomeScreen> {
     child: PrototypeMap(
       app: widget.app,
       home: true,
-      homeSearch: OdigaSearchField(
-        controller: query,
-        hint: '지금 내 주변에서 가고 싶은 곳은?',
-        onSubmitted: (_) => search(),
+      homeCategories: _categoriesApplied
+          ? widget.app.preference.categories
+          : null,
+      homeInfo: () => _showRecommendationScoreInfo(context),
+      homeSearch: Row(
+        children: [
+          Expanded(
+            child: OdigaSearchField(
+              controller: query,
+              hint: '지금 내 주변에서 가고 싶은 곳은?',
+              onSubmitted: (_) => search(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: '추천 검색',
+            child: Material(
+              color: OdigaTokens.brand,
+              borderRadius: BorderRadius.circular(14),
+              elevation: 3,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: search,
+                child: const SizedBox(
+                  width: 52,
+                  height: 54,
+                  child: Center(
+                    child: Icon(Icons.search, color: Colors.white, size: 25),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: '카테고리 설정',
+            child: Material(
+              color: OdigaTokens.brand,
+              borderRadius: BorderRadius.circular(14),
+              elevation: 3,
+              shadowColor: const Color(0x33292933),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: openCategorySettings,
+                child: const SizedBox(
+                  width: 54,
+                  height: 54,
+                  child: Icon(Icons.menu, color: Colors.white, size: 27),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       onPlace: (p) => openPage(
         context,
@@ -68,22 +129,340 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 }
 
+class HomeCategorySettingsDialog extends StatefulWidget {
+  const HomeCategorySettingsDialog({super.key, required this.app});
+  final AppState app;
+
+  @override
+  State<HomeCategorySettingsDialog> createState() =>
+      _HomeCategorySettingsDialogState();
+}
+
+class _HomeCategorySettingsDialogState
+    extends State<HomeCategorySettingsDialog> {
+  static const _categoryOptions = [
+    (label: '음식점', value: '음식점', width: 59.0),
+    (label: '카페', value: '카페', width: 48.0),
+    (label: '놀거리 / 놀이시설', value: '놀거리', width: 126.0),
+    (label: '문화시설', value: '문화시설', width: 74.0),
+  ];
+  static const _moods = ['조용한', '활기찬', '감성적인', '가성비좋은', '넓고편한', '뷰좋은'];
+
+  late final _preferences = widget.app.preference.copy();
+  late final _conditions = widget.app.conditions.copy();
+
+  Future<void> _pickTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_conditions.start),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _conditions.start = DateTime(
+        _conditions.start.year,
+        _conditions.start.month,
+        _conditions.start.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  Future<void> _editDislikedFood() async {
+    final value = await editText(
+      context,
+      '제외 음식',
+      initial: _preferences.dislikedFood,
+    );
+    if (value != null && mounted) {
+      setState(() => _preferences.dislikedFood = value);
+    }
+  }
+
+  Future<void> _pickPeople() async {
+    final value = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('동행 인원'),
+        children: List.generate(
+          12,
+          (index) => SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, index + 1),
+            child: Text('${index + 1}명'),
+          ),
+        ),
+      ),
+    );
+    if (value != null && mounted) setState(() => _conditions.people = value);
+  }
+
+  Future<void> _pickConditionValue({
+    required String title,
+    required List<String> options,
+    required String currentValue,
+    required ValueChanged<String> onSelected,
+  }) async {
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(title),
+        children: options
+            .map(
+              (option) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, option),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(option)),
+                    if (option == currentValue)
+                      const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+    if (value != null && mounted) setState(() => onSelected(value));
+  }
+
+  Future<void> _pickGender() => _pickConditionValue(
+    title: '성별',
+    options: const ['무관', '여성', '남성'],
+    currentValue: _conditions.gender,
+    onSelected: (value) => _conditions.gender = value,
+  );
+
+  Future<void> _pickAgeGroup() => _pickConditionValue(
+    title: '나이',
+    options: const ['무관', '10대', '20대', '30대', '40대', '50대', '60대'],
+    currentValue: _conditions.ageGroup,
+    onSelected: (value) => _conditions.ageGroup = value,
+  );
+
+  Future<void> _pickCompanionType() => _pickConditionValue(
+    title: '동행 유형',
+    options: const ['혼자', '친구', '연인', '가족', '회사'],
+    currentValue: _conditions.companionType,
+    onSelected: (value) => _conditions.companionType = value,
+  );
+
+  Future<void> _pickMood() async {
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('분위기'),
+        children: ['선택 안 함', ..._moods]
+            .map(
+              (mood) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, mood),
+                child: Text(mood),
+              ),
+            )
+            .toList(),
+      ),
+    );
+    if (value != null && mounted) {
+      setState(() => _conditions.mood = value == '선택 안 함' ? '' : value);
+    }
+  }
+
+  Future<void> _editOtherCondition() async {
+    final value = await editText(context, '기타 조건', initial: _conditions.query);
+    if (value != null && mounted) setState(() => _conditions.query = value);
+  }
+
+  Widget _conditionRow(String title, String value, {VoidCallback? onTap}) =>
+      Material(
+        color: OdigaTokens.background,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: SizedBox(
+            height: 36,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  Expanded(child: Text(title, style: OdigaTokens.text(11))),
+                  Text(
+                    value,
+                    style: OdigaTokens.text(11, color: OdigaTokens.muted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (onTap != null) ...[
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: OdigaTokens.muted,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+    child: Container(
+      width: 350,
+      height: 306,
+      padding: const EdgeInsets.all(12),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 28,
+            child: Row(
+              children: [
+                Expanded(child: label('조건 · 카테고리', size: 14, bold: true)),
+                IconButton(
+                  tooltip: '닫기',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 24,
+                    height: 24,
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(
+                    Icons.close,
+                    size: 20,
+                    color: OdigaTokens.brand,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          label(
+            '모두 선택 가능 · 조건은 입력하지 않아도 돼요.',
+            size: 11,
+            color: OdigaTokens.muted,
+          ),
+          const SizedBox(height: 2),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final option in _categoryOptions) ...[
+                  if (option != _categoryOptions.first)
+                    const SizedBox(width: 5),
+                  OdigaTag(
+                    label: option.label,
+                    width: option.width,
+                    selected: _preferences.categories.contains(option.value),
+                    onSelected: (selected) => setState(() {
+                      if (selected) {
+                        _preferences.categories.add(option.value);
+                      } else {
+                        _preferences.categories.remove(option.value);
+                      }
+                    }),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _conditionRow('성별', _conditions.gender, onTap: _pickGender),
+                const SizedBox(height: 4),
+                _conditionRow('나이', _conditions.ageGroup, onTap: _pickAgeGroup),
+                const SizedBox(height: 4),
+                _conditionRow(
+                  '방문 시간',
+                  clockText(_conditions.start),
+                  onTap: _pickTime,
+                ),
+                const SizedBox(height: 4),
+                _conditionRow(
+                  '제외 음식',
+                  _preferences.dislikedFood.isEmpty
+                      ? '입력 안 함'
+                      : _preferences.dislikedFood,
+                  onTap: _editDislikedFood,
+                ),
+                const SizedBox(height: 4),
+                _conditionRow(
+                  '동행 인원',
+                  '${_conditions.people}명',
+                  onTap: _pickPeople,
+                ),
+                const SizedBox(height: 4),
+                _conditionRow(
+                  '동행 유형',
+                  _conditions.companionType,
+                  onTap: _pickCompanionType,
+                ),
+                const SizedBox(height: 4),
+                _conditionRow(
+                  '분위기',
+                  _conditions.mood.isEmpty
+                      ? '미선택'
+                      : _conditions.mood == '활기찬'
+                      ? '혼잡 선호 · 사람 많은 곳'
+                      : _conditions.mood,
+                  onTap: _pickMood,
+                ),
+                const SizedBox(height: 4),
+                _conditionRow(
+                  '기타 조건',
+                  _conditions.query.isEmpty ? '추가 조건 입력' : _conditions.query,
+                  onTap: _editOtherCondition,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          OdigaButton(
+            label: '조건 적용',
+            height: 36,
+            onPressed: () {
+              widget.app.setPreference(_preferences);
+              widget.app.setConditions(_conditions);
+              Navigator.of(context).pop(_preferences.categories);
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class ConditionsScreen extends StatefulWidget {
-  const ConditionsScreen({super.key, required this.app, this.group = false});
+  const ConditionsScreen({
+    super.key,
+    required this.app,
+    this.group = false,
+    this.initialConditions,
+  });
   final AppState app;
   final bool group;
+  final SearchConditions? initialConditions;
   @override
   State<ConditionsScreen> createState() => _ConditionsScreenState();
 }
 
 class _ConditionsScreenState extends State<ConditionsScreen> {
-  late final draft = widget.app.conditions.copy();
+  late final draft = (widget.initialConditions ?? widget.app.conditions).copy();
   late final query = TextEditingController(text: draft.query);
-  late final excluded = TextEditingController(text: draft.excluded);
   @override
   void dispose() {
     query.dispose();
-    excluded.dispose();
     super.dispose();
   }
 
@@ -153,7 +532,7 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
         Wrap(
           spacing: 6,
           runSpacing: 6,
-          children: ['조용한', '활기찬', '사진']
+          children: ['조용한', '활기찬', '감성적인', '가성비좋은', '넓고편한', '뷰좋은']
               .map(
                 (v) => OdigaTag(
                   label: v,
@@ -162,13 +541,6 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
                 ),
               )
               .toList(),
-        ),
-        TextField(
-          controller: excluded,
-          decoration: const InputDecoration(
-            labelText: '제외 장소·태그·카테고리',
-            hintText: '예: 카페, 한식 (쉼표로 구분)',
-          ),
         ),
         label(
           '예시 지원 지역: 성수·홍대·강남 · 지역별 고정 샘플을 표시합니다.',
@@ -179,7 +551,6 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
       action('수정 조건으로 바로 추천', () {
         draft.query = query.text.trim();
         draft.useSelectedRegion = true;
-        draft.excluded = excluded.text.trim();
         widget.app.setConditions(draft);
         Navigator.pushReplacement(
           context,
@@ -275,11 +646,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           title: '장소 상세',
           child: Column(
             children: [
-              Text(
-                snapshot.error is ApiException
-                    ? (snapshot.error as ApiException).message
-                    : '장소 정보를 불러오지 못했어요.',
-              ),
+              Text(apiFailureMessage(snapshot.error)),
               TextButton(
                 onPressed: () => setState(() {
                   detail = widget.app.repository.loadPlace(
@@ -313,17 +680,8 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           return AppFrame(
             app: widget.app,
             title: p.name,
-            subtitle: p.rating == null
-                ? p.category
-                : '${p.category} · ★ ${p.rating}',
+            subtitle: p.category,
             child: stackItems([
-              if (p.id != widget.place.id)
-                label('현재는 선택한 장소와 관계없이 고정된 예시 상세를 표시합니다.', size: 11),
-              PlaceImage(
-                image: AssetImage(p.imageAsset),
-                width: double.infinity,
-                height: 148,
-              ),
               label(
                 '서울 · ${p.region} · ${p.openingHours}',
                 size: 11,
@@ -336,7 +694,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                   color: OdigaTokens.brand,
                 ),
                 label(
-                  '예시 지역 혼잡도 · ${level(congestion).label}',
+                  '예상 혼잡도 · ${level(congestion).label}',
                   size: 18,
                   bold: true,
                   color: level(congestion).color,
@@ -412,7 +770,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                 children: [
                   Expanded(
                     child: action(
-                      widget.app.savedPlaceIds.contains(p.id) ? '저장됨' : '저장',
+                      widget.app.savedPlaceIds.contains(p.id) ? '저장됨' : '저장하기',
                       () => widget.app.togglePlace(p.id),
                       secondary: true,
                     ),
