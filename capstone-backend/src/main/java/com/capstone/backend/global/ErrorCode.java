@@ -22,18 +22,16 @@ public enum ErrorCode {
             "이미 사용 중인 이메일입니다."
     ),
 
-    // ---- 9주차 추가 (명세 v0.3 에러 코드표, 예민) ----
-
     UNAUTHORIZED(
             HttpStatus.UNAUTHORIZED,
             "UNAUTHORIZED",
-            "로그인이 필요합니다."
+            "로그인이 필요하거나 인증이 만료되었습니다."
     ),
 
     LOGIN_FAILED(
             HttpStatus.UNAUTHORIZED,
             "LOGIN_FAILED",
-            "이메일 또는 비밀번호가 맞지 않습니다."
+            "이메일 또는 비밀번호가 올바르지 않습니다."
     ),
 
     PLACE_NOT_FOUND(
@@ -64,7 +62,6 @@ public enum ErrorCode {
             HttpStatus.SERVICE_UNAVAILABLE,
             "AI_UNAVAILABLE",
             "AI 서비스를 사용할 수 없습니다."
-            "조건 분석을 잠시 할 수 없습니다."
     ),
     NOT_FOUND(
         HttpStatus.NOT_FOUND,
