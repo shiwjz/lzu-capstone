@@ -59,7 +59,6 @@ void main() {
       ConditionsScreen(app: app),
       PlaceDetailScreen(app: app, place: app.repository.places.first),
       RecommendationsScreen(app: app, expanded: true),
-      ReasonScreen(app: app, course: course, rank: 1),
       CourseDetailScreen(app: app, initial: course),
       CourseEditorScreen(app: app, initial: course),
       FriendsScreen(app: app),

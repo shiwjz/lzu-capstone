@@ -14,12 +14,15 @@ class Place {
     required this.imageAsset,
     required this.rating,
     required this.description,
+    this.cuisine,
+    this.cuisineDetail,
   });
   final String id, kakaoPlaceId, name, category, region, cellId, openingHours;
   final double latitude, longitude;
   final List<String> tags;
   // UI-only mock fields; these are not an agreed backend response contract.
   final String imageAsset, description;
+  final String? cuisine, cuisineDetail;
   final double? rating;
   Map<String, Object> toJson() => {
     'id': id,
@@ -74,17 +77,25 @@ class CourseStop {
     required this.stayMinutes,
     this.travelMinutesToNext = 0,
     this.distanceMetersToNext = 0,
+    this.congestionBand,
+    this.congestionPercentile,
   });
   final String id, placeId;
   final int order, stayMinutes, travelMinutesToNext;
   final DateTime arrival;
   final double distanceMetersToNext;
+  final CongestionBand? congestionBand;
+  final double? congestionPercentile;
   CourseStop withStay(int minutes) => CourseStop(
     id: id,
     placeId: placeId,
     order: order,
     arrival: arrival,
     stayMinutes: minutes,
+    travelMinutesToNext: travelMinutesToNext,
+    distanceMetersToNext: distanceMetersToNext,
+    congestionBand: congestionBand,
+    congestionPercentile: congestionPercentile,
   );
   Map<String, Object> toJson() => {
     'id': id,
@@ -104,9 +115,13 @@ class Course {
     required List<CourseStop> stops,
     this.reason = '',
     this.matchScore = 0,
+    this.score = const {},
+    this.keywords = const [],
   }) : stops = List.unmodifiable(stops);
   final String id, title, region, reason;
   final int matchScore;
+  final Map<String, double> score;
+  final List<String> keywords;
   final List<CourseStop> stops;
   int get totalMinutes =>
       stops.fold(0, (sum, s) => sum + s.stayMinutes + s.travelMinutesToNext);
@@ -120,6 +135,8 @@ class Course {
         stops: stops ?? this.stops,
         reason: reason,
         matchScore: matchScore,
+        score: score,
+        keywords: keywords,
       );
   Map<String, Object> toJson() => {
     'id': id,
@@ -139,7 +156,7 @@ class SearchConditions {
     this.gender = '무관',
     this.ageGroup = '무관',
     this.companionType = '친구',
-    this.mood = '조용한',
+    this.mood = '',
     this.useSelectedRegion = true,
   }) : start = start ?? DateTime(2026, 10, 17, 12);
   String query, region, gender, ageGroup, companionType, mood;
@@ -165,15 +182,25 @@ class UserPreference {
     Set<String>? moods,
     this.allergies = '',
     this.dislikedFood = '',
+    this.crowdPreference = 'DEFAULT',
+    Set<String>? cuisines,
+    Set<String>? cuisineDetails,
   }) : categories = categories ?? {'카페'},
-       moods = moods ?? {'조용한', '사진'};
+       moods = moods ?? {'조용한', '감성적인'},
+       cuisines = cuisines ?? <String>{},
+       cuisineDetails = cuisineDetails ?? <String>{};
   final Set<String> categories, moods;
+  final Set<String> cuisines, cuisineDetails;
   String allergies, dislikedFood;
+  String crowdPreference;
   UserPreference copy() => UserPreference(
     categories: {...categories},
     moods: {...moods},
     allergies: allergies,
     dislikedFood: dislikedFood,
+    crowdPreference: crowdPreference,
+    cuisines: {...cuisines},
+    cuisineDetails: {...cuisineDetails},
   );
 }
 

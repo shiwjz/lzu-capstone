@@ -11,6 +11,8 @@ class MockOdigaApi implements OdigaApi {
   final AssetBundle _bundle;
   final Map<String, Json> _cache = {};
   PreferencesDto? _preferences;
+  final _savedCourses = <String>{};
+  final _savedPlaces = <String>{};
 
   @override
   void clearSession() {}
@@ -107,6 +109,7 @@ class MockOdigaApi implements OdigaApi {
     }
     throw const ApiException('PLACE_NOT_FOUND', '장소 정보를 찾을 수 없어요.');
   }
+
   @override
   Future<CourseDto> updateCourse(
     String courseId,
@@ -135,4 +138,32 @@ class MockOdigaApi implements OdigaApi {
   @override
   Future<PreferencesDto> updatePreferences(PreferencesDto preferences) async =>
       _preferences = PreferencesDto.fromJson(preferences.toJson());
+
+  @override
+  Future<List<String>> getSavedCourseIds() async => _savedCourses.toList();
+  @override
+  Future<List<Json>> getSavedCourseRecords() async => const [];
+  @override
+  Future<void> saveCourseId(String courseId) async {
+    _savedCourses.add(courseId);
+  }
+
+  @override
+  Future<void> deleteSavedCourse(String courseId) async {
+    _savedCourses.remove(courseId);
+  }
+
+  @override
+  Future<List<String>> getSavedPlaceIds() async => _savedPlaces.toList();
+  @override
+  Future<List<Json>> getSavedPlaceRecords() async => const [];
+  @override
+  Future<void> savePlaceId(String placeId) async {
+    _savedPlaces.add(placeId);
+  }
+
+  @override
+  Future<void> deleteSavedPlace(String placeId) async {
+    _savedPlaces.remove(placeId);
+  }
 }

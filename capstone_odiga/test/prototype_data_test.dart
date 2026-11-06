@@ -96,19 +96,13 @@ void main() {
     },
   );
 
-  test(
-    'exclusions remove fixture courses and unknown regions return empty',
-    () async {
-      expect(
-        await repo.recommend(
-          SearchConditions(excluded: '음식점'),
-          UserPreference(),
-        ),
-        isEmpty,
-      );
-      expect(await repo.search(SearchConditions(region: '없는 지역')), isEmpty);
-    },
-  );
+  test('recommendation fixtures follow the selected region', () async {
+    expect(
+      await repo.recommend(SearchConditions(region: '성수'), UserPreference()),
+      isNotEmpty,
+    );
+    expect(await repo.search(SearchConditions(region: '없는 지역')), isEmpty);
+  });
 
   test('asset loading failures propagate', () async {
     await expectLater(

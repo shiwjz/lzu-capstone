@@ -461,18 +461,18 @@ class RecommendationReasonPopup extends StatelessWidget {
                 child: Column(
                   children: [
                     _RecommendationPopupRow(
-                      label: '사용자 조건 일치도',
+                      label: '종합 점수·일정',
                       value: conditionMatch,
                     ),
-                    _RecommendationPopupRow(label: '예상 혼잡도', value: congestion),
+                    _RecommendationPopupRow(label: '서버 추천 이유', value: congestion),
                     _RecommendationPopupRow(label: '이동거리', value: distance),
                     _RecommendationPopupRow(label: '체류시간', value: stay),
                     _RecommendationPopupRow(
-                      label: '장소 특징',
+                      label: '추천 키워드',
                       value: placeFeatures,
                     ),
                     _RecommendationPopupRow(
-                      label: '그룹 선호도',
+                      label: '선택 조건',
                       value: groupPreference,
                     ),
                     const SizedBox(height: 6),
@@ -532,14 +532,15 @@ class _RecommendationPopupRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 41,
+    constraints: const BoxConstraints(minHeight: 41),
     margin: const EdgeInsets.only(bottom: 6),
-    padding: const EdgeInsets.symmetric(horizontal: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
     decoration: BoxDecoration(
       color: OdigaTokens.background,
       borderRadius: BorderRadius.circular(10),
     ),
     child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: 88,
@@ -554,7 +555,7 @@ class _RecommendationPopupRow extends StatelessWidget {
         Expanded(
           child: Text(
             value,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: OdigaTokens.text(10),
           ),

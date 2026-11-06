@@ -39,6 +39,9 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       p.moods.join(','),
       p.allergies,
       p.dislikedFood,
+      p.cuisines.join(','),
+      p.cuisineDetails.join(','),
+      p.crowdPreference,
       group,
     );
     if (_requestKey != key) {
@@ -60,32 +63,42 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             return AppFrame(
               app: app,
               title: '추천 코스',
+              showBottomNavigation: false,
               child: const Center(child: CircularProgressIndicator()),
             );
           }
           if (snapshot.hasError) {
+            final error = snapshot.error;
+            final code = error is ApiException ? error.code : '';
+            final message = switch (code) {
+              'NETWORK_ERROR' => '서버에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도해 주세요.',
+              'CONDITION_MISSING' => '지역을 다시 선택해 주세요.',
+              'NOT_READY' => '아직 준비 중인 기능이에요.',
+              _ => error is ApiException ? error.message : '추천을 불러오지 못했어요.',
+            };
             return AppFrame(
               app: app,
               title: '추천 코스',
+              showBottomNavigation: false,
               child: Column(
                 children: [
-                  Text(
-                    snapshot.error is ApiException
-                        ? (snapshot.error as ApiException).message
-                        : '추천을 불러오지 못했어요.',
-                  ),
-                  TextButton(
-                    onPressed: () => openPage(
-                      context,
-                      ConditionsScreen(app: app, group: group),
-                      '/conditions',
+                  Text(message),
+                  if (code != 'NOT_READY')
+                    TextButton(
+                      onPressed: () => openPage(
+                        context,
+                        ConditionsScreen(app: app, group: group),
+                        '/conditions',
+                      ),
+                      child: Text(
+                        code == 'CONDITION_MISSING' ? '지역 다시 선택' : '조건 수정',
+                      ),
                     ),
-                    child: const Text('검색 조건 수정'),
-                  ),
-                  TextButton(
-                    onPressed: () => setState(() => _requestKey = null),
-                    child: const Text('다시 시도'),
-                  ),
+                  if (code != 'CONDITION_MISSING' && code != 'NOT_READY')
+                    TextButton(
+                      onPressed: () => setState(() => _requestKey = null),
+                      child: const Text('다시 시도'),
+                    ),
                 ],
               ),
             );
@@ -99,6 +112,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               : courses[selectedIndex];
           return MapSheetFrame(
             app: app,
+            showBottomNavigation: false,
             title: courses.isEmpty
                 ? '추천 결과 없음'
                 : '추천 ${courses.length}개 · ${selectedCourse!.title}',
@@ -124,7 +138,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                   title: courses[i].title,
                   summary: _courseSummary(courses[i]),
                   reason: courses[i].reason,
-                  keywords: _courseKeywords(courses[i]),
+                  keywords: courses[i].keywords,
                   selected: i == selectedIndex,
                   onSelected: () => _openCourseDetail(courses[i], i),
                   onReason: () => _showRecommendationReasonPopup(
@@ -160,18 +174,6 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     );
     if (!mounted) return;
     setState(() => _selectedCourseIndex = index);
-  }
-
-  List<String> _courseKeywords(Course course) {
-    final keywords = <String>[];
-    final mood = app.conditions.mood.trim();
-    if (mood.isNotEmpty) keywords.add(mood);
-    for (final stop in course.stops) {
-      final category = app.repository.place(stop.placeId).category;
-      if (!keywords.contains(category)) keywords.add(category);
-      if (keywords.length == 2) break;
-    }
-    return keywords.take(2).toList();
   }
 
   String _courseSummary(Course course) {
@@ -264,17 +266,6 @@ void _showRecommendationReasonPopup(
   required int rank,
   required bool group,
 }) {
-  final congestionValues = course.stops
-      .map((s) => app.repository.congestion(s.placeId, s.arrival).value)
-      .toList();
-  final averageCongestion = congestionValues.isEmpty
-      ? 0
-      : congestionValues.reduce((a, b) => a + b) / congestionValues.length;
-  final congestionLabel = averageCongestion < 40
-      ? '한산'
-      : averageCongestion < 70
-      ? '보통'
-      : '혼잡';
   final staySummary = course.stops
       .map((stop) {
         final category = app.repository.place(stop.placeId).category;
@@ -286,11 +277,26 @@ void _showRecommendationReasonPopup(
       : app.preference.moods.isEmpty
       ? '추천 포인트'
       : app.preference.moods.first;
-  final groupPreference = group
-      ? '미연결 · 전체 평균 기준 적용'
-      : app.preference.moods.isEmpty
-      ? '저장된 취향 없음'
-      : '${app.preference.moods.join(' · ')} 반영';
+  final selectedConditions = <String>[
+    if (app.conditions.mood.isNotEmpty) app.conditions.mood,
+    if (app.conditions.gender != '무관') app.conditions.gender,
+    if (app.conditions.ageGroup != '무관') app.conditions.ageGroup,
+    app.conditions.companionType,
+    '${app.conditions.people}명',
+    if (app.preference.categories.isNotEmpty)
+      app.preference.categories.join('·'),
+    if (app.preference.cuisines.isNotEmpty) app.preference.cuisines.join('·'),
+    if (app.preference.cuisineDetails.isNotEmpty)
+      app.preference.cuisineDetails.join('·'),
+    if (app.preference.dislikedFood.trim().isNotEmpty)
+      '제외 ${app.preference.dislikedFood.trim()}',
+    if (app.preference.allergies.trim().isNotEmpty)
+      '알레르기 ${app.preference.allergies.trim()}',
+  ];
+  final groupPreference = [
+    ...selectedConditions,
+    if (group) '그룹 평균 기준',
+  ].join(' · ');
 
   showDialog<void>(
     context: context,
@@ -313,13 +319,11 @@ void _showRecommendationReasonPopup(
             courseTitle: course.title,
             keyword: keyword,
             conditionMatch:
-                '${course.matchScore}% · ${app.conditions.region} · ${app.conditions.people}명 · ${clockText(app.conditions.start)}',
-            congestion: '평균 ${averageCongestion.round()}% · $congestionLabel',
+                '총점 ${(course.score['total'] ?? course.matchScore / 100).toStringAsFixed(2)} · 장소 ${(course.score['placeAvg'] ?? 0).toStringAsFixed(2)} · 이동 ${(course.score['moveEfficiency'] ?? 0).toStringAsFixed(2)} · 시간 ${(course.score['timeFit'] ?? 0).toStringAsFixed(2)}',
+            congestion: course.reason,
             distance: '${course.distanceKm.toStringAsFixed(1)}km · 도보 이동 중심',
             stay: staySummary,
-            placeFeatures: course.reason.isEmpty
-                ? '장소 특징 정보 없음'
-                : course.reason,
+            placeFeatures: course.keywords.join(' · '),
             groupPreference: groupPreference,
             onClose: () => Navigator.of(dialogContext).pop(),
           ),
@@ -569,13 +573,8 @@ class _CourseEditorScreenState extends State<CourseEditorScreen> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('예시 코스 수정 결과'),
-          content: Text(
-            [
-              '현재는 입력과 관계없이 고정된 예시 수정 결과를 반환합니다.',
-              ...result.warnings.map((w) => w.message),
-            ].join('\n\n'),
-          ),
+          title: const Text('코스 수정 안내'),
+          content: Text(result.warnings.map((w) => w.message).join(' · ')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),

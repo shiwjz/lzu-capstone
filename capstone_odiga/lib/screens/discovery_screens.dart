@@ -50,11 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     if (conditions.query.contains('조용')) conditions.mood = '조용한';
-    widget.app.setConditions(conditions);
     openPage(
       context,
-      RecommendationsScreen(app: widget.app),
-      '/recommendations',
+      ConditionsScreen(app: widget.app, initialConditions: conditions),
+      '/conditions',
     );
   }
 
@@ -78,6 +77,26 @@ class _HomeScreenState extends State<HomeScreen> {
               controller: query,
               hint: '지금 내 주변에서 가고 싶은 곳은?',
               onSubmitted: (_) => search(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: '추천 검색',
+            child: Material(
+              color: OdigaTokens.brand,
+              borderRadius: BorderRadius.circular(14),
+              elevation: 3,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: search,
+                child: const SizedBox(
+                  width: 52,
+                  height: 54,
+                  child: Center(
+                    child: Icon(Icons.search, color: Colors.white, size: 25),
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -127,7 +146,7 @@ class _HomeCategorySettingsDialogState
     (label: '놀거리 / 놀이시설', value: '놀거리', width: 126.0),
     (label: '문화시설', value: '문화시설', width: 74.0),
   ];
-  static const _moods = ['조용한', '활기찬', '감성적인', '사진', '데이트', '친구 모임'];
+  static const _moods = ['조용한', '활기찬', '감성적인', '가성비좋은', '넓고편한', '뷰좋은'];
 
   late final _preferences = widget.app.preference.copy();
   late final _conditions = widget.app.conditions.copy();
@@ -232,7 +251,7 @@ class _HomeCategorySettingsDialogState
       context: context,
       builder: (context) => SimpleDialog(
         title: const Text('분위기'),
-        children: _moods
+        children: ['선택 안 함', ..._moods]
             .map(
               (mood) => SimpleDialogOption(
                 onPressed: () => Navigator.pop(context, mood),
@@ -242,7 +261,9 @@ class _HomeCategorySettingsDialogState
             .toList(),
       ),
     );
-    if (value != null && mounted) setState(() => _conditions.mood = value);
+    if (value != null && mounted) {
+      setState(() => _conditions.mood = value == '선택 안 함' ? '' : value);
+    }
   }
 
   Future<void> _editOtherCondition() async {
@@ -388,7 +409,15 @@ class _HomeCategorySettingsDialogState
                   onTap: _pickCompanionType,
                 ),
                 const SizedBox(height: 4),
-                _conditionRow('분위기', _conditions.mood, onTap: _pickMood),
+                _conditionRow(
+                  '분위기',
+                  _conditions.mood.isEmpty
+                      ? '미선택'
+                      : _conditions.mood == '활기찬'
+                      ? '혼잡 선호 · 사람 많은 곳'
+                      : _conditions.mood,
+                  onTap: _pickMood,
+                ),
                 const SizedBox(height: 4),
                 _conditionRow(
                   '기타 조건',
@@ -415,15 +444,21 @@ class _HomeCategorySettingsDialogState
 }
 
 class ConditionsScreen extends StatefulWidget {
-  const ConditionsScreen({super.key, required this.app, this.group = false});
+  const ConditionsScreen({
+    super.key,
+    required this.app,
+    this.group = false,
+    this.initialConditions,
+  });
   final AppState app;
   final bool group;
+  final SearchConditions? initialConditions;
   @override
   State<ConditionsScreen> createState() => _ConditionsScreenState();
 }
 
 class _ConditionsScreenState extends State<ConditionsScreen> {
-  late final draft = widget.app.conditions.copy();
+  late final draft = (widget.initialConditions ?? widget.app.conditions).copy();
   late final query = TextEditingController(text: draft.query);
   @override
   void dispose() {
@@ -497,7 +532,7 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
         Wrap(
           spacing: 6,
           runSpacing: 6,
-          children: ['조용한', '활기찬', '사진']
+          children: ['조용한', '활기찬', '감성적인', '가성비좋은', '넓고편한', '뷰좋은']
               .map(
                 (v) => OdigaTag(
                   label: v,
@@ -611,11 +646,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           title: '장소 상세',
           child: Column(
             children: [
-              Text(
-                snapshot.error is ApiException
-                    ? (snapshot.error as ApiException).message
-                    : '장소 정보를 불러오지 못했어요.',
-              ),
+              Text(apiFailureMessage(snapshot.error)),
               TextButton(
                 onPressed: () => setState(() {
                   detail = widget.app.repository.loadPlace(

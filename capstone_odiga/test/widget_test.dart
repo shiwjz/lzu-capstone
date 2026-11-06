@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:capstone_odiga/api/odiga_api.dart';
-
 import 'package:capstone_odiga/main.dart';
 import 'package:capstone_odiga/state/app_state.dart';
 import 'package:capstone_odiga/screens/app_screens.dart';
@@ -10,25 +8,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('home search without a region shows API guidance', (
+  testWidgets('home search opens conditions with the entered query', (
     tester,
   ) async {
     final app = await tester.runAsync(AppState.load);
-    // Warm the error fixture outside the widget test's simulated clock.
-    await tester.runAsync(() async {
-      try {
-        await app!.repository.api.search(const SearchRequestDto(query: '카페'));
-      } on ApiException {
-        /* The screen below must display this response. */
-      }
-    });
     await tester.pumpWidget(MyApp(loadState: () async => app!));
     await tester.pumpAndSettle();
+    expect(find.text('오디가'), findsOneWidget);
+    expect(find.byTooltip('추천 검색'), findsOneWidget);
     await tester.enterText(find.byType(TextField), '조용한 카페');
     await tester.tap(find.byTooltip('추천 검색'));
     await tester.pumpAndSettle();
-    expect(find.text('어느 지역에서 찾을까요? (성수·홍대·강남)'), findsOneWidget);
-    expect(find.text('검색 조건 수정'), findsOneWidget);
+    expect(find.byType(ConditionsScreen), findsOneWidget);
+    expect(find.text('조용한 카페'), findsOneWidget);
+    expect(find.byType(RecommendationsScreen), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -46,10 +39,12 @@ void main() {
     await tester.enterText(find.byType(TextField), '홍대에서 친구 3명이랑 저녁');
     await tester.tap(find.byTooltip('추천 검색'));
     await tester.pumpAndSettle();
-    expect(find.byType(RecommendationsScreen), findsOneWidget);
-    await tester.tap(find.text('추천 3개 · 홍대 저녁 보드게임 코스'));
+    await tester.ensureVisible(find.text('수정 조건으로 바로 추천'));
+    await tester.tap(find.text('수정 조건으로 바로 추천'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('코스 상세').first);
+    expect(find.byType(RecommendationsScreen), findsOneWidget);
+    expect(find.byType(OdigaBottomNavigation), findsNothing);
+    await tester.tap(find.byType(RankedCourseCard).first);
     await tester.pumpAndSettle();
     expect(find.byType(CourseDetailScreen), findsOneWidget);
     expect(
@@ -60,10 +55,6 @@ void main() {
       'c_hongdae_1',
     );
     expect(tester.takeException(), isNull);
-    await tester.tap(
-      find.widgetWithText(OdigaBottomNavigation, '친구').first,
-      warnIfMissed: false,
-    );
   });
 
   testWidgets('startup shows loading and retries a failed load', (

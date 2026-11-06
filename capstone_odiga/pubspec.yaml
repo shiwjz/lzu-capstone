@@ -31,6 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^2.0.10
+  flutter_map: ^8.2.1
+  latlong2: ^0.9.1
 
   http: ^1.2.2   # 진짜 서버 연결 (lib/api/http_odiga_api.dart)
 

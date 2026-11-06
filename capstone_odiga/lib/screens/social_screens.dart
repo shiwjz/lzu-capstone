@@ -557,16 +557,26 @@ class PreferencesScreen extends StatefulWidget {
 }
 
 class _PreferencesScreenState extends State<PreferencesScreen> {
+  static const _moods = ['조용한', '활기찬', '감성적인', '가성비좋은', '넓고편한', '뷰좋은'];
+  static const _cuisines = <String, List<String>>{
+    '한식': ['고기', '국밥', '찌개·전골', '국수', '해물·생선'],
+    '일식': ['초밥·롤', '라멘', '돈까스·우동', '덮밥'],
+    '양식': ['이탈리안', '피자', '햄버거', '스테이크', '멕시칸'],
+    '중식': ['중국요리', '양꼬치'],
+    '분식': ['떡볶이', '김밥'],
+    '아시아': ['동남아', '인도'],
+    '치킨': [],
+    '술집': ['호프·요리주점', '이자카야', '칵테일바', '와인바', '포장마차'],
+    '카페·디저트': ['디저트카페', '개인카페', '프랜차이즈', '갤러리·북카페', '차·음료'],
+  };
+  static const _allergyValues = {'갑각류': 'SHELLFISH', '해산물': 'SEAFOOD'};
   bool saving = false;
   late final draft = widget.app.preference.copy();
-  late final allergies = TextEditingController(text: draft.allergies);
-  late final disliked = TextEditingController(text: draft.dislikedFood);
-  @override
-  void dispose() {
-    allergies.dispose();
-    disliked.dispose();
-    super.dispose();
-  }
+  late final _allergiesSelected = <String>{
+    for (final item in draft.allergies.split(RegExp(r'[,，\s]+')))
+      for (final allergy in _allergyValues.entries)
+        if (item == allergy.value || item == allergy.key) allergy.key,
+  };
 
   Widget choices(List<String> options, Set<String> selected) => Wrap(
     spacing: 6,
@@ -587,48 +597,72 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
         )
         .toList(),
   );
+
+  Widget moodChoices() => Wrap(
+    spacing: 6,
+    runSpacing: 8,
+    children: _moods
+        .map(
+          (mood) => OdigaTag(
+            label: mood,
+            selected: draft.moods.contains(mood),
+            onSelected: (selected) => setState(() {
+              if (selected) {
+                draft.moods.add(mood);
+              } else {
+                draft.moods.remove(mood);
+              }
+            }),
+          ),
+        )
+        .toList(),
+  );
   @override
   Widget build(BuildContext context) => AppFrame(
     app: widget.app,
     title: '내 취향을 알려주세요',
     subtitle: '추천에 반영할 관심사와 조건',
     child: stackItems([
-      label('좋아하는 장소', size: 18, bold: true),
-      choices(['음식점', '카페', '놀거리', '문화시설'], draft.categories),
-      label('좋아하는 분위기', size: 18, bold: true),
-      choices(['조용한', '활기찬', '감성적인', '사진', '데이트', '친구 모임'], draft.moods),
-      panel([
-        label('음식 취향', bold: true),
-        TextField(
-          controller: disliked,
-          decoration: const InputDecoration(
-            labelText: '싫어하는 음식',
-            hintText: '예: 매운 음식',
+      label('음식 취향', size: 18, bold: true),
+      label('큰 종류를 고르면 세부 취향을 선택할 수 있어요.', size: 11, color: OdigaTokens.muted),
+      for (final entry in _cuisines.entries)
+        panel([
+          OdigaTag(
+            label: entry.key,
+            selected: draft.cuisines.contains(entry.key),
+            onSelected: (selected) => setState(() {
+              if (selected) {
+                draft.cuisines.add(entry.key);
+              } else {
+                draft.cuisines.remove(entry.key);
+                draft.cuisineDetails.removeAll(entry.value.toSet());
+              }
+            }),
           ),
-        ),
-      ]),
+          if (draft.cuisines.contains(entry.key) && entry.value.isNotEmpty)
+            choices(entry.value, draft.cuisineDetails),
+        ], lavender: draft.cuisines.contains(entry.key)),
+      label('좋아하는 분위기', size: 18, bold: true),
+      moodChoices(),
+      label(
+        '활기찬을 고르면 사람 많은 곳을 선호하는 조건으로 반영해요.',
+        size: 11,
+        color: OdigaTokens.muted,
+      ),
       panel([
         label('알레르기 / 필수 조건', color: OdigaTokens.brand),
-        TextField(
-          controller: allergies,
-          decoration: const InputDecoration(
-            labelText: '알레르기·필수 조건',
-            hintText: '예: 견과류 알레르기',
-          ),
-        ),
-        label(
-          '현재는 조건 저장만 지원하며 음식 안전성은 판정하지 않습니다.',
-          size: 11,
-          color: OdigaTokens.muted,
-        ),
+        choices(_allergyValues.keys.toList(), _allergiesSelected),
+        label('갑각류·해산물 알레르기를 검색 조건에 반영해요.', size: 11, color: OdigaTokens.muted),
       ], lavender: true),
       action(
         saving ? '저장 중…' : '선호도 저장',
         saving
             ? null
             : () async {
-                draft.allergies = allergies.text.trim();
-                draft.dislikedFood = disliked.text.trim();
+                draft.allergies = _allergyValues.entries
+                    .where((entry) => _allergiesSelected.contains(entry.key))
+                    .map((entry) => entry.value)
+                    .join(', ');
                 setState(() => saving = true);
                 try {
                   await widget.app.savePreference(draft);

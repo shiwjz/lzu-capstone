@@ -543,52 +543,43 @@ class RankedCourseCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            SizedBox(
-              height: 50,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (keywords.isNotEmpty) ...[
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: keywords
-                          .take(2)
-                          .map(
-                            (keyword) => Material(
-                              color: OdigaTokens.lavender,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (keywords.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: keywords
+                        .take(4)
+                        .map(
+                          (keyword) => Material(
+                            color: OdigaTokens.lavender,
+                            borderRadius: BorderRadius.circular(6),
+                            child: InkWell(
+                              onTap: onReason,
                               borderRadius: BorderRadius.circular(6),
-                              child: InkWell(
-                                onTap: onReason,
-                                borderRadius: BorderRadius.circular(6),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  child: _text(
-                                    keyword,
-                                    12,
-                                    color: OdigaTokens.ink,
-                                    weight: FontWeight.w500,
-                                  ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                child: _text(
+                                  keyword,
+                                  12,
+                                  color: OdigaTokens.ink,
+                                  weight: FontWeight.w500,
                                 ),
                               ),
                             ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: 4),
-                  ],
-                  Text(
-                    reason,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: OdigaTokens.text(12),
+                          ),
+                        )
+                        .toList(),
                   ),
+                  const SizedBox(height: 4),
                 ],
-              ),
+              ],
             ),
           ],
         ),

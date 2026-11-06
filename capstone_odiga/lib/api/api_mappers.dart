@@ -42,6 +42,8 @@ class ApiMappers {
       rating: null,
       description:
           json['reason'] as String? ?? json['address'] as String? ?? '',
+      cuisine: json['cuisine'] as String?,
+      cuisineDetail: json['cuisineDetail'] as String?,
     );
   }
 
@@ -75,6 +77,14 @@ class ApiMappers {
               (next?['walkMinutesFromPrev'] as num?)?.toInt() ?? 0,
           distanceMetersToNext:
               (next?['distanceMetersFromPrev'] as num?)?.toDouble() ?? 0,
+          congestionBand: switch (stop['congestion']?['level']) {
+            'QUIET' => CongestionBand.quiet,
+            'BUSY' => CongestionBand.busy,
+            'NORMAL' => CongestionBand.moderate,
+            _ => null,
+          },
+          congestionPercentile: (stop['congestion']?['percentile'] as num?)
+              ?.toDouble(),
         ),
       );
     }
@@ -88,6 +98,12 @@ class ApiMappers {
           json['reason'] as String? ??
           '지역별 예시 코스 · ${conditions['date']} ${json['startAt']} 기준',
       matchScore: ((json['score']['total'] as num) * 100).round(),
+      score: {
+        for (final entry in (json['score'] as Map).entries)
+          if (entry.value is num)
+            entry.key.toString(): (entry.value as num).toDouble(),
+      },
+      keywords: List<String>.from(json['keywords'] ?? const []),
     );
   }
 

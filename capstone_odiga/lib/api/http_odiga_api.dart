@@ -51,6 +51,7 @@ class HttpOdigaApi implements OdigaApi {
         'GET' => _client.get(uri, headers: headers),
         'POST' => _client.post(uri, headers: headers, body: encoded),
         'PUT' => _client.put(uri, headers: headers, body: encoded),
+        'DELETE' => _client.delete(uri, headers: headers),
         _ => throw ArgumentError(method),
       };
       res = await request.timeout(timeout);
@@ -179,6 +180,62 @@ class HttpOdigaApi implements OdigaApi {
       if (!_notReady(e)) rethrow;
       return _localPreferences = preferences;
     }
+  }
+
+  @override
+  Future<List<String>> getSavedCourseIds() async {
+    final data = await _send('GET', '/api/users/me/courses');
+    return [
+      for (final item in data['courses'] as List? ?? const [])
+        (item as Map)['courseId'] as String,
+    ];
+  }
+
+  @override
+  Future<List<Json>> getSavedCourseRecords() async {
+    final data = await _send('GET', '/api/users/me/courses');
+    return [
+      for (final item in data['courses'] as List? ?? const [])
+        Map<String, dynamic>.from(item as Map),
+    ];
+  }
+
+  @override
+  Future<void> saveCourseId(String courseId) async {
+    await _send('POST', '/api/users/me/courses', body: {'courseId': courseId});
+  }
+
+  @override
+  Future<void> deleteSavedCourse(String courseId) async {
+    await _send('DELETE', '/api/users/me/courses/${_id(courseId)}');
+  }
+
+  @override
+  Future<List<String>> getSavedPlaceIds() async {
+    final data = await _send('GET', '/api/users/me/places');
+    return [
+      for (final item in data['places'] as List? ?? const [])
+        (item as Map)['placeId'] as String,
+    ];
+  }
+
+  @override
+  Future<List<Json>> getSavedPlaceRecords() async {
+    final data = await _send('GET', '/api/users/me/places');
+    return [
+      for (final item in data['places'] as List? ?? const [])
+        Map<String, dynamic>.from(item as Map),
+    ];
+  }
+
+  @override
+  Future<void> savePlaceId(String placeId) async {
+    await _send('POST', '/api/users/me/places', body: {'placeId': placeId});
+  }
+
+  @override
+  Future<void> deleteSavedPlace(String placeId) async {
+    await _send('DELETE', '/api/users/me/places/${_id(placeId)}');
   }
 }
 

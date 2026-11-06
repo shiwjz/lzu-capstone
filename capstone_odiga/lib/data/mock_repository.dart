@@ -33,13 +33,16 @@ String _companionCode(String value) => switch (value) {
 };
 
 String _atmosphereCode(String value) => switch (value) {
-  '조용한' => '조용함',
-  '활기찬' => '활동적',
-  '감성적인' => '분위기',
-  '사진' => '사진·인테리어',
-  '친구 모임' => '단체석',
+  '조용함' => '조용한',
+  '데이트' || '친구 모임' => '', // Situation tags are derived by the server.
   _ => value,
 };
+
+String _crowdPreference(Set<String> atmospheres) {
+  if (atmospheres.contains('조용한')) return 'QUIET';
+  if (atmospheres.contains('활기찬')) return 'LIVELY';
+  return 'DEFAULT';
+}
 
 String? _categoryCode(String value) => const {
   '음식점': 'FOOD',
@@ -55,6 +58,20 @@ String? _categoryCode(String value) => const {
 
 List<String> _categoryCodes(Set<String> values) =>
     values.map(_categoryCode).whereType<String>().toList();
+
+const _cuisineCodes = {
+  '한식': 'KOREAN',
+  '일식': 'JAPANESE',
+  '양식': 'WESTERN',
+  '중식': 'CHINESE',
+  '분식': 'BUNSIK',
+  '아시아': 'ASIAN',
+  '치킨': 'CHICKEN',
+  '술집': 'BAR',
+};
+
+List<String> _cuisineCodeList(Set<String> values) =>
+    values.map((value) => _cuisineCodes[value]).whereType<String>().toList();
 
 List<String> _allergyCodes(String value) => [
   for (final token in value.split(RegExp(r'[,，\s]+')))
@@ -161,6 +178,31 @@ class MockRepository {
 
   Place place(String id) => places.firstWhere((p) => p.id == id);
 
+  Course? course(String id) => _courses.values
+      .expand((courses) => courses)
+      .where((course) => course.id == id)
+      .firstOrNull;
+
+  Course rememberRemoteSavedCourse(Json record) {
+    final conditions = ConditionsDto.fromJson(
+      Map<String, dynamic>.from(record['conditions'] as Map),
+    );
+    final dto = CourseDto.fromJson(
+      Map<String, dynamic>.from(record['course'] as Map),
+    );
+    final value = _rememberCourse(dto, conditions);
+    final list = _courses.putIfAbsent(value.region, () => <Course>[]);
+    list.removeWhere((course) => course.id == value.id);
+    list.insert(0, value);
+    return value;
+  }
+
+  Place rememberRemoteSavedPlace(Json record) {
+    final value = ApiMappers.place(record, record['region'] as String? ?? '');
+    _putPlace(value);
+    return value;
+  }
+
   bool hasHourlyCongestion(String placeId) =>
       _detailRecords.any((c) => c.cellId == place(placeId).cellId);
 
@@ -214,14 +256,21 @@ class MockRepository {
           'startTime': formatTime(conditions.start),
           'partySize': conditions.people,
           'categories': _categoryCodes(preference.categories),
-          'atmospheres': conditions.mood.isEmpty
-              ? <String>[]
-              : [_atmosphereCode(conditions.mood)],
-          'crowdPreference': switch (conditions.mood) {
-            '조용한' => 'QUIET',
-            '활기찬' => 'LIVELY',
-            _ => 'DEFAULT',
-          },
+          'atmospheres':
+              {
+                    ...preference.moods,
+                    if (conditions.mood.isNotEmpty) conditions.mood,
+                  }
+                  .map(_atmosphereCode)
+                  .where((mood) => mood.isNotEmpty)
+                  .toSet()
+                  .toList(),
+          'crowdPreference': _crowdPreference({
+            ...preference.moods.map(_atmosphereCode),
+            if (conditions.mood.isNotEmpty) _atmosphereCode(conditions.mood),
+          }),
+          'cuisines': _cuisineCodeList(preference.cuisines),
+          'cuisineDetails': preference.cuisineDetails.toList(),
           'allergies': _allergyCodes(preference.allergies),
           'gender': _genderCode(conditions.gender),
           'ageGroup': _ageGroupCode(conditions.ageGroup),
@@ -375,6 +424,8 @@ class MockRepository {
           stayMinutes: old.stayMinutes,
           travelMinutesToNext: travel,
           distanceMetersToNext: meters,
+          congestionBand: old.congestionBand,
+          congestionPercentile: old.congestionPercentile,
         ),
       );
       arrival = arrival.add(Duration(minutes: old.stayMinutes + travel));
