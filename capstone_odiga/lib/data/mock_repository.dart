@@ -214,7 +214,20 @@ class MockRepository {
         .where((c) => c.cellId == cell)
         .toList();
     if (records.isEmpty && detail) return congestion(placeId, visit);
-    if (records.isEmpty) throw StateError('No congestion fixture for $placeId');
+    // 진짜 서버 연결 시: 검색 결과에 없던 장소(예: 시작할 때 부르는 장소 상세)는 시간별 기록만 있음
+    // → 그걸로 대신, 그것도 없으면 '보통'(중간값)으로 표시해서 화면이 안 깨지게 (예민 11/7)
+    if (records.isEmpty) {
+      records = _detailRecords.where((c) => c.cellId == cell).toList();
+    }
+    if (records.isEmpty) {
+      return Congestion(
+        cellId: cell,
+        weekend: visit.weekday >= DateTime.saturday,
+        hour: visit.hour,
+        value: 50,
+        percentile: 50,
+      );
+    }
     final sameDay = records
         .where((c) => c.weekend == (visit.weekday >= DateTime.saturday))
         .toList();

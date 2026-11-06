@@ -1,6 +1,7 @@
 package com.capstone.backend.search;
 
 import com.capstone.backend.course.CourseRequest;
+import com.capstone.backend.course.Cuisine;
 import com.capstone.backend.course.CourseRules;
 import com.capstone.backend.course.CrowdPreference;
 
@@ -135,7 +136,17 @@ public record SearchConditions(
     public CourseRequest toCourseRequest() {
         return new CourseRequest(region, toMinutes(startTime), partySize, atmospheres,
                 CrowdPreference.valueOf(crowdPreference), new HashSet<>(allergies),
-                categories.stream().filter(CourseRules.PLAY_CATEGORIES::contains).toList(), List.of());
+                categories.stream().filter(CourseRules.PLAY_CATEGORIES::contains).toList(), List.of(), drinking());
+    }
+
+    /** 술 코스인지 (11주차): 음식 취향에 술집(BAR)이나 술집 세부(이자카야 등) → true, 제외 음식에 술 → false, 말 없으면 null */
+    public Boolean drinking() {
+        if (excludedFoods != null && excludedFoods.contains("술")) return false;
+        if (cuisines != null && cuisines.contains("BAR")) return true;
+        if (cuisineDetails != null && cuisineDetails.stream().anyMatch(d -> "BAR".equals(Cuisine.DETAIL_FAMILY.get(d)))) {
+            return true;
+        }
+        return null;
     }
 
     public static int toMinutes(String hhmm) {

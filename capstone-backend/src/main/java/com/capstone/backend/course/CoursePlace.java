@@ -26,7 +26,13 @@ public record CoursePlace(
         this(placeId, name, region, category, kakaoCategory, lat, lng, tags, null, null);
     }
 
+    /** 술집이면 BAR, 아니면 카테고리대로 (11주차) */
     public Slot slot() {
-        return Slot.of(category);
+        return isBar() ? Slot.BAR : Slot.of(category);
+    }
+
+    /** 술집인지: 음식 큰 종류 BAR(예린 확정본) 또는 카카오 카테고리에 '술집' */
+    public boolean isBar() {
+        return "BAR".equals(cuisine) || kakaoCategory.contains("술집");
     }
 }

@@ -63,6 +63,15 @@ TOP_K = 10                   # 칸별 후보 수
 W_PLACE = {'request': 0.45, 'target': 0.30, 'congestion': 0.25}
 W_COURSE = {'placeAvg': 0.70, 'moveEfficiency': 0.20, 'timeFit': 0.10}
 BAR_FROM_HOUR = 18           # 술집은 18시 이후 도착일 때만
+# 11주차: 종류별 기본 영업시간 (여는 시, 닫는 시) - 서버 CourseRules.DEFAULT_HOURS랑 같게, 24 넘으면 다음날
+DEFAULT_HOURS = {'FOOD': (11, 22), 'CAFE': (9, 22), 'SNACK': (9, 21), 'CULTURE': (10, 19), 'EXPERIENCE': (10, 21),
+                 'ACTIVITY': (10, 24), 'SHOPPING': (11, 21), 'TOUR': (0, 24), 'NATURE': (0, 24)}
+BAR_HOURS = (17, 26)
+LATE_CULTURE_HOURS = (10, 24)  # 영화관·공연장
+THEME_PLAY = ['CULTURE', 'NATURE', 'SHOPPING', 'TOUR']   # 놀거리 종류 하나만 말하면 놀거리 → 카페 → 식사
+NOMINAL_STAY = {'MEAL': 60, 'CAFE': 50, 'PLAY': 60, 'BAR': 60}
+BAR_LABEL = {'호프,요리주점': '호프', '일본식주점': '이자카야', '실내포장마차': '포차'}   # 경로 이름용
+BETTER_START_MIN_GAIN = 8    # 덜 붐비는 출발 시간: 평균 혼잡도가 8%p 이상 낮아질 때만
 # 조용한 곳 원하면 놀거리 칸에서 빼는 시끄러운 곳 (노래방 문제 대책, 카카오 카테고리·이름 기준)
 NOISY_PLAY = ['노래방', '노래연습장', '코인노래', '멀티방', '오락실', 'PC방', '볼링', '당구', '클럽', 'VR', '사격']
 PLAY_LABEL = {'미술,공예': '공방', '화랑': '전시', '보드카페': '보드게임', '방탈출카페': '방탈출', '만화방': '만화카페'}   # 코스 제목용
@@ -88,7 +97,7 @@ def slot_of(cat):
 
 
 def hm(minutes):
-    return f'{minutes // 60:02d}:{minutes % 60:02d}'
+    return f'{(minutes // 60) % 24:02d}:{minutes % 60:02d}'   # 자정 넘으면 00:xx (서버 CourseRules.hhmm이랑 같게)
 
 
 def to_min(hhmm):
@@ -107,6 +116,52 @@ def dist_m(p, q):
 
 def walk_min(meters):
     return max(1, math.ceil(meters * DETOUR / WALK_M_PER_MIN))
+
+
+def is_bar(p):
+    return p.get('cuisine') == 'BAR' or '술집' in p['kakaoCategory']
+
+
+def slot_of_place(p):
+    """술집이면 BAR (11주차), 아니면 카테고리대로"""
+    return 'BAR' if is_bar(p) else slot_of(p['category'])
+
+
+def open_at(p, hour):
+    """종류별 기본 영업시간 안에 도착하는지 (서버 CourseRules.openAt)"""
+    if is_bar(p):
+        o, c = BAR_HOURS
+    elif '영화관' in p['kakaoCategory'] or '공연장' in p['kakaoCategory']:
+        o, c = LATE_CULTURE_HOURS
+    else:
+        o, c = DEFAULT_HOURS.get(p['category'], (0, 24))
+    h = hour % 24
+    return (o <= h < c) or (o <= h + 24 < c)
+
+
+def drinking(cond):
+    """술 코스인지: 제외 음식에 술 → False, 음식 취향에 술집 → True, 말 없으면 None"""
+    if '술' in (cond.get('excludedFoods') or []):
+        return False
+    if 'BAR' in (cond.get('cuisines') or []):
+        return True
+    if any(DETAIL_FAMILY.get(d) == 'BAR' for d in (cond.get('cuisineDetails') or [])):
+        return True
+    return None
+
+
+def course_order(cond, start):
+    """코스 틀 (서버 CourseRules.slotOrder(start, drinking, playCategories))"""
+    hh = start // 60
+    d = drinking(cond)
+    picked = [c for c in cond['categories'] if c in PLAY_CATS]
+    if d is True:
+        return ['MEAL', 'BAR', 'BAR'] if hh >= 17 else ['PLAY', 'MEAL', 'BAR']
+    if hh < 17 and len(picked) == 1 and picked[0] in THEME_PLAY:
+        return ['PLAY', 'CAFE', 'MEAL']
+    if hh >= 20 and d is None:
+        return ['MEAL', 'PLAY', 'BAR']
+    return slot_order(start)
 
 
 def slot_order(start):
@@ -199,8 +254,15 @@ def cuisine_of(p):
 
 
 def wants_cuisine(p, cond):
-    """음식 큰 종류 골랐으면 식사 칸은 그 종류만 (카페·놀거리는 상관없음)"""
-    return not cond.get('cuisines') or p['category'] != 'FOOD' or p['cuisine'] in cond['cuisines']
+    """음식 큰 종류 골랐으면 식사 칸은 그 종류만 (카페·놀거리는 상관없음)
+    11주차: 술집(BAR)은 술 코스 틀 술집 칸용 → 식사 거르기엔 안 씀"""
+    cu = cond.get('cuisines') or []
+    if not cu or p['category'] != 'FOOD':
+        return True
+    if is_bar(p):
+        return 'BAR' in cu
+    meal = [c for c in cu if c != 'BAR']
+    return not meal or p['cuisine'] in meal
 
 
 
@@ -356,6 +418,8 @@ def allowed(p, cond, arrive_hour):
         return False
     if '술집' in p['kakaoCategory'] and arrive_hour < BAR_FROM_HOUR:
         return False
+    if not open_at(p, arrive_hour):
+        return False                                   # 종류별 기본 영업시간 (11주차)
     if p['category'] == 'FOOD' and ('간식' in p['kakaoCategory'] or '구내식당' in p['kakaoCategory']):
         return False                                   # 혹시 남은 간식·구내식당은 식사 칸 제외
     if wants_quiet(cond) and slot_of(p['category']) == 'PLAY' and is_noisy(p):
@@ -390,7 +454,7 @@ def build_course(stops_in, cond, start):
             walk_total += w
             dist_total += d
         score, cong = place_score(p, cond, t // 60)   # 도착 시각 기준 혼잡도 재반영
-        stops.append({'order': i, 'slot': slot_of(p['category']), 'placeId': p['placeId'],
+        stops.append({'order': i, 'slot': slot_of_place(p), 'placeId': p['placeId'],
                       'name': p['name'], 'category': p['category'], 'lat': p['lat'], 'lng': p['lng'],
                       'arriveAt': hm(t), 'leaveAt': hm(t + stay), 'stayMinutes': stay,
                       'walkMinutesFromPrev': w, 'distanceMetersFromPrev': d,
@@ -426,6 +490,68 @@ def play_label(p):
     if parts[i] == '테마카페' and len(parts) > i + 1:
         i += 1
     return PLAY_LABEL.get(parts[i], parts[i].replace(',', '·'))
+
+
+def stop_label(p):
+    """경로 이름용 장소 종류 (서버 CourseText.stopLabel)"""
+    parts = p['kakaoCategory'].split(' > ')
+    if is_bar(p):
+        return BAR_LABEL.get(parts[2], parts[2].replace(',', '·')) if len(parts) > 2 else '술집'
+    cat = p['category']
+    if cat == 'FOOD':
+        if p['cuisineDetail']:
+            return p['cuisineDetail']
+        if p['cuisine'] and p['cuisine'] != 'ETC':
+            return CUISINE_LABEL[p['cuisine']]
+        return parts[1].replace(',', '·') if len(parts) > 1 else '식당'
+    if cat == 'CAFE':
+        return play_label(p) if '테마카페' in p['kakaoCategory'] else '카페'
+    if cat == 'SNACK':
+        return '디저트'
+    return play_label(p)
+
+
+def course_route(course, by_id):
+    """코스 경로 이름 (11주차): 칵테일바 → 카페 → 방탈출"""
+    return ' → '.join(stop_label(by_id[s['placeId']]) for s in course['stops'])
+
+
+def jround(x):
+    """Java Math.round (반올림, .5는 올림)"""
+    return int(math.floor(x + 0.5))
+
+
+def avg_all_day(course, cond, shift, by_id):
+    total = 0
+    for s in course['stops']:
+        hour = math.trunc((to_min(s['arriveAt']) + shift) / 60)   # Java 정수 나눗셈
+        if shift != 0 and not open_at(by_id[s['placeId']], hour):
+            return None
+        total += congestion(by_id[s['placeId']], cond['dayType'], hour, 'all_day')['percentile']
+    return total / len(course['stops'])
+
+
+def better_start(course, cond, by_id):
+    """덜 붐비는 출발 시간 (11주차, 서버 SearchService.betterStart)"""
+    if cond['crowdPreference'] == 'LIVELY':
+        return None
+    start = to_min(course['startAt'])
+    current = avg_all_day(course, cond, 0, by_id)
+    best, best_shift = current, None
+    for shift in (-120, -60, 60, 120):
+        st = start + shift
+        if st < 9 * 60 or st > 22 * 60:
+            continue
+        avg = avg_all_day(course, cond, shift, by_id)
+        if avg is not None and avg < best:
+            best, best_shift = avg, shift
+    if best_shift is None or current - best < BETTER_START_MIN_GAIN:
+        return None
+    cur, now = jround(current), jround(best)
+    word = '일찍' if best_shift < 0 else '늦게'
+    return {'startTime': hm(start + best_shift), 'shiftMinutes': best_shift,
+            'avgPercentile': now, 'currentAvgPercentile': cur,
+            'message': f"{abs(best_shift) // 60}시간 {word} 출발하면 덜 붐벼요 (혼잡 {cur}% → {now}%)"}
 
 
 def course_text(course, cond, by_id):
@@ -470,7 +596,7 @@ def course_keywords(course, cond, by_id):
     return out[:4]
 
 
-def warnings_of(course, cond):
+def warnings_of(course, cond, by_id=None):
     out = []
     if course['totalMinutes'] > TARGET_MIN + TOL_MIN:
         out.append({'code': 'TOTAL_TIME_OVER', 'message': f"총 {course['totalMinutes']}분으로 3시간 30분을 넘어요"})
@@ -481,6 +607,10 @@ def warnings_of(course, cond):
             out.append({'code': 'LONG_WALK', 'message': f"{s['name']}까지 걸어서 {s['walkMinutesFromPrev']}분 걸려요"})
         if cond['crowdPreference'] == 'QUIET' and s['congestion']['level'] == 'BUSY':
             out.append({'code': 'BUSY_AT_ARRIVAL', 'message': f"{s['arriveAt']}에 {s['name']} 주변이 붐벼요"})
+    for s in course['stops'] if by_id else []:      # 11주차: 기본 영업시간 밖 도착
+        if not open_at(by_id[s['placeId']], int(s['arriveAt'][:2])):
+            out.append({'code': 'MAYBE_CLOSED',
+                        'message': f"{s['arriveAt']}에는 {s['name']} 영업이 끝났을 수 있어요 (종류별 기본 영업시간 기준)"})
     return out
 
 
@@ -491,21 +621,31 @@ def tie_break(p, cond):
 
 def recommend(places, cond):
     start = to_min(cond['startTime'])
-    order = slot_order(start)
-    # 칸별 대략 도착 시각 (후보 순위용), 이동은 칸마다 10분으로 가정
-    nominal, t = {}, start
+    order = course_order(cond, start)
+    # 칸별 대략 도착 시각 (후보 순위용), 이동은 칸마다 10분으로 가정 - 술집 2번처럼 같은 칸 두 번 → 칸 순서대로 목록
+    nominal, t = [], start
     for slot in order:
-        nominal[slot] = t // 60
-        t += {'MEAL': 60, 'CAFE': 50, 'PLAY': 60}[slot] + 10
+        nominal.append(t // 60)
+        t += NOMINAL_STAY[slot] + 10
+    bar_slot = 'BAR' in order
     play_cats = [c for c in cond['categories'] if c in PLAY_CATS] or PLAY_CATS
-    cands = {}
-    for slot in order:
-        cats = {'MEAL': ['FOOD'], 'CAFE': ['CAFE'], 'PLAY': play_cats}[slot]
-        pool = [p for p in places if p['category'] in cats and allowed(p, cond, nominal[slot])]
-        pool.sort(key=lambda p: (-place_score(p, cond, nominal[slot])[0]['total'], -tie_break(p, cond)))
-        cands[slot] = pool[:TOP_K]
+
+    def fits(p, slot):
+        if slot == 'MEAL':
+            return p['category'] == 'FOOD' and not (bar_slot and is_bar(p))
+        if slot == 'BAR':
+            return p['category'] == 'FOOD' and is_bar(p)
+        return p['category'] in {'CAFE': ['CAFE'], 'PLAY': play_cats}[slot]
+
+    cands = []
+    for k, slot in enumerate(order):
+        pool = [p for p in places if fits(p, slot) and allowed(p, cond, nominal[k])]
+        pool.sort(key=lambda p: (-place_score(p, cond, nominal[k])[0]['total'], -tie_break(p, cond)))
+        cands.append(pool[:TOP_K])
     combos, passed = [], 0
-    for combo in itertools.product(*(cands[s] for s in order)):
+    for combo in itertools.product(*cands):
+        if len({p['placeId'] for p in combo}) < len(combo):
+            continue                                   # 술집 → 술집: 같은 곳 두 번은 안 됨
         c = build_course([(p, STAY_MIN[p['category']]) for p in combo], cond, start)
         if abs(c['totalMinutes'] - TARGET_MIN) <= TOL_MIN:
             passed += 1
@@ -526,17 +666,18 @@ def recommend(places, cond):
         c['rank'] = i
         c['title'], c['reason'] = course_text(c, cond, by_id)
         c['keywords'] = course_keywords(c, cond, by_id)
+        c['route'] = course_route(c, by_id)
     # 추천 장소 목록: 후보 전체에서 점수 상위 10곳
     seen, plist = set(), []
-    for slot in order:
-        for p in cands[slot]:
+    for k in range(len(order)):
+        for p in cands[k]:
             if p['placeId'] not in seen:
                 seen.add(p['placeId'])
-                plist.append(summary(p, cond, nominal[slot]))
+                plist.append(summary(p, cond, nominal[k]))
     plist.sort(key=lambda x: (-x['score']['total'], -tie_break(by_id[x['placeId']], cond)))
-    stats = {'order': order, 'candidates': {s: len(v) for s, v in cands.items()},
-             'combos': math.prod(len(v) for v in cands.values()), 'passedTimeRule': passed}
-    return plist[:10], [ {k: c[k] for k in ['courseId', 'rank', 'title', 'reason', 'keywords', 'startAt', 'endAt', 'totalMinutes',
+    stats = {'order': order, 'candidates': [len(v) for v in cands],
+             'combos': math.prod(len(v) for v in cands), 'passedTimeRule': passed}
+    return plist[:10], [ {k: c[k] for k in ['courseId', 'rank', 'title', 'reason', 'keywords', 'route', 'startAt', 'endAt', 'totalMinutes',
                           'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']} for c in chosen], stats
 
 
@@ -586,6 +727,11 @@ def dump_server_data(root, places):
                 if p['cuisine']:
                     w.writerow([p['placeId'], p['name'], p['region'], p['category'], p['kakaoCategory'],
                                 p['cuisine'], p['cuisineDetail'] or '', p['cuisineSource']])
+    # 11주차: 셀 가운데 좌표 (혼잡 레이더 GET /api/congestion/grid용), 50m 칸
+    with open(os.path.join(out, 'cells.tsv'), 'w', encoding='utf-8', newline='\n') as f:
+        f.write('cellId\tregion\tlat\tlng\n')
+        for c, region, lat, lng in sorted(CELLS):
+            f.write(f"{c}\t{region}\t{lat!r}\t{lng!r}\n")
     cells = sorted({p['cellId'] for p in places})
     write_congestion(os.path.join(out, 'congestion.tsv'), cells, CONG)
     if CONG_SEOUL:
@@ -634,6 +780,12 @@ SCENARIOS = [
 ]
 
 
+def no_course_notice(cond):
+    if drinking(cond) is True and to_min(cond['startTime']) < 16 * 60:
+        return '술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 4시 이후로 바꿔 보세요.'
+    return '조건에 맞는 코스를 찾지 못했어요. 시간이나 조건을 바꿔 보세요.'
+
+
 def main(root, out_dir):
     os.makedirs(out_dir, exist_ok=True)
     load_team_data(root)
@@ -651,7 +803,8 @@ def main(root, out_dir):
                 'conditions': {**{('atmospheres' if k == 'moods' else k): v for k, v in cond.items()},
                                'extractedBy': 'GEMINI'},
                 'places': plist, 'courses': courses,
-                'notice': None if courses else '조건에 맞는 코스를 찾지 못했어요. 시간이나 조건을 바꿔 보세요.'}
+                'betterStart': better_start(courses[0], cond, by_id) if courses else None,
+                'notice': None if courses else no_course_notice(cond)}
         dump(out_dir, fname, wrap(data))
         print(fname, stats)
         for c in courses:
@@ -673,7 +826,10 @@ def main(root, out_dir):
                    'congestionByHour': {'date': cond['date'], 'dayType': cond['dayType'],
                                         'basis': 'ALL_DAY',
                                         'hours': [congestion(p, cond['dayType'], hr, 'all_day')
-                                                  for hr in range(9, 24)]}})
+                                                  for hr in range(9, 24)]},
+                   # 11주차: 평일·주말 탭 (테이블링처럼) - 둘 다 9~23시, 하루 전체 비교
+                   'congestionByDayType': {d: [congestion(p, d, hr, 'all_day') for hr in range(9, 24)]
+                                           for d in ('WEEKDAY', 'WEEKEND')}})
     dump(out_dir, 'place_detail.json', wrap(detail))
 
     # 코스 수정 예시: 1번 체류 90분으로 늘리고 2번 카페를 다른 카페로 교체
@@ -691,9 +847,11 @@ def main(root, out_dir):
     upd = build_course(edited, cond, to_min(cond['startTime']))
     upd['title'], upd['reason'] = course_text(upd, cond, by_id)
     upd['keywords'] = course_keywords(upd, cond, by_id)
+    upd['route'] = course_route(upd, by_id)
     upd = {'courseId': c1['courseId'], 'rank': None, 'title': upd['title'], 'reason': upd['reason'], 'keywords': upd['keywords'],
+           'route': upd['route'],
            **{k: upd[k] for k in ['startAt', 'endAt', 'totalMinutes',
-           'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']}, 'warnings': warnings_of(upd, cond)}
+           'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']}, 'warnings': warnings_of(upd, cond, by_id)}
     dump(out_dir, 'course_update_response.json', wrap(upd))
 
     # 공유

@@ -55,6 +55,10 @@ public class PlaceStore {
         }
     }
 
+    /** 50m 격자 칸 가운데 좌표 (11주차, 혼잡 레이더용 - resources/data/cells.tsv, 윤경 grid_cells.csv) */
+    public record Cell(String cellId, String region, double lat, double lng) {
+    }
+
     /** 혼잡도 한 칸. percentile 0 = 가장 한산, 100 = 가장 붐빔 */
     public record Congestion(int hour, CongestionLevel level, int percentile) {
     }
@@ -83,6 +87,7 @@ public class PlaceStore {
     private final Map<String, CellProfile> cellProfiles = new HashMap<>();
     private final Map<Integer, Map<String, Double>> clusterAvg = new HashMap<>();   // 유형별 평균 비율
     private final Map<String, Map<String, Double>> regionAvg = new HashMap<>();     // 지역별 평균 비율
+    private final List<Cell> cells = new ArrayList<>();
     private final String congestionFile;
 
     /** 테스트용: 기본 혼잡도(가짜 유동인구, LG 데이터 모양) */
@@ -135,6 +140,25 @@ public class PlaceStore {
             congestion.put(r[0] + "|" + r[1], new String[][]{r[2].split(" "), r[3].split(" ")});
         }
         loadProfiles(profilePath);
+        // 셀 좌표는 LG 데이터가 아니라 격자 정보라 항상 jar 안 파일 (없으면 레이더만 빈 목록)
+        if (PlaceStore.class.getResource("/data/cells.tsv") != null) {
+            for (String[] r : readTsv("/data/cells.tsv", 4)) {
+                cells.add(new Cell(r[0], r[1], Double.parseDouble(r[2]), Double.parseDouble(r[3])));
+            }
+        }
+    }
+
+    /** 지역의 격자 칸 목록 */
+    public List<Cell> cells(String region) {
+        return cells.stream().filter(c -> c.region().equals(region)).toList();
+    }
+
+    /** 칸 하나의 혼잡도 (장소 없는 칸·데이터 없는 시간이면 빈 값) */
+    public Optional<Congestion> cellCongestion(String cellId, String dayType, int hour, Basis basis) {
+        String[][] row = congestion.get(cellId + "|" + dayType);
+        int h = Math.floorMod(hour, 24);
+        if (row == null || row[basis.ordinal()][h].equals("-")) return Optional.empty();
+        return Optional.of(parse(row[basis.ordinal()][h], h));
     }
 
     /** 셀 성·연령 + 유형·지역 평균 (윤경 load_target_data랑 같은 계산: 단순 평균) */
@@ -217,6 +241,10 @@ public class PlaceStore {
         if (token.equals("-")) {
             throw new IllegalStateException("혼잡도 없음: " + placeId + " " + dayType + " " + h + "시");
         }
+        return parse(token, h);
+    }
+
+    private static Congestion parse(String token, int h) {
         CongestionLevel level = switch (token.charAt(0)) {
             case 'Q' -> CongestionLevel.QUIET;
             case 'N' -> CongestionLevel.NORMAL;

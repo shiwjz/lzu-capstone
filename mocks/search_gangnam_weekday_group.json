@@ -408,9 +408,9 @@
         "title": "강남 저녁 테마카페 코스",
         "reason": "'단체' 후기 많은 곳 3곳 · 총 도보 6분",
         "keywords": [
-          "단체",
-          "호프·요리주점"
+          "단체"
         ],
+        "route": "호프 → 카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "21:56",
         "totalMinutes": 176,
@@ -425,7 +425,7 @@
         "stops": [
           {
             "order": 1,
-            "slot": "MEAL",
+            "slot": "BAR",
             "placeId": "1025133000",
             "name": "브롱스 강남스퀘어점",
             "category": "FOOD",
@@ -491,6 +491,7 @@
           "단체",
           "고기"
         ],
+        "route": "고기 → 카페 → 보드게임",
         "startAt": "19:00",
         "endAt": "22:00",
         "totalMinutes": 180,
@@ -571,6 +572,7 @@
           "단체",
           "고기"
         ],
+        "route": "고기 → 디저트카페 → 공연장·연극극장",
         "startAt": "19:00",
         "endAt": "22:00",
         "totalMinutes": 180,
@@ -652,6 +654,7 @@
           "북적",
           "고기"
         ],
+        "route": "고기 → 카페 → 노래방",
         "startAt": "19:00",
         "endAt": "21:59",
         "totalMinutes": 179,
@@ -732,6 +735,7 @@
           "단체",
           "고기"
         ],
+        "route": "고기 → 카페 → 보드게임",
         "startAt": "19:00",
         "endAt": "22:00",
         "totalMinutes": 180,
@@ -812,6 +816,7 @@
           "단체",
           "고기"
         ],
+        "route": "고기 → 카페 → 보드게임",
         "startAt": "19:00",
         "endAt": "21:59",
         "totalMinutes": 179,
@@ -892,6 +897,7 @@
           "단체",
           "양꼬치"
         ],
+        "route": "양꼬치 → 디저트카페 → 영화관",
         "startAt": "19:00",
         "endAt": "21:59",
         "totalMinutes": 179,
@@ -971,6 +977,7 @@
         "keywords": [
           "고기"
         ],
+        "route": "고기 → 카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "22:03",
         "totalMinutes": 183,
@@ -1050,6 +1057,7 @@
         "keywords": [
           "초밥·롤"
         ],
+        "route": "초밥·롤 → 카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "22:04",
         "totalMinutes": 184,
@@ -1130,6 +1138,7 @@
           "단체",
           "고기"
         ],
+        "route": "고기 → 카페 → 볼링장",
         "startAt": "19:00",
         "endAt": "22:18",
         "totalMinutes": 198,
@@ -1202,6 +1211,7 @@
         ]
       }
     ],
+    "betterStart": null,
     "notice": null
   }
 }

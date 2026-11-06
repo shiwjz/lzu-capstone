@@ -428,6 +428,7 @@
           "분식",
           "도보 5분 이내"
         ],
+        "route": "전시관 → 카페 → 분식",
         "startAt": "15:00",
         "endAt": "17:53",
         "totalMinutes": 173,
@@ -509,6 +510,7 @@
           "한산",
           "이탈리안"
         ],
+        "route": "전시관 → 카페 → 이탈리안",
         "startAt": "15:00",
         "endAt": "18:00",
         "totalMinutes": 180,
@@ -591,6 +593,7 @@
           "이탈리안",
           "도보 5분 이내"
         ],
+        "route": "도자기 → 카페 → 이탈리안",
         "startAt": "15:00",
         "endAt": "18:24",
         "totalMinutes": 204,
@@ -671,6 +674,7 @@
           "조용한",
           "해물·생선"
         ],
+        "route": "패션잡화점 → 카페 → 해물·생선",
         "startAt": "15:00",
         "endAt": "17:40",
         "totalMinutes": 160,
@@ -751,6 +755,7 @@
           "조용한",
           "한식"
         ],
+        "route": "패션잡화점 → 카페 → 한식",
         "startAt": "15:00",
         "endAt": "17:41",
         "totalMinutes": 161,
@@ -832,6 +837,7 @@
           "한산",
           "초밥·롤"
         ],
+        "route": "패션 → 카페 → 초밥·롤",
         "startAt": "15:00",
         "endAt": "17:42",
         "totalMinutes": 162,
@@ -912,6 +918,7 @@
           "조용한",
           "일식"
         ],
+        "route": "공방 → 카페 → 일식",
         "startAt": "15:00",
         "endAt": "18:27",
         "totalMinutes": 207,
@@ -984,6 +991,13 @@
         ]
       }
     ],
+    "betterStart": {
+      "startTime": "17:00",
+      "shiftMinutes": 120,
+      "avgPercentile": 29,
+      "currentAvgPercentile": 38,
+      "message": "2시간 늦게 출발하면 덜 붐벼요 (혼잡 38% → 29%)"
+    },
     "notice": null
   }
 }

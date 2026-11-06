@@ -61,6 +61,32 @@ class SearchServiceTest {
     }
 
     @Test
+    @DisplayName("11주차: 경로 이름 + 덜 붐비는 출발 시간 (가짜 JSON 성수랑 같음)")
+    void routeAndBetterStart() {
+        Map<String, Object> data = service().search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet()));
+        assertEquals("전시관 → 카페 → 분식", courses(data).get(0).route());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> better = (Map<String, Object>) data.get("betterStart");
+        assertEquals("17:00", better.get("startTime"));
+        assertEquals(120, better.get("shiftMinutes"));
+        assertEquals("2시간 늦게 출발하면 덜 붐벼요 (혼잡 38% → 29%)", better.get("message"));
+    }
+
+    @Test
+    @DisplayName("11주차: 술 코스 - 저녁 '술 한잔' → 식사 → 술집 → 술집, 낮이면 안내 문구")
+    void drinkSearch() {
+        Map<String, Object> data = service().search(query("토요일 저녁 7시 성수에서 친구랑 밥 먹고 술 한잔"));
+        List<CoursePlan> cs = courses(data);
+        assertFalse(cs.isEmpty());
+        for (CoursePlan c : cs) {
+            assertEquals(List.of(Slot.MEAL, Slot.BAR, Slot.BAR), c.stops().stream().map(CoursePlan.Stop::slot).toList());
+        }
+        Map<String, Object> day = service().search(query("토요일 낮 1시 성수에서 술 한잔"));
+        assertTrue(courses(day).isEmpty());
+        assertEquals("술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 4시 이후로 바꿔 보세요.", day.get("notice"));
+    }
+
+    @Test
     @DisplayName("데이터: 장소 3,306곳, 혼잡도 자정 넘어도 조회")
     void store() {
         assertEquals(3306, STORE.all().size());

@@ -156,12 +156,99 @@ class CourseGeneratorTest {
         Fixture f = new Fixture();
         f.basicSet();
         f.add("B1", "SEONGSU", "FOOD", "음식점 > 술집 > 호프,요리주점", 0.99);
+        f.add("A1", "SEONGSU", "ACTIVITY", "가정,생활 > 여가시설 > 방탈출카페", 0.5);   // 밤 놀거리 (전시관은 19시에 닫음)
 
         // 15시 시작 → 식사 칸 17시대 도착 → 술집 빠짐
         assertFalse(usedIds(generator.generate(request(15 * 60), f.places, f.scorer(CongestionLevel.QUIET))).contains("B1"));
         // 19시 시작 → 식사 먼저 19시 도착 → 술집 가능 (점수 제일 높으니 1등 코스에)
         List<CoursePlan> night = generator.generate(request(19 * 60), f.places, f.scorer(CongestionLevel.QUIET));
         assertEquals("B1", night.get(0).stops().get(0).placeId());
+    }
+
+    // ---------- 11주차: 코스 틀·영업시간·경로 이름 ----------
+
+    @Test
+    @DisplayName("코스 틀: 술(저녁 식사→술집→술집, 4시 놀거리→식사→술집), 문화(놀거리→카페→식사), 밤 8시 이후")
+    void courseTemplates() {
+        assertEquals(List.of(Slot.MEAL, Slot.BAR, Slot.BAR), CourseRules.slotOrder(19 * 60, true, List.of()));
+        assertEquals(List.of(Slot.PLAY, Slot.MEAL, Slot.BAR), CourseRules.slotOrder(16 * 60, true, List.of()));
+        assertEquals(List.of(Slot.PLAY, Slot.CAFE, Slot.MEAL), CourseRules.slotOrder(12 * 60, null, List.of("CULTURE")));
+        assertEquals(List.of(Slot.MEAL, Slot.CAFE, Slot.PLAY), CourseRules.slotOrder(12 * 60, null, List.of("CULTURE", "ACTIVITY")));
+        assertEquals(List.of(Slot.MEAL, Slot.PLAY, Slot.BAR), CourseRules.slotOrder(20 * 60, null, List.of()));
+        assertEquals(List.of(Slot.MEAL, Slot.CAFE, Slot.PLAY), CourseRules.slotOrder(20 * 60, false, List.of()));
+        assertEquals(List.of(Slot.MEAL, Slot.CAFE, Slot.PLAY), CourseRules.slotOrder(19 * 60, null, List.of()));
+    }
+
+    @Test
+    @DisplayName("기본 영업시간: 카페 22시 닫음, 술집 새벽 2시까지, 전시 19시 닫음, 영화관은 늦게까지")
+    void defaultOpeningHours() {
+        assertTrue(CourseRules.openAt(place("C", "SEONGSU", "CAFE", "음식점 > 카페", 0), 21));
+        assertFalse(CourseRules.openAt(place("C", "SEONGSU", "CAFE", "음식점 > 카페", 0), 22));
+        CoursePlace bar = place("B", "SEONGSU", "FOOD", "음식점 > 술집 > 칵테일바", 0);
+        assertTrue(CourseRules.openAt(bar, 25));    // 새벽 1시
+        assertFalse(CourseRules.openAt(bar, 26));
+        assertFalse(CourseRules.openAt(bar, 16));
+        assertFalse(CourseRules.openAt(place("P", "SEONGSU", "CULTURE", "문화,예술 > 문화시설 > 전시관", 0), 19));
+        assertTrue(CourseRules.openAt(place("M", "SEONGSU", "CULTURE", "문화,예술 > 영화,영상 > 영화관", 0), 21));
+        assertTrue(CourseRules.openAt(place("N", "SEONGSU", "NATURE", "여행 > 공원", 0), 23));
+    }
+
+    @Test
+    @DisplayName("술 코스: 식사(술집 아님) → 술집 → 다른 술집, 경로 이름에 술집 종류")
+    void drinkCourse() {
+        Fixture f = new Fixture();
+        f.basicSet();
+        f.add("B1", "SEONGSU", "FOOD", "음식점 > 술집 > 칵테일바", 0.9);
+        f.add("B2", "SEONGSU", "FOOD", "음식점 > 술집 > 일본식주점", 0.85);
+        f.add("B3", "SEONGSU", "FOOD", "음식점 > 술집 > 와인바", 0.8);
+        CourseRequest req = new CourseRequest("SEONGSU", 19 * 60, 2, List.of(), CrowdPreference.DEFAULT,
+                Set.of(), List.of(), List.of(), true);
+        List<CoursePlan> plans = generator.generate(req, f.places, f.scorer(CongestionLevel.NORMAL));
+        assertFalse(plans.isEmpty());
+        for (CoursePlan c : plans) {
+            assertEquals(List.of(Slot.MEAL, Slot.BAR, Slot.BAR), c.stops().stream().map(CoursePlan.Stop::slot).toList());
+            assertTrue(c.stops().get(0).placeId().startsWith("F"));
+            assertFalse(c.stops().get(1).placeId().equals(c.stops().get(2).placeId()));
+        }
+        assertEquals("한식 → 칵테일바 → 이자카야", plans.get(0).route());
+    }
+
+    @Test
+    @DisplayName("경로 이름: 식당은 세부 > 큰 종류, 카페, 테마카페·놀거리는 종류")
+    void routeLabels() {
+        assertEquals("초밥·롤", CourseText.stopLabel(new CoursePlace("1", "a", "SEONGSU", "FOOD", "음식점 > 일식 > 초밥,롤",
+                0, 0, List.of(), "JAPANESE", "초밥·롤")));
+        assertEquals("일식", CourseText.stopLabel(new CoursePlace("1", "a", "SEONGSU", "FOOD", "음식점 > 일식",
+                0, 0, List.of(), "JAPANESE", null)));
+        assertEquals("호프", CourseText.stopLabel(place("2", "SEONGSU", "FOOD", "음식점 > 술집 > 호프,요리주점", 0)));
+        assertEquals("술집", CourseText.stopLabel(place("2", "SEONGSU", "FOOD", "음식점 > 술집", 0)));
+        assertEquals("카페", CourseText.stopLabel(place("3", "SEONGSU", "CAFE", "음식점 > 카페", 0)));
+        assertEquals("보드게임", CourseText.stopLabel(place("4", "SEONGSU", "ACTIVITY", "음식점 > 카페 > 테마카페 > 보드카페", 0)));
+        assertEquals("방탈출", CourseText.stopLabel(place("5", "SEONGSU", "ACTIVITY", "가정,생활 > 여가시설 > 방탈출카페", 0)));
+    }
+
+    @Test
+    @DisplayName("음식 취향 술집: 식사 거르기엔 안 씀 (술집만 → 식사는 아무 데나, 일식+술집 → 식사는 일식)")
+    void barCuisineFilter() {
+        CoursePlace korean = new CoursePlace("1", "a", "SEONGSU", "FOOD", "음식점 > 한식", 0, 0, List.of(), "KOREAN", null);
+        CoursePlace japanese = new CoursePlace("2", "b", "SEONGSU", "FOOD", "음식점 > 일식", 0, 0, List.of(), "JAPANESE", null);
+        CoursePlace bar = new CoursePlace("3", "c", "SEONGSU", "FOOD", "음식점 > 술집", 0, 0, List.of(), "BAR", null);
+        assertTrue(Cuisine.wanted(korean, List.of("BAR")));
+        assertTrue(Cuisine.wanted(bar, List.of("BAR")));
+        assertFalse(Cuisine.wanted(korean, List.of("JAPANESE", "BAR")));
+        assertTrue(Cuisine.wanted(japanese, List.of("JAPANESE", "BAR")));
+        assertFalse(Cuisine.wanted(bar, List.of("JAPANESE")));
+    }
+
+    @Test
+    @DisplayName("코스 수정: 기본 영업시간 밖 도착이면 MAYBE_CLOSED 경고")
+    void maybeClosedWarning() {
+        CoursePlace cafe = place("C9", "SEONGSU", "CAFE", "음식점 > 카페", 0);
+        CourseRequest req = request(22 * 60);
+        CoursePlan plan = generator.recalculate(req, List.of(new StopInput(cafe, 50)), fixedScorer(0.5, CongestionLevel.QUIET),
+                Map.of("C9", cafe));
+        assertTrue(generator.warnings(plan, CrowdPreference.QUIET, Map.of("C9", cafe)).stream()
+                .anyMatch(w -> w.code().equals("MAYBE_CLOSED")));
     }
 
     @Test

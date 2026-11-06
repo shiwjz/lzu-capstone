@@ -8,6 +8,7 @@ import java.util.Map;
  * 코스 제목·추천 이유 (규칙 기반)
  * - 제목: {지역} {시간대} {놀거리 종류} 코스 (예: 성수 오후 노래방 코스)
  * - 추천 이유: 분위기 태그 맞는 곳 수 · 혼잡 선호에 맞는 곳 수 · 총 도보 시간
+ * - 경로 이름(route, 11주차): 장소 종류를 이어서 "칵테일바 → 카페 → 방탈출" (제목 밑 태그, 감성 제목은 회의 후)
  */
 public final class CourseText {
 
@@ -18,6 +19,36 @@ public final class CourseText {
     private static final Map<String, String> PLAY_LABEL = Map.of(
             "미술,공예", "공방", "화랑", "전시", "보드카페", "보드게임",
             "방탈출카페", "방탈출", "만화방", "만화카페");
+
+    // 카카오 술집 종류 → 경로 이름
+    private static final Map<String, String> BAR_LABEL = Map.of(
+            "호프,요리주점", "호프", "일본식주점", "이자카야", "실내포장마차", "포차");
+
+    /** 경로 이름: 장소 종류를 → 로 이어서 (예: 칵테일바 → 카페 → 방탈출) */
+    public static String route(CoursePlan plan, Map<String, CoursePlace> placesById) {
+        List<String> labels = new ArrayList<>();
+        for (CoursePlan.Stop s : plan.stops()) {
+            CoursePlace p = placesById.get(s.placeId());
+            labels.add(p == null ? s.name() : stopLabel(p));
+        }
+        return String.join(" → ", labels);
+    }
+
+    /** 장소 하나의 종류 이름: 술집은 술집 종류, 식당은 세부·큰 종류, 카페는 테마카페면 종류, 놀거리는 카카오 종류 */
+    public static String stopLabel(CoursePlace p) {
+        String[] parts = p.kakaoCategory().split(" > ");
+        if (p.isBar()) {
+            return parts.length > 2 ? BAR_LABEL.getOrDefault(parts[2], parts[2].replace(',', '·')) : "술집";
+        }
+        return switch (p.category()) {
+            case "FOOD" -> p.cuisineDetail() != null ? p.cuisineDetail()
+                    : (p.cuisine() != null && !p.cuisine().equals("ETC")) ? Cuisine.LABEL.get(p.cuisine())
+                    : parts.length > 1 ? parts[1].replace(',', '·') : "식당";
+            case "CAFE" -> p.kakaoCategory().contains("테마카페") ? playLabel(p.kakaoCategory()) : "카페";
+            case "SNACK" -> "디저트";
+            default -> playLabel(p.kakaoCategory());
+        };
+    }
 
     public static String timeWord(int startMinute) {
         int hour = startMinute / 60;

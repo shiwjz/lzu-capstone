@@ -73,7 +73,7 @@ public class RuleConditionExtractor implements ConditionExtractor {
             "BUNSIK", List.of("분식"),
             "ASIAN", List.of("아시안", "동남아 음식"),
             "CHICKEN", List.of("치킨", "통닭", "치맥"),
-            "BAR", List.of("술집", "한잔", "한 잔", "술 마시"));
+            "BAR", List.of("술집", "한잔", "한 잔", "술 마시", "술 먹", "술먹", "2차", "맥주", "호프"));
     private static final Map<String, List<String>> DETAIL_WORDS = orderedList(
             "고기", List.of("고기", "삼겹살", "갈비", "고깃집"),
             "국밥", List.of("국밥", "순대국", "설렁탕"),

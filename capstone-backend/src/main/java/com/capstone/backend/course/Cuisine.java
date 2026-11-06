@@ -41,10 +41,16 @@ public final class Cuisine {
             Map.entry("디저트카페", "CAFE"), Map.entry("개인카페", "CAFE"), Map.entry("프랜차이즈", "CAFE"),
             Map.entry("갤러리·북카페", "CAFE"), Map.entry("차·음료", "CAFE"));
 
-    /** 식사 칸 거르기: 큰 종류 골랐으면 음식점은 그 종류만 (카페·놀거리는 상관없음) */
+    /**
+     * 식사 칸 거르기: 큰 종류 골랐으면 음식점은 그 종류만 (카페·놀거리는 상관없음)
+     * - 11주차: 술집(BAR)은 술 코스 틀의 술집 칸용이라 식사 거르기엔 안 씀
+     *   (술집만 골랐으면 식사는 아무 음식점, '일식 + 술집'이면 식사는 일식만, 술집은 술집 칸으로)
+     */
     public static boolean wanted(CoursePlace place, List<String> cuisines) {
-        return cuisines == null || cuisines.isEmpty() || !place.category().equals("FOOD")
-                || cuisines.contains(place.cuisine());
+        if (cuisines == null || cuisines.isEmpty() || !place.category().equals("FOOD")) return true;
+        if (place.isBar()) return cuisines.contains("BAR");
+        List<String> meal = cuisines.stream().filter(c -> !c.equals("BAR")).toList();
+        return meal.isEmpty() || meal.contains(place.cuisine());
     }
 
     /**

@@ -59,7 +59,7 @@ public class CourseCalculator {
         CoursePlan.Score courseScore = new CoursePlan.Score(
                 CourseRules.round2(courseTotal), CourseRules.round2(placeAvg),
                 CourseRules.round2(move), CourseRules.round2(timeFit));
-        return new CoursePlan(null, null, null, null, List.of(),
+        return new CoursePlan(null, null, null, null, List.of(), null,
                 CourseRules.hhmm(startMinute), CourseRules.hhmm(time),
                 total, walkTotal, distanceTotal, courseScore, List.copyOf(stops));
     }

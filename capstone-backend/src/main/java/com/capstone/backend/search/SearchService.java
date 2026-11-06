@@ -159,8 +159,7 @@ public class SearchService {
         List<Map<String, Object>> placeCards = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (int i = 0; i < cands.order().size(); i++) {
-            Slot slot = cands.order().get(i);
-            int hour = cands.nominalHour().get(slot);
+            int hour = cands.nominalHour().get(i);
             for (CoursePlace p : cands.perSlot().get(i)) {
                 if (seen.add(p.placeId())) {
                     placeCards.add(placeCard(p, c, hour, scorer.score(p, hour)));
@@ -178,7 +177,7 @@ public class SearchService {
         int seq = searchSeq.incrementAndGet();
         List<CoursePlan> plans = new ArrayList<>();
         for (CoursePlan p : generator.generate(courseRequest, places, scorer)) {
-            CoursePlan saved = p.withMeta("c_" + seq + "_" + p.rank(), p.rank(), p.title(), p.reason());
+            CoursePlan saved = p.withMeta("c_" + seq + "_" + p.rank(), p.rank(), p.title(), p.reason(), p.keywords(), p.route());
             courses.save(saved.courseId(), new CourseStore.Saved(c, saved));
             plans.add(saved);
         }
@@ -189,8 +188,68 @@ public class SearchService {
         data.put("conditions", c.toMap());
         data.put("places", placeCards);
         data.put("courses", plans);
-        data.put("notice", plans.isEmpty() ? "조건에 맞는 코스를 찾지 못했어요. 시간이나 조건을 바꿔 보세요." : null);
+        data.put("betterStart", plans.isEmpty() ? null : betterStart(plans.get(0), c));
+        data.put("notice", plans.isEmpty() ? noCourseNotice(courseRequest) : null);
         return data;
+    }
+
+    /** 코스 0개 안내: 술 코스인데 술집 시간(18시) 전이면 그 이유를 알려줌 */
+    private static String noCourseNotice(CourseRequest r) {
+        if (Boolean.TRUE.equals(r.drinking()) && r.startMinute() < 16 * 60) {
+            return "술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 4시 이후로 바꿔 보세요.";
+        }
+        return "조건에 맞는 코스를 찾지 못했어요. 시간이나 조건을 바꿔 보세요.";
+    }
+
+    static final int BETTER_START_MIN_GAIN = 8;    // 평균 혼잡도가 이만큼(%p) 이상 낮아질 때만 추천 (초안, LG 붙이고 조정)
+
+    /**
+     * 덜 붐비는 출발 시간 (11주차) - 1등 코스를 1~2시간 앞당기거나 늦추면 덜 붐비는지
+     * - 혼잡도는 하루 전체 비교(ALL_DAY) 백분위: 같은 장소의 시간대끼리 비교하는 값이라 "언제 가면 덜 붐비나"에 맞음
+     * - 바꾼 시각에도 기본 영업시간 안이고, 출발이 9시~22시일 때만
+     * - 활기찬 곳(LIVELY) 원하면 안 줌, 덜 붐비는 시간이 없으면 null
+     */
+    Map<String, Object> betterStart(CoursePlan plan, SearchConditions c) {
+        if ("LIVELY".equals(c.crowdPreference())) return null;
+        int start = SearchConditions.toMinutes(plan.startAt());
+        Double current = avgAllDay(plan, c.dayType(), 0);
+        if (current == null) return null;
+        Integer bestShift = null;
+        double best = current;
+        for (int shift : new int[]{-120, -60, 60, 120}) {
+            int s = start + shift;
+            if (s < 9 * 60 || s > 22 * 60) continue;
+            Double avg = avgAllDay(plan, c.dayType(), shift);
+            if (avg != null && avg < best) {
+                best = avg;
+                bestShift = shift;
+            }
+        }
+        if (bestShift == null || current - best < BETTER_START_MIN_GAIN) return null;
+        int cur = (int) Math.round(current);
+        int now = (int) Math.round(best);
+        int hours = Math.abs(bestShift) / 60;
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("startTime", CourseRules.hhmm(start + bestShift));
+        m.put("shiftMinutes", bestShift);
+        m.put("avgPercentile", now);
+        m.put("currentAvgPercentile", cur);
+        m.put("message", hours + "시간 " + (bestShift < 0 ? "일찍" : "늦게") + " 출발하면 덜 붐벼요 (혼잡 " + cur + "% → " + now + "%)");
+        return m;
+    }
+
+    /** 코스 장소들 도착 시각(+shift분)의 하루 전체 비교 혼잡도 평균, 영업시간 밖이면 null */
+    private Double avgAllDay(CoursePlan plan, String dayType, int shift) {
+        double sum = 0;
+        for (CoursePlan.Stop s : plan.stops()) {
+            int hour = (SearchConditions.toMinutes(s.arriveAt()) + shift) / 60;
+            if (shift != 0) {
+                CoursePlace p = store.find(s.placeId()).orElseThrow().toCoursePlace();
+                if (!CourseRules.openAt(p, hour)) return null;
+            }
+            sum += store.congestion(s.placeId(), dayType, hour, PlaceStore.Basis.ALL_DAY).percentile();
+        }
+        return sum / plan.stops().size();
     }
 
     /** 장소 카드 점수 (응답 JSON용, 소수 둘째 자리) */
@@ -267,7 +326,7 @@ public class SearchService {
         courses.save(courseId, new CourseStore.Saved(c, plan));
 
         Map<String, Object> data = courseMap(plan);
-        data.put("warnings", generator.warnings(plan, courseRequest.crowdPreference()));
+        data.put("warnings", generator.warnings(plan, courseRequest.crowdPreference(), byId));
         return data;
     }
 
@@ -322,6 +381,7 @@ public class SearchService {
         m.put("title", p.title());
         m.put("reason", p.reason());
         m.put("keywords", p.keywords());
+        m.put("route", p.route());
         m.put("startAt", p.startAt());
         m.put("endAt", p.endAt());
         m.put("totalMinutes", p.totalMinutes());

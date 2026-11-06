@@ -535,8 +535,9 @@
           "활기찬",
           "데이트",
           "북적",
-          "칵테일바"
+          "도보 5분 이내"
         ],
+        "route": "칵테일바 → 카페 → 사주카페",
         "startAt": "19:00",
         "endAt": "21:55",
         "totalMinutes": 175,
@@ -551,7 +552,7 @@
         "stops": [
           {
             "order": 1,
-            "slot": "MEAL",
+            "slot": "BAR",
             "placeId": "370084124",
             "name": "어리라운지",
             "category": "FOOD",
@@ -617,6 +618,7 @@
           "북적",
           "국밥"
         ],
+        "route": "국밥 → 카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "21:57",
         "totalMinutes": 177,
@@ -696,9 +698,9 @@
         "keywords": [
           "활기찬",
           "데이트",
-          "북적",
-          "호프·요리주점"
+          "북적"
         ],
+        "route": "호프 → 카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "22:01",
         "totalMinutes": 181,
@@ -713,7 +715,7 @@
         "stops": [
           {
             "order": 1,
-            "slot": "MEAL",
+            "slot": "BAR",
             "placeId": "874075078",
             "name": "콘티키빠",
             "category": "FOOD",
@@ -776,9 +778,9 @@
         "title": "홍대 저녁 테마카페 코스",
         "reason": "'활기찬' 후기 많은 곳 1곳 · 3곳 중 2곳이 도착 시간에 북적 · 총 도보 9분",
         "keywords": [
-          "북적",
-          "호프·요리주점"
+          "북적"
         ],
+        "route": "호프 → 디저트카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "21:59",
         "totalMinutes": 179,
@@ -793,7 +795,7 @@
         "stops": [
           {
             "order": 1,
-            "slot": "MEAL",
+            "slot": "BAR",
             "placeId": "724934118",
             "name": "엘펍",
             "category": "FOOD",
@@ -857,9 +859,9 @@
         "reason": "'활기찬' 후기 많은 곳 1곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 8분",
         "keywords": [
           "데이트",
-          "북적",
-          "호프·요리주점"
+          "북적"
         ],
+        "route": "호프 → 카페 → 사주카페",
         "startAt": "19:00",
         "endAt": "21:58",
         "totalMinutes": 178,
@@ -874,7 +876,7 @@
         "stops": [
           {
             "order": 1,
-            "slot": "MEAL",
+            "slot": "BAR",
             "placeId": "2062390705",
             "name": "백억살롱",
             "category": "FOOD",
@@ -941,6 +943,7 @@
           "북적",
           "일식"
         ],
+        "route": "일식 → 카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "22:01",
         "totalMinutes": 181,
@@ -1022,6 +1025,7 @@
           "북적",
           "이탈리안"
         ],
+        "route": "이탈리안 → 카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "22:01",
         "totalMinutes": 181,
@@ -1099,9 +1103,9 @@
         "title": "홍대 저녁 테마카페 코스",
         "reason": "'활기찬' 후기 많은 곳 1곳 · 3곳 중 2곳이 도착 시간에 북적 · 총 도보 17분",
         "keywords": [
-          "북적",
-          "칵테일바"
+          "북적"
         ],
+        "route": "칵테일바 → 카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "22:07",
         "totalMinutes": 187,
@@ -1116,7 +1120,7 @@
         "stops": [
           {
             "order": 1,
-            "slot": "MEAL",
+            "slot": "BAR",
             "placeId": "521522824",
             "name": "비터스",
             "category": "FOOD",
@@ -1179,9 +1183,9 @@
         "title": "홍대 저녁 테마카페 코스",
         "reason": "'활기찬' 후기 많은 곳 1곳 · 3곳 중 3곳이 도착 시간에 북적 · 총 도보 23분",
         "keywords": [
-          "북적",
-          "호프·요리주점"
+          "북적"
         ],
+        "route": "호프 → 카페 → 테마카페",
         "startAt": "19:00",
         "endAt": "22:13",
         "totalMinutes": 193,
@@ -1196,7 +1200,7 @@
         "stops": [
           {
             "order": 1,
-            "slot": "MEAL",
+            "slot": "BAR",
             "placeId": "631296666",
             "name": "비어배트 홍대점",
             "category": "FOOD",
@@ -1259,9 +1263,9 @@
         "title": "홍대 저녁 사주카페 코스",
         "reason": "'활기찬' 후기 많은 곳 1곳 · 3곳 중 2곳이 도착 시간에 북적 · 총 도보 25분",
         "keywords": [
-          "북적",
-          "칵테일바"
+          "북적"
         ],
+        "route": "칵테일바 → 디저트카페 → 사주카페",
         "startAt": "19:00",
         "endAt": "22:15",
         "totalMinutes": 195,
@@ -1276,7 +1280,7 @@
         "stops": [
           {
             "order": 1,
-            "slot": "MEAL",
+            "slot": "BAR",
             "placeId": "23446573",
             "name": "히피히피셰이크",
             "category": "FOOD",
@@ -1334,6 +1338,7 @@
         ]
       }
     ],
+    "betterStart": null,
     "notice": null
   }
 }

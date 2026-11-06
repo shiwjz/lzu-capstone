@@ -60,6 +60,15 @@ class _MyAppState extends State<MyApp> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('예시 데이터를 불러오지 못했어요.'),
+                  // 원인 확인용 (예민 11/7): 어떤 요청이 왜 실패했는지 작게 보여줌
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      '${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
                   TextButton(
                     onPressed: () => setState(() {
                       loading = load();

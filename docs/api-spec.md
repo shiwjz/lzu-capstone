@@ -1,6 +1,60 @@
-# 오디가 API 명세 v0.5
+# 오디가 API 명세 v0.6
 
-2026-11-02 · 김예민
+2026-11-07 · 김예민
+
+## v0.6에서 바뀐 점 (11주차)
+
+예전 앱도 그대로 돌아감 (필드만 추가, 지운 것 없음). 칸 이름 `BAR` 하나만 새로 생겼으니 칸별 아이콘 쓰면 술집 아이콘 추가 (@서예령)
+
+| 바뀐 것 | 예전 | 지금 | 앱에서 |
+| --- | --- | --- | --- |
+| 코스 경로 이름 | 없음 | `courses[].route` 예: `"칵테일바 → 카페 → 방탈출"` (장소 종류를 이음) | 제목 밑에 태그처럼. 제목(title)은 그대로, 감성 제목(Gemini)은 회의 후 |
+| 칸 이름 | MEAL·CAFE·PLAY | + **`BAR`** (술집). 술집은 어느 코스든 `stops[].slot = "BAR"` | 술집 아이콘 |
+| 코스 틀 | 시작 시각별 1개 | 술 (`cuisines`에 BAR나 이자카야 같은 술집 세부): 저녁 5시~ **식사 → 술집 → 술집**, 4시 **놀거리 → 식사 → 술집** / 놀거리 종류 하나(문화·산책·쇼핑·관광)만 + 5시 전: **놀거리 → 카페 → 식사** / 밤 8시~ (술 빼달라고 안 했으면): **식사 → 놀거리 → 술집** | - |
+| 영업시간 | 술집 18시~만 | 종류별 기본 영업시간 안에 도착하는 곳만 (아래 표). 가게별 영업시간 없어서 임시 | - |
+| 덜 붐비는 출발 시간 | 없음 | `betterStart` (검색 응답 맨 위, 없으면 null) | "2시간 늦게 출발하면 덜 붐벼요" 한 줄 + 누르면 그 시각으로 다시 검색 |
+| 코스 수정 경고 | 3종류 | + `MAYBE_CLOSED` (기본 영업시간 밖 도착) | 경고 한 줄 그대로 |
+| 장소 상세 | 그 날짜 요일 그래프 | + `congestionByDayType` {WEEKDAY: [...], WEEKEND: [...]} 9~23시 | 평일/주말 탭 그래프 (테이블링처럼) |
+| 혼잡 레이더 | 없음 | **`GET /api/congestion/grid`** | 지도에 칸별 색 |
+| 가게 사진 | 없음 | **`GET /api/places/{placeId}/photos?max=1`** (구글, 저장 안 함) | 사진 + 밑에 찍은 사람 이름·"사진 제공: Google" |
+
+**종류별 기본 영업시간** (도착 시각이 여는 시 이상 ~ 닫는 시 미만이면 OK, `CourseRules.DEFAULT_HOURS`)
+
+| 종류 | 시간 | 종류 | 시간 |
+| --- | --- | --- | --- |
+| 식당 FOOD | 11~22시 | 술집 | 17시~새벽 2시 (그리고 예전처럼 18시 이후 도착만) |
+| 카페 CAFE | 9~22시 | 문화 CULTURE | 10~19시 (영화관·공연장은 10~24시) |
+| 체험 EXPERIENCE | 10~21시 | 놀거리 ACTIVITY | 10~24시 |
+| 쇼핑 SHOPPING | 11~21시 | 관광·자연 TOUR·NATURE | 항상 |
+
+**betterStart** (활기찬 곳 원하면 안 줌): 1등 코스를 1~2시간 당기거나 미뤘을 때 장소들 혼잡도(하루 전체 비교 백분위) 평균이 **8%p 이상** 낮아지면
+
+```json
+"betterStart": {"startTime": "17:00", "shiftMinutes": 120, "avgPercentile": 29, "currentAvgPercentile": 38,
+                "message": "2시간 늦게 출발하면 덜 붐벼요 (혼잡 38% → 29%)"}
+```
+
+**GET /api/congestion/grid**: `region` 필수, `date`(기본 오늘), `hour`(기본 지금), `lat`·`lng`·`radius`(m, 기본 500, 100~2000)를 주면 그 반경 안 칸만
+
+```json
+{"region": "SEONGSU", "dayType": "WEEKEND", "hour": 15, "basis": "SAME_TIME", "cellSizeMeters": 50,
+ "count": {"QUIET": 40, "NORMAL": 80, "BUSY": 30},
+ "cells": [{"cellId": "19198_38984", "lat": 37.5414, "lng": 127.0462, "level": "BUSY", "percentile": 88}],
+ "date": "2026-11-14"}
+```
+- 50m 칸 가운데 좌표, 장소 있는 칸만 (LG 결과 붙이면 칸 더 많아짐). 같은 지역·시간끼리 비교라 "지금 이 동네에서 어디가 붐비나"
+
+**GET /api/places/{placeId}/photos?max=1** (1~3장, 기본 1장 - 구글 요금)
+
+```json
+{"placeId": "921699059", "available": true, "attribution": "사진 제공: Google",
+ "photos": [{"url": "https://lh3.googleusercontent.com/...", "width": 1200, "height": 800,
+             "authorName": "작성자", "authorUri": "https://maps.google.com/..."}],
+ "notice": null}
+```
+- 서버 환경변수 `GOOGLE_PLACES_API_KEY` 없으면 `available: false`, 빈 목록 → 앱은 사진 칸 숨기기 (@성정헌 렌더 환경변수에 키 넣기)
+- 구글 정책: 사진 주소는 저장하지 말고 받을 때마다 바로 띄우기, 찍은 사람 이름 꼭 표시
+- 구글에서 찾은 가게가 우리 좌표에서 300m 넘게 떨어져 있으면 다른 가게로 보고 사진 안 줌
 
 ## v0.5에서 바뀐 점 (10주차, 10/31 회의 반영)
 
@@ -206,6 +260,8 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 | 검색·추천 | POST /api/search | 선택 | 김예민 (조건 추출 최예린, 점수 이윤경) | 검색 → 추천 결과·지도·코스 |
 | 장소 목록 (v0.3) | GET /api/places | 불필요 | 김예민 | 홈 지도 내 주변 장소 |
 | 장소 상세 | GET /api/places/{placeId} | 불필요 | 김예민 (원래 성정헌, 9주차 변경) | 장소 카드 상세 |
+| 가게 사진 (v0.6) | GET /api/places/{placeId}/photos | 불필요 | 김예민 | 장소 카드 상세 |
+| 혼잡 레이더 (v0.6) | GET /api/congestion/grid | 불필요 | 김예민 | 지도 |
 | 코스 수정 | PUT /api/courses/{courseId} | 선택 | 김예민 | 커스텀 |
 | 공유 만들기 | POST /api/courses/{courseId}/share | 선택 | 김예민 | 공유 |
 | 공유 코스 보기 | GET /api/share/{shareCode} | 불필요 | 김예민 | 공유 링크로 연 화면 |
@@ -470,7 +526,7 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 | search_hongdae_weekend_lively.json | 홍대 · 토 19시 · 커플 · 활기 | 서예령 |
 | search_gangnam_weekday_group.json | 강남 · 금 19시 · 4명 · 갑각류 알레르기 | 서예령 |
 | search_error_condition_missing.json | 지역 없는 문장 → CONDITION_MISSING | 서예령 |
-| place_detail.json | 장소 상세 + 시간대별 혼잡도 | 서예령 |
+| place_detail.json | 장소 상세 + 시간대별 혼잡도 (+ 평일·주말, v0.6) | 서예령 |
 | course_update_request.json, course_update_response.json | 코스 수정 → 다시 계산 + 경고 | 서예령, 김예민 |
 | share_create_response.json, share_view_response.json | 공유 만들기·보기 | 서예령 |
 | auth_signup_request.json, auth_signup_response.json, auth_error_duplicate_email.json | 회원가입 성공·중복 이메일 | 서예령, 성정헌 |
