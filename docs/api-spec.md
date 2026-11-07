@@ -1,8 +1,103 @@
-# 오디가 API 명세 v0.6
+# 오디가 API 명세 v0.7
 
-2026-11-07 · 김예민
+2026-11-08 · 김예민
 
-## v0.6에서 바뀐 점 (11주차)
+## v0.7에서 바뀐 점 (11주차 둘째, 11/7 회의)
+
+예전 요청·응답 그대로 돌아감 (필드만 추가). 우선순위: **앱에서 직접 고친 순서(order) > 코스 틀 + 빼기·추가 > 자동(문장·시간)**
+
+### 1. 검색 요청에 추가 (POST /api/search, 전부 선택)
+
+```json
+{ "query": "토요일 오후 3시 성수에서 카페 말고 놀자",
+  "courseType": "DRINK",
+  "order": ["MEAL", "PLAY", "BAR"],
+  "keepPlaceIds": ["921699059"] }
+```
+
+| 필드 | 뜻 | 값 |
+| --- | --- | --- |
+| `courseType` | 코스 틀 칩 | `BASIC` 기본 / `DRINK` 술 / `CULTURE` 문화 / `WALK` 산책 / `SHOPPING` 쇼핑 (없으면 자동) |
+| `order` | 칸 편집 칩으로 직접 고친 순서 | `MEAL` 식사 · `CAFE` · `PLAY` 놀거리 · `BAR` 술집, 2~4칸 |
+| `keepPlaceIds` | 📌킵한 장소 | 최대 2곳, 검색 지역이랑 같은 지역 → **모든 코스에 꼭 들어감** |
+
+조건 화면에서 직접 고칠 때는 `conditions` 안에 `courseType`, `excludedCategories`, `includedCategories`를 넣으면 됨.
+
+### 2. 코스 틀 5종류
+
+| 틀 | 순서 (여러 개면 전부 만들어서 점수순으로 섞음) | 놀거리 종류 |
+| --- | --- | --- |
+| BASIC 기본 | 식사→카페→놀거리, 카페→놀거리→식사 | 전부 |
+| DRINK 술 | 식사→술집, 식사→술집→술집, 놀거리→식사→술집 | 전부 |
+| CULTURE 문화 | 놀거리→카페→식사 | 전시·공연 (CULTURE) |
+| WALK 산책 | 놀거리→카페→식사 | 공원·자연 (NATURE) |
+| SHOPPING 쇼핑 | 놀거리→카페→식사 | 쇼핑 (SHOPPING) |
+
+- 틀을 안 고르면 예전처럼 자동: 술 말이 있으면 술 틀 (저녁 5시~ 식사→술집→술집, 4시 놀거리→식사→술집, 3시 놀거리→카페→식사→술집), 놀거리 종류 하나만 말하면 놀거리→카페→식사, 밤 8시~ 식사→놀거리→술집, 나머지는 시간별 기본
+- 시간에 맞는 곳이 없으면 코스 0개 + `notice` (예: "이 시간엔 '문화' 코스에 맞는 곳이 없어요. 시간을 바꿔 보세요.")
+
+### 3. 빼기 / 추가 (`conditions.excludedCategories` / `includedCategories`)
+
+- 종류 코드: `FOOD`(식사) · `CAFE` · `BAR`(술집) · 놀거리 6개 (`CULTURE` · `ACTIVITY` · `EXPERIENCE` · `SHOPPING` · `TOUR` · `NATURE`)
+- 문장에서 자동으로 찾음 (규칙, Gemini 지시문은 @최예린이 추가 예정)
+
+| 문장 | 결과 |
+| --- | --- |
+| "카페 말고", "카페는 빼고", "카페 안 갈래" | excluded `CAFE` |
+| "밥은 먹고 왔어" | excluded `FOOD` |
+| "술은 빼고" | excluded `BAR` (술집도 빠짐) |
+| "보드게임카페는 빼고" | excluded `ACTIVITY` (카페 아님) |
+| "노래방도 가고 싶어", "꼭 방탈출" | included `ACTIVITY` |
+| "카페도 넣어줘", "술집도 가자" | included `CAFE`, `BAR` |
+
+- 뺀 칸은 다른 걸로 채워서 장소 수 유지: 카페 → 놀거리, 식사 → 카페(이미 있으면 놀거리), 술집 → 놀거리
+- 추가는 그 칸이 없을 때만 넣음 (술집은 맨 끝, 나머지는 술집 앞), 장소 최대 4곳
+- 놀거리가 두 번이면 서로 다른 종류 (방탈출 → 볼링, 방탈출 → 방탈출은 안 나옴)
+
+### 4. 장소 수별 총 시간 기준
+
+| 장소 수 | 목표 | 허용 |
+| --- | --- | --- |
+| 2곳 | 2시간 15분 | 1시간 40분 ~ 2시간 50분 |
+| 3곳 | 3시간 (예전 그대로) | 2시간 30분 ~ 3시간 30분 |
+| 4곳 | 4시간 5분 | 3시간 20분 ~ 4시간 50분 |
+
+코스 수정 경고(`TOTAL_TIME_OVER/UNDER`) 문구도 장소 수 기준으로 나옴.
+
+### 5. 장소 킵 (`keepPlaceIds`)
+
+- 킵한 장소는 자기 칸에 들어감 (식당 → 식사, 카페 → 카페, 술집 → 술집, 나머지 → 놀거리). 틀에 그 칸이 없으면 칸 추가 (4곳까지)
+- 킵한 장소는 모든 코스에 들어가니까 "코스끼리 장소 안 겹치게"에서 빠짐 → 코스는 여전히 여러 개
+- 킵은 이번 검색에서만 쓰는 임시 고정 (DB 저장 안 함). 계정에 남기려면 저장한 장소 API
+- 잘못된 값: 3곳 이상·다른 지역 → `INVALID_INPUT`, 없는 장소 → `PLACE_NOT_FOUND`
+
+### 6. Gemini 감성 제목
+
+- `courses[].title` = Gemini 감성 제목 (실패하거나 4초 넘으면 규칙 제목), `courses[].route` = 경로 태그 (그대로)
+- 검색 응답 `titlesBy`: `GEMINI` / `RULE` (가짜 JSON은 항상 RULE)
+- 검색 한 번에 Gemini 1번 (코스 10개 묶어서). 보내는 것: 지역, 요일·시간, 분위기, 경로, 키워드 (사용자 문장·개인정보·LG 데이터 없음)
+- 코스 수정해도 감성 제목은 유지, 규칙 제목이면 바뀐 장소로 다시
+- 서버 환경변수: `GEMINI_API_KEY`(조건 추출이랑 같음), 끄려면 `GEMINI_TITLES=false`
+- 지시문: `GeminiCourseTitleWriter.PROMPT` (@최예린이 다듬기)
+
+### 7. 요일별 혼잡도 (장소 상세 `congestionByDay`)
+
+```json
+"congestionByDay": {"source": "DAY_TYPE", "today": "SAT",
+                    "days": {"MON": [{"hour": 9, "level": "QUIET", "percentile": 20}, ...], "TUE": [...], ..., "SUN": [...]}}
+```
+- 요일 탭 7개 (9~23시), `today` = 검색 날짜 요일 → 처음 선택할 탭
+- `source`: `DOW` = 요일별 파일 있음 / `DAY_TYPE` = 아직 없어서 월~금은 평일, 토·일은 주말 값으로 대신
+- 요일별 파일 (@이윤경): `capstone-backend/src/main/resources/data/congestion_dow.tsv` (서울시 버전, 렌더용) 또는 `ODIGA_DATA_DIR/congestion_dow_lg.tsv` (LG, 노트북만)
+  - 모양: `cellId \t dow(MON~SUN) \t allDay(h0..h23)`, 24칸은 congestion.tsv랑 같은 `Q20 N55 B88` (등급 첫 글자 + 하루 전체 비교 백분위)
+  - 만드는 법: 요일별 = 평일/주말 시간대 모양 × 그 요일 비율 → 같은 칸·요일 안에서 시간대끼리 백분위 → 등급
+
+### 8. 검색 응답에 추가
+
+- `conditions`: `courseType`, `excludedCategories`, `includedCategories`
+- 맨 위: `titlesBy`, `order`(받은 순서), `keepPlaceIds`(받은 킵)
+
+## v0.6에서 바뀐 점 (11주차 첫째)
 
 예전 앱도 그대로 돌아감 (필드만 추가, 지운 것 없음). 칸 이름 `BAR` 하나만 새로 생겼으니 칸별 아이콘 쓰면 술집 아이콘 추가 (@서예령)
 

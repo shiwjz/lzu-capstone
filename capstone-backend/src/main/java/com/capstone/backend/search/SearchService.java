@@ -6,6 +6,7 @@ import com.capstone.backend.course.CoursePlace;
 import com.capstone.backend.course.CoursePlan;
 import com.capstone.backend.course.CourseRequest;
 import com.capstone.backend.course.CourseRules;
+import com.capstone.backend.course.CourseShape;
 import com.capstone.backend.course.PlaceScore;
 import com.capstone.backend.course.PlaceScorer;
 import com.capstone.backend.course.Slot;
@@ -42,6 +43,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 4. 장소 점수(윤경 모듈 자리) → 칸별 후보 → 추천 장소 10곳 + 코스 3개
  * 5. 코스는 courseId로 저장 → 수정(PUT)·공유(POST share) 가능
  * - v0.5 (10/31 회의): 인원 → 분위기 자동, 음식 큰 종류 거르기·세부 가점, 코스 10개 + 키워드, 알레르기 2개
+ * - v0.7 (11주차): 코스 틀 고르기(courseType), 빼기·추가("카페 말고", "노래방도"), 직접 고친 순서(order),
+ *   장소 킵(keepPlaceIds), Gemini 감성 제목
  */
 @Service
 public class SearchService {
@@ -72,24 +75,45 @@ public class SearchService {
     private final PlaceScorerFactory scorers;
     private final CourseStore courses;
     private final CourseGenerator generator = new CourseGenerator();
+    private final CourseTitleWriter titleWriter;
+    private final Set<String> geminiTitled = java.util.concurrent.ConcurrentHashMap.newKeySet();   // 감성 제목 붙은 코스 → 수정해도 제목 유지
     private final AtomicInteger searchSeq = new AtomicInteger();
     private final SecureRandom random = new SecureRandom();
     Clock clock = Clock.system(KST);   // 테스트에서 날짜 고정용
 
+    /** 감성 제목 없이 (테스트용, 규칙 제목) */
     public SearchService(PlaceStore store, ConditionExtractor extractor, PlaceScorerFactory scorers,
                          CourseStore courses) {
+        this(store, extractor, scorers, courses, CourseTitleWriter.NONE);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public SearchService(PlaceStore store, ConditionExtractor extractor, PlaceScorerFactory scorers,
+                         CourseStore courses, CourseTitleWriter titleWriter) {
         this.store = store;
         this.extractor = extractor;
         this.scorers = scorers;
         this.courses = courses;
+        this.titleWriter = titleWriter;
     }
 
     // ---------- 요청 모양 ----------
 
-    /** POST /api/search 요청. query 필수, 나머지 선택 (conditions 있으면 문장 분석 건너뜀) */
+    /**
+     * POST /api/search 요청. query 필수, 나머지 선택 (conditions 있으면 문장 분석 건너뜀)
+     * - v0.7: courseType(코스 틀 칩), order(칸 편집 칩으로 직접 고친 순서, 예 ["MEAL","PLAY","BAR"]),
+     *   keepPlaceIds(킵한 장소, 최대 2곳)
+     */
     public record SearchRequest(String query, String date, String startTime, String region,
-                                SearchConditions conditions) {
+                                SearchConditions conditions, String courseType, List<String> order,
+                                List<String> keepPlaceIds) {
+        public SearchRequest(String query, String date, String startTime, String region,
+                             SearchConditions conditions) {
+            this(query, date, startTime, region, conditions, null, null, null);
+        }
     }
+
+    static final int MAX_KEEPS = 2;
 
     /** PUT /api/courses/{courseId} 요청. 수정 후 전체 목록, 배열 순서 = 방문 순서 */
     public record UpdateRequest(String startTime, List<StopEdit> stops) {
@@ -115,8 +139,15 @@ public class SearchService {
         }
         LocalDateTime now = LocalDateTime.now(clock);
         SearchConditions c = req.conditions() != null
-                ? withExtractedBy(req.conditions(), "USER")
+                ? req.conditions().withExtractedBy("USER")
                 : extractor.extract(req.query(), now);
+        // 빼기·추가: 추출기가 안 채웠으면 규칙으로 (Gemini 지시문에 들어가기 전까지도 되게)
+        if (req.conditions() == null && (c.excludedCategories() == null || c.excludedCategories().isEmpty())
+                && (c.includedCategories() == null || c.includedCategories().isEmpty())) {
+            List<List<String>> edits = RuleConditionExtractor.shapeEdits(req.query());
+            c = c.withShape(c.courseType(), edits.get(0), edits.get(1));
+        }
+        if (req.courseType() != null) c = c.withShape(req.courseType(), c.excludedCategories(), c.includedCategories());
         if (my != null) {
             // 조건 화면에서 직접 고친 조건(USER)이면 알레르기만 더하고, 문장이면 빈 칸을 내 설정으로
             c = req.conditions() != null
@@ -146,19 +177,29 @@ public class SearchService {
             throw ApiException.invalid("region은 SEONGSU / HONGDAE / GANGNAM 중 하나예요.");
         }
         checkCodes(c);
+        List<Slot> order = parseOrder(req.order());
+        List<String> keeps = checkKeeps(req.keepPlaceIds(), c.region());
 
-        CourseRequest courseRequest = c.toCourseRequest();
+        CourseRequest courseRequest = c.toCourseRequest(order, keeps);
         PlaceScorer scorer = scorers.forConditions(c);
         List<String> cuisines = c.cuisines();
-        List<CoursePlace> places = filterExcludedFoods(store.coursePlaces(), c.excludedFoods()).stream()
-                .filter(p -> Cuisine.wanted(p, cuisines))      // 음식 큰 종류 골랐으면 식사 칸은 그 종류만
-                .toList();
+        Boolean drinking = c.drinking();
+        List<CoursePlace> places = new ArrayList<>(filterExcludedFoods(store.coursePlaces(), c.excludedFoods()).stream()
+                .filter(p -> Cuisine.wanted(p, cuisines)       // 음식 큰 종류 골랐으면 식사 칸은 그 종류만
+                        || (Boolean.TRUE.equals(drinking) && p.isBar()))   // 술 코스면 술집은 항상
+                .filter(p -> !(Boolean.FALSE.equals(drinking) && p.isBar()))  // 술 빼달라고 하면 술집 빼기
+                .toList());
+        for (String id : keeps) {                         // 킵한 장소는 거르기랑 상관없이 꼭 넣기
+            if (places.stream().noneMatch(p -> p.placeId().equals(id))) {
+                places.add(store.find(id).orElseThrow().toCoursePlace());
+            }
+        }
 
         // 추천 장소: 칸별 후보를 모아서 점수 높은 순 10곳
         CourseGenerator.Candidates cands = generator.candidates(courseRequest, places, scorer);
         List<Map<String, Object>> placeCards = new ArrayList<>();
         Set<String> seen = new HashSet<>();
-        for (int i = 0; i < cands.order().size(); i++) {
+        for (int i = 0; i < cands.perSlot().size(); i++) {
             int hour = cands.nominalHour().get(i);
             for (CoursePlace p : cands.perSlot().get(i)) {
                 if (seen.add(p.placeId())) {
@@ -175,9 +216,17 @@ public class SearchService {
 
         // 코스 (최대 10개) → 저장
         int seq = searchSeq.incrementAndGet();
+        List<CoursePlan> generated = generator.generate(courseRequest, places, scorer);
+        List<String> titles = sentimentTitles(generated, c);
+        boolean gemini = false;
         List<CoursePlan> plans = new ArrayList<>();
-        for (CoursePlan p : generator.generate(courseRequest, places, scorer)) {
-            CoursePlan saved = p.withMeta("c_" + seq + "_" + p.rank(), p.rank(), p.title(), p.reason(), p.keywords(), p.route());
+        for (int i = 0; i < generated.size(); i++) {
+            CoursePlan p = generated.get(i);
+            String title = titles != null && titles.get(i) != null ? titles.get(i) : p.title();
+            boolean fromGemini = !title.equals(p.title());
+            gemini |= fromGemini;
+            CoursePlan saved = p.withMeta("c_" + seq + "_" + p.rank(), p.rank(), title, p.reason(), p.keywords(), p.route());
+            if (fromGemini) geminiTitled.add(saved.courseId());
             courses.save(saved.courseId(), new CourseStore.Saved(c, saved));
             plans.add(saved);
         }
@@ -188,15 +237,80 @@ public class SearchService {
         data.put("conditions", c.toMap());
         data.put("places", placeCards);
         data.put("courses", plans);
+        data.put("titlesBy", gemini ? "GEMINI" : "RULE");
+        data.put("order", order.stream().map(Slot::name).toList());
+        data.put("keepPlaceIds", keeps);
         data.put("betterStart", plans.isEmpty() ? null : betterStart(plans.get(0), c));
-        data.put("notice", plans.isEmpty() ? noCourseNotice(courseRequest) : null);
+        data.put("notice", plans.isEmpty() ? noCourseNotice(courseRequest, c) : null);
         return data;
     }
 
-    /** 코스 0개 안내: 술 코스인데 술집 시간(18시) 전이면 그 이유를 알려줌 */
-    private static String noCourseNotice(CourseRequest r) {
-        if (Boolean.TRUE.equals(r.drinking()) && r.startMinute() < 16 * 60) {
-            return "술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 4시 이후로 바꿔 보세요.";
+    /** Gemini 감성 제목 (실패하면 null → 규칙 제목) */
+    private List<String> sentimentTitles(List<CoursePlan> plans, SearchConditions c) {
+        if (plans.isEmpty()) return null;
+        String when = whenText(c.date(), c.startTime());
+        List<CourseTitleWriter.Input> inputs = plans.stream()
+                .map(p -> new CourseTitleWriter.Input(REGION_LABEL.get(c.region()), when,
+                        c.atmospheres(), p.route(), p.keywords()))
+                .toList();
+        try {
+            List<String> t = titleWriter.titles(inputs);
+            return t != null && t.size() == plans.size() ? t : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** "토요일 오후 3시" */
+    static String whenText(String date, String startTime) {
+        String[] days = {"월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"};
+        String day = days[LocalDate.parse(date).getDayOfWeek().getValue() - 1];
+        int h = Integer.parseInt(startTime.substring(0, 2));
+        String part = h < 12 ? "오전" : "오후";
+        int h12 = h % 12 == 0 ? 12 : h % 12;
+        return day + " " + part + " " + h12 + "시";
+    }
+
+    /** 앱에서 직접 고친 칸 순서 검사: MEAL·CAFE·PLAY·BAR, 2~4칸 */
+    private static List<Slot> parseOrder(List<String> order) {
+        if (order == null || order.isEmpty()) return List.of();
+        if (order.size() < 2 || order.size() > CourseRules.MAX_STOPS) {
+            throw ApiException.invalid("order는 2~4칸이에요.");
+        }
+        List<Slot> out = new ArrayList<>();
+        for (String o : order) {
+            try {
+                out.add(Slot.valueOf(o));
+            } catch (IllegalArgumentException | NullPointerException e) {
+                throw ApiException.invalid("order는 MEAL / CAFE / PLAY / BAR 중에서 골라요.");
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    /** 킵한 장소 검사: 최대 2곳, 있는 장소, 검색 지역이랑 같은 지역 */
+    private List<String> checkKeeps(List<String> keepIds, String region) {
+        if (keepIds == null || keepIds.isEmpty()) return List.of();
+        List<String> ids = keepIds.stream().distinct().toList();
+        if (ids.size() > MAX_KEEPS) throw ApiException.invalid("장소 킵은 최대 " + MAX_KEEPS + "곳까지예요.");
+        for (String id : ids) {
+            PlaceStore.Place p = store.find(id)
+                    .orElseThrow(() -> ApiException.notFound("PLACE_NOT_FOUND", "킵한 장소를 찾을 수 없어요."));
+            if (!p.region().equals(region)) throw ApiException.invalid("킵한 장소는 검색 지역이랑 같은 지역이어야 해요.");
+        }
+        return ids;
+    }
+
+    /** 코스 0개 안내: 술 코스인데 술집 시간(18시) 전이면 그 이유, 킵·틀 때문이면 그 이유 */
+    private static String noCourseNotice(CourseRequest r, SearchConditions c) {
+        if (Boolean.TRUE.equals(r.drinking()) && r.startMinute() < 15 * 60) {
+            return "술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 3시 이후로 바꿔 보세요.";
+        }
+        if (!r.keeps().isEmpty()) {
+            return "킵한 장소를 넣어서는 시간에 맞는 코스를 못 찾았어요. 시간을 바꾸거나 킵을 하나 빼 보세요.";
+        }
+        if (c.courseType() != null) {
+            return "이 시간엔 '" + CourseShape.TYPE_LABEL.get(c.courseType()) + "' 코스에 맞는 곳이 없어요. 시간을 바꿔 보세요.";
         }
         return "조건에 맞는 코스를 찾지 못했어요. 시간이나 조건을 바꿔 보세요.";
     }
@@ -322,7 +436,9 @@ public class SearchService {
         CourseRequest courseRequest = c.toCourseRequest();
         PlaceScorer scorer = scorers.forConditions(c);
         CoursePlan recalculated = generator.recalculate(courseRequest, stops, scorer, byId);
-        CoursePlan plan = recalculated.withMeta(courseId, null, recalculated.title(), recalculated.reason());
+        // 감성 제목이면 수정해도 그대로, 규칙 제목이면 바뀐 장소로 다시 (경로 이름은 항상 다시)
+        String title = geminiTitled.contains(courseId) ? saved.plan().title() : recalculated.title();
+        CoursePlan plan = recalculated.withMeta(courseId, null, title, recalculated.reason());
         courses.save(courseId, new CourseStore.Saved(c, plan));
 
         Map<String, Object> data = courseMap(plan);
@@ -392,12 +508,6 @@ public class SearchService {
         return m;
     }
 
-    private static SearchConditions withExtractedBy(SearchConditions c, String by) {
-        return new SearchConditions(c.region(), c.date(), c.dayType(), c.startTime(), c.partySize(), c.categories(),
-                c.atmospheres(), c.crowdPreference(), c.allergies(), c.gender(), c.ageGroup(), c.companionType(),
-                c.excludedFoods(), c.extractedBy() == null ? by : c.extractedBy(), c.cuisines(), c.cuisineDetails());
-    }
-
     private static List<CoursePlace> filterExcludedFoods(List<CoursePlace> places, List<String> excluded) {
         if (excluded.isEmpty()) return places;
         List<String> words = excluded.stream()
@@ -436,6 +546,13 @@ public class SearchService {
             throw ApiException.invalid("cuisineDetails 값을 확인해 주세요.");
         }
         if (c.partySize() < 1 || c.partySize() > 20) throw ApiException.invalid("partySize는 1~20명이에요.");
+        if (c.courseType() != null && !CourseShape.COURSE_TYPES.contains(c.courseType())) {
+            throw ApiException.invalid("courseType은 BASIC / DRINK / CULTURE / WALK / SHOPPING 중 하나예요.");
+        }
+        if (!CourseShape.EDIT_CODES.containsAll(c.excludedCategories())
+                || !CourseShape.EDIT_CODES.containsAll(c.includedCategories())) {
+            throw ApiException.invalid("excludedCategories·includedCategories 값을 확인해 주세요.");
+        }
     }
 
     private String randomCode() {

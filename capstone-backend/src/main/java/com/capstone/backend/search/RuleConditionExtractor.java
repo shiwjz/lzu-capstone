@@ -132,7 +132,7 @@ public class RuleConditionExtractor implements ConditionExtractor {
         }
         String crowd = anyOf(q, QUIET_WORDS) ? "QUIET" : anyOf(q, LIVELY_WORDS) ? "LIVELY" : "DEFAULT";
 
-        String categoryText = q;
+        String categoryText = withoutExcluded(q);   // "카페 말고"의 카페는 원하는 종류가 아님 (11주차)
         for (String w : PLAY_CAFE) {
             categoryText = categoryText.replace(w, " 놀거리 ");
         }
@@ -282,6 +282,49 @@ public class RuleConditionExtractor implements ConditionExtractor {
             }
         }
         return out;
+    }
+
+    // ---------- 11주차: 빼기 / 추가 (코스 틀 바꾸기) ----------
+
+    // 종류 코드 → 문장 단어 (앞부분이 이 단어로 시작하면 그 종류)
+    private static final Map<String, List<String>> EDIT_WORDS = orderedList(
+            "ACTIVITY", List.of("노래방", "방탈출", "보드게임", "오락실", "볼링", "만화카페", "놀거리"),
+            "CAFE", List.of("카페", "커피"),
+            "BAR", List.of("술집", "술"),
+            "FOOD", List.of("밥", "식사", "식당"),
+            "CULTURE", List.of("전시", "미술관", "박물관", "갤러리", "공연", "영화"),
+            "EXPERIENCE", List.of("공방", "클래스", "체험"),
+            "SHOPPING", List.of("쇼핑", "소품샵", "편집샵"),
+            "NATURE", List.of("산책", "공원", "한강"),
+            "TOUR", List.of("명소", "관광"));
+    private static final Pattern EXCLUDE_EDIT = Pattern.compile(
+            "([가-힣]+)\\s*(?:빼고|말고|제외|싫어|별로|패스|안\\s?갈|안\\s?가)");
+    private static final Pattern INCLUDE_EDIT = Pattern.compile(
+            "([가-힣]+?)(?:도|까지)\\s*(?:꼭\\s*)?(?:넣|가고|가자|갈래|포함|추가|하고\\s?싶|들르|들러)|꼭\\s*([가-힣]+)");
+    private static final List<String> ATE_ALREADY = List.of(
+            "밥 먹고 왔", "밥은 먹고 왔", "밥 먹었", "밥은 먹었", "식사는 했", "식사 하고 왔", "식사하고 왔", "밥은 이미");
+
+    /** 문장에서 뺄 종류·넣을 종류: [뺄 것, 넣을 것] (예: "카페 말고 노래방도 가고 싶어" → [[CAFE], [ACTIVITY]]) */
+    public static List<List<String>> shapeEdits(String query) {
+        String q = query == null ? "" : query;
+        List<String> ex = new ArrayList<>();
+        Matcher m = EXCLUDE_EDIT.matcher(q);
+        while (m.find()) addEdit(ex, m.group(1));
+        if (anyOf(q, ATE_ALREADY) && !ex.contains("FOOD")) ex.add("FOOD");
+        List<String> in = new ArrayList<>();
+        Matcher m2 = INCLUDE_EDIT.matcher(q);
+        while (m2.find()) addEdit(in, m2.group(1) != null ? m2.group(1) : m2.group(2));
+        in.removeAll(ex);
+        return List.of(List.copyOf(ex), List.copyOf(in));
+    }
+
+    private static void addEdit(List<String> out, String word) {
+        for (Map.Entry<String, List<String>> e : EDIT_WORDS.entrySet()) {
+            if (e.getValue().stream().anyMatch(word::startsWith)) {
+                if (!out.contains(e.getKey())) out.add(e.getKey());
+                return;
+            }
+        }
     }
 
     /** "일식 말고", "고기 빼고" 같은 빼는 말 지운 문장 (음식 취향 찾을 때 헷갈리지 않게) */

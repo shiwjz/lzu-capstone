@@ -33,7 +33,10 @@ public class CourseGenerator {
     /** 1. 칸별 후보: 필터 통과한 장소 중 점수 상위 10곳 (점수 같으면 원래 순서 유지) */
     public Candidates candidates(CourseRequest request, List<CoursePlace> places, PlaceScorer scorer) {
         int start = request.startMinute();
-        List<Slot> order = request.slotOrder();
+        // 킵한 장소 자리 정하기 (11주차): 그 칸이 없으면 칸 추가, 자리가 없으면 이 순서는 못 씀 → 빈 후보
+        Map<Integer, CoursePlace> kept = new HashMap<>();
+        List<Slot> order = keepSlots(request.slotOrder(), request.keeps(), places, kept);
+        if (order == null) return new Candidates(request.slotOrder(), List.of(), List.of());
         Set<String> allergies = request.allergies() == null ? Set.of() : request.allergies();
         List<String> playCategories = request.playCategoriesOrAll();
 
@@ -50,6 +53,10 @@ public class CourseGenerator {
         for (int k = 0; k < order.size(); k++) {
             Slot slot = order.get(k);
             int hour = nominalHour.get(k);
+            if (kept.containsKey(k)) {               // 킵한 장소 칸은 그 장소 하나만
+                perSlot.add(List.of(kept.get(k)));
+                continue;
+            }
             List<CoursePlace> pool = new ArrayList<>();
             Map<String, Double> scoreById = new HashMap<>();
             for (CoursePlace place : places) {
@@ -67,13 +74,51 @@ public class CourseGenerator {
         return new Candidates(order, List.copyOf(nominalHour), perSlot);
     }
 
+    /** 킵한 장소마다 들어갈 칸 번호 (out에 채움), 칸 순서가 바뀌면 바뀐 순서, 못 넣으면 null */
+    static List<Slot> keepSlots(List<Slot> order, List<String> keepIds, List<CoursePlace> places,
+                                Map<Integer, CoursePlace> out) {
+        if (keepIds.isEmpty()) return order;
+        List<Slot> v = new ArrayList<>(order);
+        List<CoursePlace> keeps = new ArrayList<>();
+        for (String id : keepIds) {
+            places.stream().filter(p -> p.placeId().equals(id)).findFirst().ifPresent(keeps::add);
+        }
+        List<Integer> taken = new ArrayList<>();
+        for (CoursePlace k : keeps) {
+            Slot need = k.slot();
+            int idx = -1;
+            for (int i = 0; i < v.size(); i++) {
+                if (v.get(i) == need && !taken.contains(i)) {
+                    idx = i;
+                    break;
+                }
+            }
+            if (idx < 0 && v.size() < CourseRules.MAX_STOPS) {
+                int bar = v.indexOf(Slot.BAR);
+                idx = need == Slot.BAR || bar < 0 ? v.size() : bar;
+                v.add(idx, need);
+                for (int t = 0; t < taken.size(); t++) {          // 끼워 넣은 자리 뒤 번호 밀기
+                    if (taken.get(t) >= idx) taken.set(t, taken.get(t) + 1);
+                }
+            }
+            if (idx < 0) return null;
+            taken.add(idx);
+        }
+        for (int t = 0; t < taken.size(); t++) out.put(taken.get(t), keeps.get(t));
+        return List.copyOf(v);
+    }
+
     public List<CoursePlan> generate(CourseRequest request, List<CoursePlace> places, PlaceScorer scorer) {
         int start = request.startMinute();
-        List<List<CoursePlace>> candidates = candidates(request, places, scorer).perSlot();
 
-        // 2~4. 조합 → 계산 → 시간 기준 통과한 것만
+        // 2~4. 조합 → 계산 → 시간 기준 통과한 것만 (11주차: 틀 순서가 여러 개면 순서마다 만들어서 합침)
         List<CoursePlan> plans = new ArrayList<>();
-        combine(candidates, 0, new ArrayList<>(), start, scorer, plans);
+        for (List<Slot> order : request.slotOrders()) {
+            List<List<CoursePlace>> candidates = candidates(request.withOrder(order), places, scorer).perSlot();
+            if (candidates.isEmpty() || candidates.stream().anyMatch(List::isEmpty)) continue;
+            combine(candidates, 0, new ArrayList<>(), start, scorer, plans);
+        }
+        Set<String> keepIds = new HashSet<>(request.keeps());
 
         // 5. 점수 순 (같으면 조합 순서 유지), 장소 안 겹치게 최대 COURSE_COUNT개
         plans.sort(Comparator.comparingDouble(p -> -p.score().total()));
@@ -83,7 +128,9 @@ public class CourseGenerator {
         List<CoursePlan> chosen = new ArrayList<>();
         Set<String> used = new HashSet<>();
         for (CoursePlan plan : plans) {
-            List<String> ids = plan.stops().stream().map(CoursePlan.Stop::placeId).toList();
+            // 킵한 장소는 모든 코스에 들어가니까 겹침 검사에서 뺌
+            List<String> ids = plan.stops().stream().map(CoursePlan.Stop::placeId)
+                    .filter(id -> !keepIds.contains(id)).toList();
             if (ids.stream().anyMatch(used::contains)) continue;
             int rank = chosen.size() + 1;
             chosen.add(plan.withMeta(null, rank,
@@ -151,6 +198,10 @@ public class CourseGenerator {
         }
         for (CoursePlace place : candidates.get(depth)) {
             if (picked.contains(place)) continue;    // 술집 → 술집처럼 같은 칸 두 번이면 같은 곳은 안 됨
+            if (place.slot() == Slot.PLAY && picked.stream().anyMatch(q -> q.slot() == Slot.PLAY
+                    && CourseText.playLabel(q.kakaoCategory()).equals(CourseText.playLabel(place.kakaoCategory())))) {
+                continue;                            // 놀거리 두 번이면 다른 종류로 (방탈출 → 볼링)
+            }
             picked.add(place);
             combine(candidates, depth + 1, picked, start, scorer, out);
             picked.remove(picked.size() - 1);

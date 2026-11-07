@@ -17,6 +17,23 @@ public final class CourseRules {
 
     public static final int TARGET_MINUTES = 180;        // 총 3시간
     public static final int TOLERANCE_MINUTES = 30;      // ±30분 → 150~210분만 남김
+    public static final int MAX_STOPS = 4;               // 코스 장소 최대 수 (11주차: 빼기·추가로 2~4곳)
+
+    /** 장소 수별 목표 시간 (11주차): 2곳 135분 / 3곳 180분(예전 그대로) / 4곳 245분 */
+    public static int targetMinutes(int stops) {
+        return stops <= 2 ? 135 : stops == 3 ? TARGET_MINUTES : 245;
+    }
+
+    /** 장소 수별 허용 폭: 2곳 ±35 (100~170분) / 3곳 ±30 (150~210분) / 4곳 ±45 (200~290분) */
+    public static int toleranceMinutes(int stops) {
+        return stops <= 2 ? 35 : stops == 3 ? TOLERANCE_MINUTES : 45;
+    }
+
+    /** 분 → "3시간 30분" */
+    public static String durationText(int minutes) {
+        int h = minutes / 60, m = minutes % 60;
+        return m == 0 ? h + "시간" : h + "시간 " + m + "분";
+    }
     public static final int WALK_ZERO_MINUTES = 40;      // 총 도보 40분이면 이동 효율 0
     public static final int CANDIDATES_PER_SLOT = 10;    // 칸별 후보 수 → 10 × 10 × 10 조합
     public static final int COURSE_COUNT = 10;           // 추천 코스 최대 수 (v0.5, 예전 3)
@@ -87,7 +104,8 @@ public final class CourseRules {
 
     /**
      * 코스 틀 고르기 (11주차, 문장에 순서가 있으면 그 순서가 우선)
-     * - 술 (음식 취향에 술집): 저녁 5시 이후 식사 → 술집 → 술집(2차), 4시 출발 놀거리 → 식사 → 술집
+     * - 술 (음식 취향에 술집): 저녁 5시 이후 식사 → 술집 → 술집(2차), 4시 출발 놀거리 → 식사 → 술집,
+ *   3시 출발 놀거리 → 카페 → 식사 → 술집
      *   (술집은 6시 이후만이라 그보다 이르면 술집 칸 후보가 없어서 코스 0개 → 앱에 안내)
      * - 문화·산책·쇼핑 (놀거리 종류 하나만, 5시 전): 놀거리 → 카페 → 식사
      * - 밤 8시 이후 (술 싫다고 안 했으면): 식사 → 놀거리 → 술집 (카페는 대부분 10시에 닫음)
@@ -97,7 +115,9 @@ public final class CourseRules {
     public static List<Slot> slotOrder(int startMinute, Boolean drinking, List<String> playCategories) {
         int hour = startMinute / 60;
         if (Boolean.TRUE.equals(drinking)) {
-            return hour >= 17 ? List.of(Slot.MEAL, Slot.BAR, Slot.BAR) : List.of(Slot.PLAY, Slot.MEAL, Slot.BAR);
+            if (hour >= 17) return List.of(Slot.MEAL, Slot.BAR, Slot.BAR);
+            if (hour == 15) return List.of(Slot.PLAY, Slot.CAFE, Slot.MEAL, Slot.BAR);   // 3시 출발은 4곳으로 술집 6시 넘기기
+            return List.of(Slot.PLAY, Slot.MEAL, Slot.BAR);
         }
         if (hour < 17 && playCategories != null && playCategories.size() == 1
                 && THEME_PLAY.contains(playCategories.get(0))) {

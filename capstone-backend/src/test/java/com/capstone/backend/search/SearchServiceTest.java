@@ -83,7 +83,120 @@ class SearchServiceTest {
         }
         Map<String, Object> day = service().search(query("토요일 낮 1시 성수에서 술 한잔"));
         assertTrue(courses(day).isEmpty());
-        assertEquals("술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 4시 이후로 바꿔 보세요.", day.get("notice"));
+        assertEquals("술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 3시 이후로 바꿔 보세요.", day.get("notice"));
+    }
+
+    // ---------- v0.7 (11주차): 코스 틀·빼기·추가·킵·감성 제목 ----------
+
+    private static SearchService.SearchRequest req(String q, String courseType, List<String> order, List<String> keeps) {
+        return new SearchService.SearchRequest(q, null, null, null, null, courseType, order, keeps);
+    }
+
+    private static List<Slot> slots(CoursePlan c) {
+        return c.stops().stream().map(CoursePlan.Stop::slot).toList();
+    }
+
+    @Test
+    @DisplayName("문장에서 빼기·추가: 카페 말고 / 노래방도 / 밥은 먹고 왔어 / 보드게임카페는 빼고")
+    void shapeEditsFromSentence() {
+        assertEquals(List.of(List.of("CAFE"), List.of("ACTIVITY")), RuleConditionExtractor.shapeEdits("성수에서 카페 말고 노래방도 가고 싶어"));
+        assertEquals(List.of(List.of("FOOD"), List.of()), RuleConditionExtractor.shapeEdits("밥은 먹고 왔어 홍대 놀자"));
+        assertEquals(List.of(List.of("ACTIVITY"), List.of()), RuleConditionExtractor.shapeEdits("보드게임카페는 빼고"));
+        assertEquals(List.of(List.of("BAR"), List.of("CAFE")), RuleConditionExtractor.shapeEdits("술은 빼고 카페도 넣어줘"));
+        assertEquals(List.of(List.of(), List.of()), RuleConditionExtractor.shapeEdits("토요일 성수 데이트"));
+    }
+
+    @Test
+    @DisplayName("'카페 말고' 검색: 카페 칸 없이 놀거리 2개(서로 다른 종류), 조건에 excludedCategories")
+    void excludeCafeSearch() {
+        Map<String, Object> data = service().search(query("토요일 오후 3시 성수에서 카페 말고 놀자"));
+        Map<?, ?> cond = (Map<?, ?>) data.get("conditions");
+        assertEquals(List.of("CAFE"), cond.get("excludedCategories"));
+        assertFalse(((List<?>) cond.get("categories")).contains("CAFE"));
+        List<CoursePlan> cs = courses(data);
+        assertFalse(cs.isEmpty());
+        for (CoursePlan c : cs) {
+            assertEquals(List.of(Slot.PLAY, Slot.PLAY, Slot.MEAL), slots(c));
+            String[] r = c.route().split(" → ");
+            assertFalse(r[0].equals(r[1]), c.route());
+        }
+    }
+
+    @Test
+    @DisplayName("코스 틀 칩 '술' (저녁 7시): 식사→술집 / 식사→술집→술집 섞여서, 전부 술집으로 끝남")
+    void drinkTypeChip() {
+        List<CoursePlan> cs = courses(service().search(req("토요일 저녁 7시 홍대", "DRINK", null, null)));
+        assertFalse(cs.isEmpty());
+        assertTrue(cs.stream().allMatch(c -> slots(c).get(slots(c).size() - 1) == Slot.BAR));
+        assertTrue(cs.stream().allMatch(c -> List.of(List.of(Slot.MEAL, Slot.BAR), List.of(Slot.MEAL, Slot.BAR, Slot.BAR))
+                .contains(slots(c))));
+        assertEquals("DRINK", ((Map<?, ?>) service().search(req("토요일 저녁 7시 홍대", "DRINK", null, null)).get("conditions")).get("courseType"));
+        assertEquals("INVALID_INPUT", expectError(() -> service().search(req("홍대", "PARTY", null, null))).code());
+    }
+
+    @Test
+    @DisplayName("직접 고친 순서 order: 그 순서로만, 잘못된 값·5칸은 INVALID_INPUT")
+    void customOrder() {
+        List<CoursePlan> cs = courses(service().search(req("토요일 저녁 7시 홍대", null, List.of("MEAL", "PLAY", "BAR"), null)));
+        assertFalse(cs.isEmpty());
+        cs.forEach(c -> assertEquals(List.of(Slot.MEAL, Slot.PLAY, Slot.BAR), slots(c)));
+        assertEquals("INVALID_INPUT", expectError(() -> service().search(req("홍대", null, List.of("MEAL", "SLEEP"), null))).code());
+        assertEquals("INVALID_INPUT", expectError(() -> service().search(req("홍대", null,
+                List.of("MEAL", "CAFE", "PLAY", "BAR", "BAR"), null))).code());
+    }
+
+    @Test
+    @DisplayName("장소 킵: 킵한 곳은 모든 코스에, 코스는 여러 개 그대로, 다른 지역·3곳은 INVALID_INPUT")
+    void keepPlaces() {
+        SearchService svc = service();
+        CoursePlan first = courses(svc.search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet()))).get(1);
+        String keep = first.stops().get(0).placeId();
+        Map<String, Object> data = svc.search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet(),
+                null, null, List.of(keep)));
+        List<CoursePlan> cs = courses(data);
+        assertTrue(cs.size() > 1);
+        cs.forEach(c -> assertTrue(c.stops().stream().anyMatch(s -> s.placeId().equals(keep))));
+        assertEquals(List.of(keep), data.get("keepPlaceIds"));
+        String hongdae = STORE.coursePlaces().stream().filter(p -> p.region().equals("HONGDAE")).findFirst().orElseThrow().placeId();
+        assertEquals("INVALID_INPUT", expectError(() -> svc.search(new SearchService.SearchRequest("성수", null, null, null,
+                seongsuQuiet(), null, null, List.of(hongdae)))).code());
+        assertEquals("INVALID_INPUT", expectError(() -> svc.search(new SearchService.SearchRequest("성수", null, null, null,
+                seongsuQuiet(), null, null, List.of("1", "2", "3")))).code());
+    }
+
+    @Test
+    @DisplayName("감성 제목: 받은 제목으로 바꿈, 이상한 자리는 규칙 제목, 실패하면 전부 규칙 / 코스 수정해도 감성 제목 유지")
+    void sentimentTitles() {
+        CourseTitleWriter fake = inputs -> {
+            List<String> out = new java.util.ArrayList<>();
+            for (int i = 0; i < inputs.size(); i++) out.add(i == 1 ? null : "감성 " + (i + 1) + " " + inputs.get(i).when());
+            return out;
+        };
+        SearchService svc = new SearchService(STORE, new RuleConditionExtractor(), new PlaceScoreModel(STORE),
+                new CourseStore(), fake);
+        Map<String, Object> data = svc.search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet()));
+        List<CoursePlan> cs = courses(data);
+        assertEquals("감성 1 토요일 오후 3시", cs.get(0).title());
+        assertEquals(courses(service().search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet()))).get(1).title(),
+                cs.get(1).title());
+        assertEquals("GEMINI", data.get("titlesBy"));
+        List<SearchService.StopEdit> edit = cs.get(0).stops().stream().map(s -> new SearchService.StopEdit(s.placeId(), null)).toList();
+        assertEquals("감성 1 토요일 오후 3시", svc.updateCourse(cs.get(0).courseId(), new SearchService.UpdateRequest(null, edit)).get("title"));
+
+        SearchService broken = new SearchService(STORE, new RuleConditionExtractor(), new PlaceScoreModel(STORE),
+                new CourseStore(), inputs -> { throw new IllegalStateException("timeout"); });
+        assertEquals("RULE", broken.search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet())).get("titlesBy"));
+    }
+
+    @Test
+    @DisplayName("Gemini 제목 정리: 개수 다르면 전부 버림, 너무 긴 것·빈 것만 null, 따옴표 떼기")
+    void titleCleaning() {
+        assertNull(GeminiCourseTitleWriter.clean(List.of("하나"), 2));
+        assertEquals(java.util.Arrays.asList("성수 산책", null, null),
+                GeminiCourseTitleWriter.clean(List.of("\"성수 산책\"", "", "가".repeat(30)), 3));
+        String text = GeminiCourseTitleWriter.userText(List.of(new CourseTitleWriter.Input("성수", "토요일 오후 3시",
+                List.of("조용한"), "전시관 → 카페 → 분식", List.of("한산"))));
+        assertEquals("1. 지역: 성수 / 언제: 토요일 오후 3시 / 분위기: 조용한 / 경로: 전시관 → 카페 → 분식 / 키워드: 한산\n", text);
     }
 
     @Test

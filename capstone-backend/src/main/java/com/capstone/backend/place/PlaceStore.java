@@ -88,6 +88,10 @@ public class PlaceStore {
     private final Map<Integer, Map<String, Double>> clusterAvg = new HashMap<>();   // 유형별 평균 비율
     private final Map<String, Map<String, Double>> regionAvg = new HashMap<>();     // 지역별 평균 비율
     private final List<Cell> cells = new ArrayList<>();
+    private final Map<String, String[]> dowCongestion = new HashMap<>();   // 요일별 (11주차, 셀|MON → 하루 전체 비교 24칸)
+    private String dowSource = null;
+
+    public static final List<String> DOWS = List.of("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN");
     private final String congestionFile;
 
     /** 테스트용: 기본 혼잡도(가짜 유동인구, LG 데이터 모양) */
@@ -113,6 +117,9 @@ public class PlaceStore {
                 dataDir.isBlank() ? "/data/" + congestionFile : FILE + Path.of(dataDir, "congestion_lg.tsv"),
                 dataDir.isBlank() ? "/data/cell_profile.tsv" : FILE + Path.of(dataDir, "cell_profile_lg.tsv"),
                 dataDir.isBlank() ? congestionFile : "congestion_lg.tsv (외부 폴더)");
+        if (!dataDir.isBlank() && Files.exists(Path.of(dataDir, "congestion_dow_lg.tsv"))) {
+            loadDow(FILE + Path.of(dataDir, "congestion_dow_lg.tsv"), "congestion_dow_lg.tsv (외부 폴더)");
+        }
     }
 
     private static final String FILE = "file:";
@@ -140,12 +147,43 @@ public class PlaceStore {
             congestion.put(r[0] + "|" + r[1], new String[][]{r[2].split(" "), r[3].split(" ")});
         }
         loadProfiles(profilePath);
+        // 요일별 혼잡도 (윤경 서울시 버전이 jar 안에 있으면), 없으면 평일·주말 값으로 대신
+        if (PlaceStore.class.getResource("/data/congestion_dow.tsv") != null) {
+            loadDow("/data/congestion_dow.tsv", "congestion_dow.tsv");
+        }
         // 셀 좌표는 LG 데이터가 아니라 격자 정보라 항상 jar 안 파일 (없으면 레이더만 빈 목록)
         if (PlaceStore.class.getResource("/data/cells.tsv") != null) {
             for (String[] r : readTsv("/data/cells.tsv", 4)) {
                 cells.add(new Cell(r[0], r[1], Double.parseDouble(r[2]), Double.parseDouble(r[3])));
             }
         }
+    }
+
+    /**
+     * 요일별 혼잡도 파일 읽기 (11주차): cellId \t dow(MON~SUN) \t allDay(h0..h23, congestion.tsv랑 같은 Q47·N60·B85 모양)
+     * - 만드는 법(윤경): 요일별 = 평일/주말 시간대 모양 × 그 요일 비율 → 하루 전체 비교 백분위 → 등급
+     */
+    private void loadDow(String path, String source) {
+        dowCongestion.clear();
+        for (String[] r : readTsv(path, 3)) {
+            dowCongestion.put(r[0] + "|" + r[1], r[2].split(" "));
+        }
+        dowSource = source;
+    }
+
+    /** 요일별 파일이 있으면 파일 이름, 없으면 null (→ 평일·주말 값으로 대신) */
+    public String dowSource() {
+        return dowSource;
+    }
+
+    /** 요일별 혼잡도 (하루 전체 비교): 파일에 있으면 그 값, 없으면 월~금 = 평일, 토·일 = 주말 값 */
+    public Congestion congestionByDow(String placeId, String dow, int hour) {
+        Place p = byId.get(placeId);
+        int h = Math.floorMod(hour, 24);
+        String[] row = p == null ? null : dowCongestion.get(p.cellId() + "|" + dow);
+        if (row != null && !row[h].equals("-")) return parse(row[h], h);
+        String dayType = dow.equals("SAT") || dow.equals("SUN") ? "WEEKEND" : "WEEKDAY";
+        return congestion(placeId, dayType, hour, Basis.ALL_DAY);
     }
 
     /** 지역의 격자 칸 목록 */

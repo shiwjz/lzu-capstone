@@ -27,6 +27,9 @@
       "excludedFoods": [],
       "cuisines": [],
       "cuisineDetails": [],
+      "courseType": null,
+      "excludedCategories": [],
+      "includedCategories": [],
       "extractedBy": "GEMINI"
     },
     "places": [
@@ -1338,6 +1341,9 @@
         ]
       }
     ],
+    "titlesBy": "RULE",
+    "order": [],
+    "keepPlaceIds": [],
     "betterStart": null,
     "notice": null
   }

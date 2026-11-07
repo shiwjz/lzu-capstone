@@ -35,6 +35,21 @@ class PlaceApiTest {
     }
 
     @Test
+    @DisplayName("요일 탭: 요일별 파일 없으면 월~금 = 평일, 토·일 = 주말 값 (source DAY_TYPE), today = 그 날짜 요일")
+    @SuppressWarnings("unchecked")
+    void detailByDow() {
+        Map<String, Object> d = PlaceController.detailData(STORE, "921699059", LocalDate.parse("2026-10-17"));
+        Map<String, Object> dow = (Map<String, Object>) d.get("congestionByDay");
+        assertEquals("DAY_TYPE", dow.get("source"));
+        assertEquals("SAT", dow.get("today"));
+        Map<String, List<PlaceStore.Congestion>> days = (Map<String, List<PlaceStore.Congestion>>) dow.get("days");
+        assertEquals(PlaceStore.DOWS, List.copyOf(days.keySet()));
+        Map<String, List<PlaceStore.Congestion>> byType = (Map<String, List<PlaceStore.Congestion>>) d.get("congestionByDayType");
+        assertEquals(byType.get("WEEKDAY"), days.get("WED"));
+        assertEquals(byType.get("WEEKEND"), days.get("SUN"));
+    }
+
+    @Test
     @DisplayName("혼잡 레이더: 지역 전체 / 반경 안 칸만, 개수 합 = 칸 수")
     @SuppressWarnings("unchecked")
     void grid() {

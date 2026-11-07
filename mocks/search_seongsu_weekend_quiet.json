@@ -26,6 +26,9 @@
       "excludedFoods": [],
       "cuisines": [],
       "cuisineDetails": [],
+      "courseType": null,
+      "excludedCategories": [],
+      "includedCategories": [],
       "extractedBy": "GEMINI"
     },
     "places": [
@@ -991,6 +994,9 @@
         ]
       }
     ],
+    "titlesBy": "RULE",
+    "order": [],
+    "keepPlaceIds": [],
     "betterStart": {
       "startTime": "17:00",
       "shiftMinutes": 120,

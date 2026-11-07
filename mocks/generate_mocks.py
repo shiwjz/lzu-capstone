@@ -32,6 +32,7 @@
     (places.tsv, congestion.tsv, congestion_seoul.tsv, cell_profile.tsv)
 """
 import csv
+import datetime
 import itertools
 import json
 import math
@@ -57,7 +58,20 @@ STAY_MIN = {'FOOD': 60, 'CAFE': 50, 'CULTURE': 60, 'ACTIVITY': 60, 'EXPERIENCE':
             'SHOPPING': 40, 'TOUR': 40, 'NATURE': 40, 'SNACK': 30}
 WALK_M_PER_MIN = 67          # 걷는 속도 4km/h
 DETOUR = 1.3                 # 직선거리 → 실제 걷는 거리 보정
-TARGET_MIN, TOL_MIN = 180, 30  # 총 3시간 ±30분
+TARGET_MIN, TOL_MIN = 180, 30  # 총 3시간 ±30분 (3곳 기준)
+
+
+def target_min(n):
+    """장소 수별 목표 시간 (서버 CourseRules.targetMinutes): 2곳 135 / 3곳 180 / 4곳 245"""
+    return 135 if n <= 2 else TARGET_MIN if n == 3 else 245
+
+
+def tol_min(n):
+    return 35 if n <= 2 else TOL_MIN if n == 3 else 45
+
+
+def duration_text(m):
+    return f'{m // 60}시간' if m % 60 == 0 else f'{m // 60}시간 {m % 60}분'
 WALK_ZERO_MIN = 40           # 총 도보 40분이면 이동 효율 0
 TOP_K = 10                   # 칸별 후보 수
 W_PLACE = {'request': 0.45, 'target': 0.30, 'congestion': 0.25}
@@ -156,7 +170,9 @@ def course_order(cond, start):
     d = drinking(cond)
     picked = [c for c in cond['categories'] if c in PLAY_CATS]
     if d is True:
-        return ['MEAL', 'BAR', 'BAR'] if hh >= 17 else ['PLAY', 'MEAL', 'BAR']
+        if hh >= 17:
+            return ['MEAL', 'BAR', 'BAR']
+        return ['PLAY', 'CAFE', 'MEAL', 'BAR'] if hh == 15 else ['PLAY', 'MEAL', 'BAR']
     if hh < 17 and len(picked) == 1 and picked[0] in THEME_PLAY:
         return ['PLAY', 'CAFE', 'MEAL']
     if hh >= 20 and d is None:
@@ -468,7 +484,7 @@ def build_course(stops_in, cond, start):
         acc += s['placeScore']
     place_avg = acc / len(stops)
     move_eff = max(0.0, 1 - walk_total / WALK_ZERO_MIN)
-    time_fit = max(0.0, 1 - abs(total - TARGET_MIN) / TOL_MIN)
+    time_fit = max(0.0, 1 - abs(total - target_min(len(stops_in))) / tol_min(len(stops_in)))
     course_total = (W_COURSE['placeAvg'] * place_avg + W_COURSE['moveEfficiency'] * move_eff
                     + W_COURSE['timeFit'] * time_fit)
     return {'startAt': hm(start), 'endAt': hm(t), 'totalMinutes': total,
@@ -598,10 +614,12 @@ def course_keywords(course, cond, by_id):
 
 def warnings_of(course, cond, by_id=None):
     out = []
-    if course['totalMinutes'] > TARGET_MIN + TOL_MIN:
-        out.append({'code': 'TOTAL_TIME_OVER', 'message': f"총 {course['totalMinutes']}분으로 3시간 30분을 넘어요"})
-    if course['totalMinutes'] < TARGET_MIN - TOL_MIN:
-        out.append({'code': 'TOTAL_TIME_UNDER', 'message': f"총 {course['totalMinutes']}분으로 2시간 30분보다 짧아요"})
+    n = len(course['stops'])
+    hi, lo = target_min(n) + tol_min(n), target_min(n) - tol_min(n)
+    if course['totalMinutes'] > hi:
+        out.append({'code': 'TOTAL_TIME_OVER', 'message': f"총 {course['totalMinutes']}분으로 {duration_text(hi)}을 넘어요"})
+    if course['totalMinutes'] < lo:
+        out.append({'code': 'TOTAL_TIME_UNDER', 'message': f"총 {course['totalMinutes']}분으로 {duration_text(lo)}보다 짧아요"})
     for s in course['stops']:
         if s['walkMinutesFromPrev'] and s['walkMinutesFromPrev'] > 15:
             out.append({'code': 'LONG_WALK', 'message': f"{s['name']}까지 걸어서 {s['walkMinutesFromPrev']}분 걸려요"})
@@ -647,7 +665,7 @@ def recommend(places, cond):
         if len({p['placeId'] for p in combo}) < len(combo):
             continue                                   # 술집 → 술집: 같은 곳 두 번은 안 됨
         c = build_course([(p, STAY_MIN[p['category']]) for p in combo], cond, start)
-        if abs(c['totalMinutes'] - TARGET_MIN) <= TOL_MIN:
+        if abs(c['totalMinutes'] - target_min(len(combo))) <= tol_min(len(combo)):
             passed += 1
             combos.append(c)
     combos.sort(key=lambda c: -c['score']['total'])
@@ -781,8 +799,8 @@ SCENARIOS = [
 
 
 def no_course_notice(cond):
-    if drinking(cond) is True and to_min(cond['startTime']) < 16 * 60:
-        return '술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 4시 이후로 바꿔 보세요.'
+    if drinking(cond) is True and to_min(cond['startTime']) < 15 * 60:
+        return '술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 3시 이후로 바꿔 보세요.'
     return '조건에 맞는 코스를 찾지 못했어요. 시간이나 조건을 바꿔 보세요.'
 
 
@@ -801,8 +819,10 @@ def main(root, out_dir):
         data = {'searchId': f's_20261016_{i:04d}', 'query': query,
                 # 분위기는 DB(user_preference.atmosphere)랑 이름 맞춰서 atmospheres로
                 'conditions': {**{('atmospheres' if k == 'moods' else k): v for k, v in cond.items()},
+                               'courseType': None, 'excludedCategories': [], 'includedCategories': [],   # v0.7
                                'extractedBy': 'GEMINI'},
                 'places': plist, 'courses': courses,
+                'titlesBy': 'RULE', 'order': [], 'keepPlaceIds': [],   # v0.7: 감성 제목은 진짜 서버에서만
                 'betterStart': better_start(courses[0], cond, by_id) if courses else None,
                 'notice': None if courses else no_course_notice(cond)}
         dump(out_dir, fname, wrap(data))
@@ -829,7 +849,14 @@ def main(root, out_dir):
                                                   for hr in range(9, 24)]},
                    # 11주차: 평일·주말 탭 (테이블링처럼) - 둘 다 9~23시, 하루 전체 비교
                    'congestionByDayType': {d: [congestion(p, d, hr, 'all_day') for hr in range(9, 24)]
-                                           for d in ('WEEKDAY', 'WEEKEND')}})
+                                           for d in ('WEEKDAY', 'WEEKEND')},
+                   # 11주차: 요일 탭 7개 - 요일별 파일(윤경) 나오기 전엔 월~금 = 평일, 토·일 = 주말 값
+                   'congestionByDay': {'source': 'DAY_TYPE',
+                                       'today': ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][
+                                           datetime.date.fromisoformat(cond['date']).weekday()],
+                                       'days': {d: [congestion(p, 'WEEKEND' if d in ('SAT', 'SUN') else 'WEEKDAY',
+                                                               hr, 'all_day') for hr in range(9, 24)]
+                                                for d in ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')}}})
     dump(out_dir, 'place_detail.json', wrap(detail))
 
     # 코스 수정 예시: 1번 체류 90분으로 늘리고 2번 카페를 다른 카페로 교체

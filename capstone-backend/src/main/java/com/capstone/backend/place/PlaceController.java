@@ -149,6 +149,18 @@ public class PlaceController {
             byDay.put(d, list);
         }
         m.put("congestionByDayType", byDay);
+        // 11주차: 요일 탭 7개 (MON~SUN, 9~23시) - 요일별 파일 없으면 평일·주말 값으로 대신 (source = DAY_TYPE)
+        Map<String, Object> byDow = new LinkedHashMap<>();
+        for (String d : PlaceStore.DOWS) {
+            List<PlaceStore.Congestion> list = new ArrayList<>();
+            for (int h = 9; h <= 23; h++) list.add(store.congestionByDow(placeId, d, h));
+            byDow.put(d, list);
+        }
+        Map<String, Object> dow = new LinkedHashMap<>();
+        dow.put("source", store.dowSource() == null ? "DAY_TYPE" : "DOW");
+        dow.put("today", PlaceStore.DOWS.get(day.getDayOfWeek().getValue() - 1));
+        dow.put("days", byDow);
+        m.put("congestionByDay", dow);
         return m;
     }
 
