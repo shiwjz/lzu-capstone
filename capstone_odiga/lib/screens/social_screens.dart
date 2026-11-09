@@ -150,26 +150,17 @@ class GroupScreen extends StatelessWidget {
             ],
           ),
         ]),
-        InkWell(
-          onTap: () => openPage(
-            context,
-            ConditionsScreen(app: app, group: true),
-            '/group/conditions',
+        panel([
+          label(
+            '일정 · ${dateText(app.conditions.start)} ${clockText(app.conditions.start)}',
+            size: 18,
+            bold: true,
           ),
-          child: panel([
-            label(
-              '일정 선택 · ${dateText(app.conditions.start)} ${clockText(app.conditions.start)} ›',
-              size: 18,
-              bold: true,
-            ),
-            label(
-              '${app.conditions.region} · ${app.friends.length + 1}명 · 식사 + 카페 + 산책',
-              size: 11,
-              color: OdigaTokens.muted,
-            ),
-            label('모임 조건과 취향을 반영해 추천해요', size: 11, color: OdigaTokens.brand),
-          ], lavender: true),
-        ),
+          label(
+            '${app.conditions.region} · ${app.friends.length + 1}명',
+            size: 11,
+          ),
+        ], lavender: true),
         InkWell(
           onTap: () => openPage(context, ChatScreen(app: app), '/group/chat'),
           child: panel([
@@ -445,10 +436,6 @@ class ProfileScreen extends StatelessWidget {
       _menu('저장한 코스', () => rootTab(context, app, 1)),
       _menu('친구 관리', () => rootTab(context, app, 2)),
       _menu(
-        '알레르기 / 필수 조건',
-        () => openPage(context, PreferencesScreen(app: app), '/preferences'),
-      ),
-      _menu(
         '프로토타입 안내',
         () => showDialog<void>(
           context: context,
@@ -569,14 +556,8 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     '술집': ['호프·요리주점', '이자카야', '칵테일바', '와인바', '포장마차'],
     '카페·디저트': ['디저트카페', '개인카페', '프랜차이즈', '갤러리·북카페', '차·음료'],
   };
-  static const _allergyValues = {'갑각류': 'SHELLFISH', '해산물': 'SEAFOOD'};
   bool saving = false;
   late final draft = widget.app.preference.copy();
-  late final _allergiesSelected = <String>{
-    for (final item in draft.allergies.split(RegExp(r'[,，\s]+')))
-      for (final allergy in _allergyValues.entries)
-        if (item == allergy.value || item == allergy.key) allergy.key,
-  };
 
   Widget choices(List<String> options, Set<String> selected) => Wrap(
     spacing: 6,
@@ -649,20 +630,11 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
         size: 11,
         color: OdigaTokens.muted,
       ),
-      panel([
-        label('알레르기 / 필수 조건', color: OdigaTokens.brand),
-        choices(_allergyValues.keys.toList(), _allergiesSelected),
-        label('갑각류·해산물 알레르기를 검색 조건에 반영해요.', size: 11, color: OdigaTokens.muted),
-      ], lavender: true),
       action(
         saving ? '저장 중…' : '선호도 저장',
         saving
             ? null
             : () async {
-                draft.allergies = _allergyValues.entries
-                    .where((entry) => _allergiesSelected.contains(entry.key))
-                    .map((entry) => entry.value)
-                    .join(', ');
                 setState(() => saving = true);
                 try {
                   await widget.app.savePreference(draft);

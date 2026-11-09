@@ -384,10 +384,12 @@ class PlaceCard extends StatelessWidget {
     required this.level,
     this.image = const AssetImage('assets/756cc.png'),
     this.onTap,
+    this.trailing,
   });
   final String title, category, description;
   final double? rating;
-  final CongestionLevel level;
+  final CongestionLevel? level;
+  final Widget? trailing;
   final ImageProvider image;
   final VoidCallback? onTap;
   @override
@@ -416,15 +418,36 @@ class PlaceCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   _text(description, 11, color: OdigaTokens.muted),
-                  const SizedBox(height: 8),
-                  CongestionBadge(level: level),
+                  if (level case final crowd?) ...[
+                    const SizedBox(height: 8),
+                    CongestionBadge(level: crowd),
+                  ],
                 ],
               ),
             ),
+            ?trailing,
           ],
         ),
       ),
     ),
+  );
+}
+
+class RouteTags extends StatelessWidget {
+  const RouteTags({super.key, required this.categories});
+  final List<String> categories;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 6,
+    runSpacing: 4,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      for (final (index, category) in categories.indexed) ...[
+        if (index > 0) const Icon(Icons.chevron_right, size: 14),
+        OdigaTag(label: category, selected: true),
+      ],
+    ],
   );
 }
 
@@ -435,11 +458,15 @@ class CourseCard extends StatelessWidget {
     required this.route,
     required this.summary,
     required this.reason,
+    this.places,
+    this.keywords = const [],
     this.congestion = '평균 한산',
     this.image = const AssetImage('assets/5788c.png'),
     this.onTap,
   });
   final String title, route, summary, reason, congestion;
+  final String? places;
+  final List<String> keywords;
   final ImageProvider image;
   final VoidCallback? onTap;
   @override
@@ -453,7 +480,17 @@ class CourseCard extends StatelessWidget {
           children: [
             _text(title, 18, weight: FontWeight.w700),
             const SizedBox(height: 8),
-            _text(route, 14, color: OdigaTokens.muted),
+            if (places != null) _text(places!, 13, color: OdigaTokens.muted),
+            RouteTags(categories: route.split(' → ')),
+            if (keywords.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  for (final keyword in keywords.take(4))
+                    OdigaTag(label: keyword, selected: true),
+                ],
+              ),
             const SizedBox(height: 8),
             _text(summary, 11, color: OdigaTokens.muted),
             const SizedBox(height: 8),
@@ -484,6 +521,8 @@ class RankedCourseCard extends StatelessWidget {
     required this.title,
     required this.summary,
     required this.reason,
+    this.route = const [],
+    this.onMap,
     this.keywords = const [],
     this.selected = false,
     this.onSelected,
@@ -491,7 +530,8 @@ class RankedCourseCard extends StatelessWidget {
   });
   final int rank;
   final String title, summary, reason;
-  final List<String> keywords;
+  final List<String> keywords, route;
+  final VoidCallback? onMap;
   final bool selected;
   final VoidCallback? onSelected, onReason;
   @override
@@ -520,28 +560,11 @@ class RankedCourseCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            SizedBox(
-              height: 24,
-              child: Row(
-                children: [
-                  Expanded(child: _text(summary, 12, color: OdigaTokens.muted)),
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: IconButton(
-                      tooltip: '추천 근거 보기',
-                      onPressed: onReason,
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: OdigaTokens.brand,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _text(summary, 12, color: OdigaTokens.muted),
+            if (route.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              RouteTags(categories: route),
+            ],
             const SizedBox(height: 4),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -579,6 +602,18 @@ class RankedCourseCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                 ],
+              ],
+            ),
+            Row(
+              children: [
+                if (onMap != null)
+                  TextButton(onPressed: onMap, child: const Text('지도에서 보기')),
+                const Spacer(),
+                IconButton(
+                  tooltip: '추천 근거 보기',
+                  onPressed: onReason,
+                  icon: const Icon(Icons.info_outline, size: 18),
+                ),
               ],
             ),
           ],
@@ -679,14 +714,16 @@ class BottomSheetSurface extends StatelessWidget {
   final Widget? child;
   final VoidCallback? onHandleTap;
   final GestureDragEndCallback? onHandleDragEnd;
+  static double heightFor(RecommendationSheetSize size) => switch (size) {
+    RecommendationSheetSize.collapsed => 100,
+    RecommendationSheetSize.medium => 340,
+    RecommendationSheetSize.expanded => 610,
+  };
+
   @override
   Widget build(BuildContext context) => AnimatedContainer(
     duration: const Duration(milliseconds: 220),
-    height: switch (size) {
-      RecommendationSheetSize.collapsed => 100,
-      RecommendationSheetSize.medium => 340,
-      RecommendationSheetSize.expanded => 610,
-    },
+    height: heightFor(size),
     padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
     decoration: BoxDecoration(
       color: Colors.white,

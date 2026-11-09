@@ -1,3 +1,5 @@
+const supportedCongestionRegions = ['성수', '홍대', '강남'];
+
 /// Prototype contracts, separated from presentation and the future API client.
 class Place {
   const Place({
@@ -14,6 +16,7 @@ class Place {
     required this.imageAsset,
     required this.rating,
     required this.description,
+    this.address,
     this.cuisine,
     this.cuisineDetail,
   });
@@ -22,7 +25,7 @@ class Place {
   final List<String> tags;
   // UI-only mock fields; these are not an agreed backend response contract.
   final String imageAsset, description;
-  final String? cuisine, cuisineDetail;
+  final String? address, cuisine, cuisineDetail;
   final double? rating;
   Map<String, Object> toJson() => {
     'id': id,
@@ -35,6 +38,7 @@ class Place {
     'cellId': cellId,
     'tags': tags,
     'openingHours': openingHours,
+    'address': ?address,
   };
 }
 
@@ -75,12 +79,14 @@ class CourseStop {
     required this.order,
     required this.arrival,
     required this.stayMinutes,
+    this.name,
     this.travelMinutesToNext = 0,
     this.distanceMetersToNext = 0,
     this.congestionBand,
     this.congestionPercentile,
   });
   final String id, placeId;
+  final String? name;
   final int order, stayMinutes, travelMinutesToNext;
   final DateTime arrival;
   final double distanceMetersToNext;
@@ -89,6 +95,7 @@ class CourseStop {
   CourseStop withStay(int minutes) => CourseStop(
     id: id,
     placeId: placeId,
+    name: name,
     order: order,
     arrival: arrival,
     stayMinutes: minutes,
