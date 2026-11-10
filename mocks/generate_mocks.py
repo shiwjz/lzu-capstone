@@ -819,7 +819,7 @@ def main(root, out_dir):
         data = {'searchId': f's_20261016_{i:04d}', 'query': query,
                 # 분위기는 DB(user_preference.atmosphere)랑 이름 맞춰서 atmospheres로
                 'conditions': {**{('atmospheres' if k == 'moods' else k): v for k, v in cond.items()},
-                               'courseType': None, 'excludedCategories': [], 'includedCategories': [],   # v0.7
+                               'courseType': None, 'excludedCategories': [], 'includedCategories': [], 'playDetails': [],   # v0.7
                                'extractedBy': 'GEMINI'},
                 'places': plist, 'courses': courses,
                 'titlesBy': 'RULE', 'order': [], 'keepPlaceIds': [],   # v0.7: 감성 제목은 진짜 서버에서만

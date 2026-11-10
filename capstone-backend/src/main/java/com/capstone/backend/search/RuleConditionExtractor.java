@@ -318,6 +318,11 @@ public class RuleConditionExtractor implements ConditionExtractor {
         return List.of(List.copyOf(ex), List.copyOf(in));
     }
 
+    /** 놀거리 세부 취향 ("보드게임하면서 놀고 싶어" → [보드게임]), "보드게임카페는 빼고"처럼 빼는 건 안 셈 */
+    public static List<String> playDetails(String query) {
+        return com.capstone.backend.course.PlayDetail.find(withoutExcluded(query == null ? "" : query));
+    }
+
     private static void addEdit(List<String> out, String word) {
         for (Map.Entry<String, List<String>> e : EDIT_WORDS.entrySet()) {
             if (e.getValue().stream().anyMatch(word::startsWith)) {

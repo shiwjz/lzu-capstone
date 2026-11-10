@@ -44,7 +44,8 @@ public record SearchConditions(
         List<String> cuisineDetails,    // v0.5 세부 (초밥·롤·라멘 …) → 사용자 요구 점수 가점
         String courseType,              // v0.7 코스 틀 (null = 자동)
         List<String> excludedCategories,// v0.7 뺄 종류 (FOOD·CAFE·BAR·놀거리 6개)
-        List<String> includedCategories // v0.7 넣을 종류
+        List<String> includedCategories,// v0.7 넣을 종류
+        List<String> playDetails        // v0.7 놀거리 세부 취향 (보드게임·방탈출 …) → 코스마다 하나 꼭 (course/PlayDetail)
 ) {
 
     /** 코스 틀·빼기·추가 없는 v0.5 모양 (Gemini·규칙 추출·테스트 호환용) */
@@ -55,21 +56,28 @@ public record SearchConditions(
                             List<String> cuisineDetails) {
         this(region, date, dayType, startTime, partySize, categories, atmospheres, crowdPreference, allergies,
                 gender, ageGroup, companionType, excludedFoods, extractedBy, cuisines, cuisineDetails,
-                null, null, null);
+                null, null, null, null);
     }
 
     /** 코스 틀·빼기·추가만 바꾸기 */
     public SearchConditions withShape(String newType, List<String> newExcluded, List<String> newIncluded) {
         return new SearchConditions(region, date, dayType, startTime, partySize, categories, atmospheres,
                 crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy,
-                cuisines, cuisineDetails, newType, newExcluded, newIncluded);
+                cuisines, cuisineDetails, newType, newExcluded, newIncluded, playDetails);
+    }
+
+    /** 놀거리 세부 취향만 바꾸기 */
+    public SearchConditions withPlayDetails(List<String> details) {
+        return new SearchConditions(region, date, dayType, startTime, partySize, categories, atmospheres,
+                crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy,
+                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories, details);
     }
 
     public SearchConditions withExtractedBy(String by) {
         return new SearchConditions(region, date, dayType, startTime, partySize, categories, atmospheres,
                 crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods,
                 extractedBy == null ? by : extractedBy, cuisines, cuisineDetails, courseType, excludedCategories,
-                includedCategories);
+                includedCategories, playDetails);
     }
 
     /** 음식 취향 없는 예전 모양 (Gemini·테스트 코드 호환용) */
@@ -85,7 +93,7 @@ public record SearchConditions(
     public SearchConditions withCuisines(List<String> newCuisines, List<String> newDetails) {
         return new SearchConditions(region, date, dayType, startTime, partySize, categories, atmospheres,
                 crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy,
-                newCuisines, newDetails, courseType, excludedCategories, includedCategories);
+                newCuisines, newDetails, courseType, excludedCategories, includedCategories, playDetails);
     }
 
     /**
@@ -104,7 +112,7 @@ public record SearchConditions(
         if (next.size() == moods.size()) return this;
         return new SearchConditions(region, date, dayType, startTime, partySize, categories, List.copyOf(next),
                 crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy,
-                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories);
+                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories, playDetails);
     }
 
     private static void addOnce(List<String> list, String tag) {
@@ -114,19 +122,19 @@ public record SearchConditions(
     public SearchConditions withDate(String newDate, String newDayType) {
         return new SearchConditions(region, newDate, newDayType, startTime, partySize, categories, atmospheres,
                 crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy,
-                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories);
+                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories, playDetails);
     }
 
     public SearchConditions withStartTime(String newStartTime) {
         return new SearchConditions(region, date, dayType, newStartTime, partySize, categories, atmospheres,
                 crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy,
-                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories);
+                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories, playDetails);
     }
 
     public SearchConditions withRegion(String newRegion) {
         return new SearchConditions(newRegion, date, dayType, startTime, partySize, categories, atmospheres,
                 crowdPreference, allergies, gender, ageGroup, companionType, excludedFoods, extractedBy,
-                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories);
+                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories, playDetails);
     }
 
     /**
@@ -147,7 +155,7 @@ public record SearchConditions(
         if (myAllergies != null) allAllergies.addAll(myAllergies);
         return new SearchConditions(newRegion, date, dayType, startTime, partySize, categories, moods, crowd,
                 List.copyOf(allAllergies), gender, ageGroup, companionType, excludedFoods, extractedBy,
-                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories);
+                cuisines, cuisineDetails, courseType, excludedCategories, includedCategories, playDetails);
     }
 
     /** 빈 값 채우기: 인원 2명, 목록은 빈 목록, 혼잡 선호는 분위기 태그로 ('조용한' → QUIET, '활기찬' → LIVELY) */
@@ -163,19 +171,20 @@ public record SearchConditions(
                 excludedFoods == null ? List.of() : excludedFoods, extractedBy,
                 cuisines == null ? List.of() : cuisines, cuisineDetails == null ? List.of() : cuisineDetails,
                 courseType, excludedCategories == null ? List.of() : excludedCategories,
-                includedCategories == null ? List.of() : includedCategories);
+                includedCategories == null ? List.of() : includedCategories,
+                playDetails == null ? List.of() : playDetails);
     }
 
     /** 코스 생성용 요청으로 바꾸기 (withDefaults 끝난 조건) */
     public CourseRequest toCourseRequest() {
-        return toCourseRequest(List.of(), List.of());
+        return toCourseRequest(List.of(), List.of(), List.of());
     }
 
     /**
      * 코스 생성용 요청 (11주차): order = 앱에서 직접 고친 칸 순서, keepPlaceIds = 킵한 장소
      * - 코스 틀·빼기·추가가 없으면 예전과 똑같음 (자동 틀)
      */
-    public CourseRequest toCourseRequest(List<Slot> order, List<String> keepPlaceIds) {
+    public CourseRequest toCourseRequest(List<Slot> order, List<String> keepPlaceIds, List<String> mustPlayIds) {
         int start = toMinutes(startTime);
         List<String> picked = categories.stream().filter(CourseRules.PLAY_CATEGORIES::contains).toList();
         Set<String> ex = new LinkedHashSet<>(excludedCategories == null ? List.of() : excludedCategories);
@@ -186,7 +195,7 @@ public record SearchConditions(
         return new CourseRequest(region, start, partySize, atmospheres,
                 CrowdPreference.valueOf(crowdPreference), new HashSet<>(allergies), play,
                 order == null ? List.of() : order, drinking(), variants,
-                keepPlaceIds == null ? List.of() : keepPlaceIds);
+                keepPlaceIds == null ? List.of() : keepPlaceIds, mustPlayIds == null ? List.of() : mustPlayIds);
     }
 
     /** 술 코스인지 (11주차): 음식 취향에 술집(BAR)이나 술집 세부(이자카야 등) → true, 제외 음식에 술 → false, 말 없으면 null */
@@ -227,6 +236,7 @@ public record SearchConditions(
         m.put("courseType", courseType);
         m.put("excludedCategories", excludedCategories);
         m.put("includedCategories", includedCategories);
+        m.put("playDetails", playDetails);
         m.put("extractedBy", extractedBy);
         return m;
     }

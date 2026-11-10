@@ -35,8 +35,24 @@ public class CourseGenerator {
         int start = request.startMinute();
         // 킵한 장소 자리 정하기 (11주차): 그 칸이 없으면 칸 추가, 자리가 없으면 이 순서는 못 씀 → 빈 후보
         Map<Integer, CoursePlace> kept = new HashMap<>();
-        List<Slot> order = keepSlots(request.slotOrder(), request.keeps(), places, kept);
-        if (order == null) return new Candidates(request.slotOrder(), List.of(), List.of());
+        List<Slot> base = request.slotOrder();
+        // 놀거리 세부 취향("보드게임"): 놀거리 칸이 없으면 하나 넣기 (술집 앞, 4곳까지)
+        Set<String> must = new HashSet<>(request.mustPlay());
+        if (!must.isEmpty() && !base.contains(Slot.PLAY) && base.size() < CourseRules.MAX_STOPS) {
+            List<Slot> v = new ArrayList<>(base);
+            int bar = v.indexOf(Slot.BAR);
+            v.add(bar < 0 ? v.size() : bar, Slot.PLAY);
+            base = List.copyOf(v);
+        }
+        List<Slot> order = keepSlots(base, request.keeps(), places, kept);
+        if (order == null) return new Candidates(base, List.of(), List.of());
+        int mustIdx = -1;                            // 세부 취향 넣을 놀거리 칸 (킵이 차지 안 한 첫 놀거리 칸)
+        for (int i = 0; i < order.size() && !must.isEmpty(); i++) {
+            if (order.get(i) == Slot.PLAY && !kept.containsKey(i)) {
+                mustIdx = i;
+                break;
+            }
+        }
         Set<String> allergies = request.allergies() == null ? Set.of() : request.allergies();
         List<String> playCategories = request.playCategoriesOrAll();
 
@@ -60,8 +76,10 @@ public class CourseGenerator {
             List<CoursePlace> pool = new ArrayList<>();
             Map<String, Double> scoreById = new HashMap<>();
             for (CoursePlace place : places) {
-                if (fitsSlot(place, slot, playCategories, request.wantsQuiet(), barSlot)
-                        && CourseRules.allowed(place, request.region(), hour, allergies)) {
+                // 세부 취향 칸이면 그 종류 장소만 (놀거리 큰 종류 제한은 안 봄), 아니면 칸 규칙대로
+                boolean fits = k == mustIdx ? must.contains(place.placeId())
+                        : fitsSlot(place, slot, playCategories, request.wantsQuiet(), barSlot);
+                if (fits && CourseRules.allowed(place, request.region(), hour, allergies)) {
                     pool.add(place);
                     scoreById.put(place.placeId(), CourseRules.round2(scorer.score(place, hour).total()));
                 }
@@ -119,6 +137,7 @@ public class CourseGenerator {
             combine(candidates, 0, new ArrayList<>(), start, scorer, plans);
         }
         Set<String> keepIds = new HashSet<>(request.keeps());
+        Set<String> mustIds = new HashSet<>(request.mustPlay());
 
         // 5. 점수 순 (같으면 조합 순서 유지), 장소 안 겹치게 최대 COURSE_COUNT개
         plans.sort(Comparator.comparingDouble(p -> -p.score().total()));
@@ -129,8 +148,9 @@ public class CourseGenerator {
         Set<String> used = new HashSet<>();
         for (CoursePlan plan : plans) {
             // 킵한 장소는 모든 코스에 들어가니까 겹침 검사에서 뺌
+            // 놀거리 세부 취향 장소(보드게임카페 등)도 몇 곳 안 돼서 겹쳐도 됨
             List<String> ids = plan.stops().stream().map(CoursePlan.Stop::placeId)
-                    .filter(id -> !keepIds.contains(id)).toList();
+                    .filter(id -> !keepIds.contains(id) && !mustIds.contains(id)).toList();
             if (ids.stream().anyMatch(used::contains)) continue;
             int rank = chosen.size() + 1;
             chosen.add(plan.withMeta(null, rank,

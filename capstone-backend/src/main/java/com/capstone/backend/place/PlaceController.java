@@ -116,13 +116,17 @@ public class PlaceController {
                 .orElseThrow(() -> ApiException.notFound("PLACE_NOT_FOUND", "장소를 찾을 수 없어요."));
         String dayType = RuleConditionExtractor.dayType(day);
         List<PlaceStore.Congestion> hours = new ArrayList<>();
+        // 요일별 파일(윤경)이 있으면 그 날짜 요일 값, 없으면 평일·주말 값 (앱 요일 탭이 날짜 바꿔서 이걸 다시 부름)
+        String today = PlaceStore.DOWS.get(day.getDayOfWeek().getValue() - 1);
+        boolean hasDow = store.dowSource() != null;
         for (int h = 9; h <= 23; h++) {
-            hours.add(store.congestion(placeId, dayType, h, PlaceStore.Basis.ALL_DAY));
+            hours.add(hasDow ? store.congestionByDow(placeId, today, h)
+                    : store.congestion(placeId, dayType, h, PlaceStore.Basis.ALL_DAY));
         }
         Map<String, Object> byHour = new LinkedHashMap<>();
         byHour.put("date", day.toString());
         byHour.put("dayType", dayType);
-        byHour.put("basis", "ALL_DAY");
+        byHour.put("basis", hasDow ? "ALL_DAY_DOW" : "ALL_DAY");
         byHour.put("hours", hours);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("placeId", p.placeId());

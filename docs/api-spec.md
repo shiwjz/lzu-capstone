@@ -54,6 +54,15 @@
 - 추가는 그 칸이 없을 때만 넣음 (술집은 맨 끝, 나머지는 술집 앞), 장소 최대 4곳
 - 놀거리가 두 번이면 서로 다른 종류 (방탈출 → 볼링, 방탈출 → 방탈출은 안 나옴)
 
+### 3-1. 놀거리 세부 취향 (`conditions.playDetails`, 11/10 추가)
+
+- "보드게임하면서 놀고 싶어"처럼 놀거리 종류를 콕 집으면 **모든 코스에 그 종류 장소를 하나 꼭 넣음** (놀거리 칸이 없으면 칸 추가)
+- 놀거리 큰 종류(ACTIVITY) 안에 오락실·노래방·클라이밍·보드게임이 다 섞여 있어서, 큰 종류만으로는 보드게임이 잘 안 나왔음
+- 세부 장소는 몇 곳 안 돼서(성수 보드게임카페 2곳) 코스끼리 같은 곳이 들어가도 됨
+- 값: 보드게임 · 방탈출 · 노래방 · 볼링 · 오락실 · 만화카페 · 클라이밍 · 사주·타로 · 고양이카페 · 공방 · 전시 · 공연 · 영화 · 사격 · 탁구 · 소품샵 (`course/PlayDetail`)
+- 그 시간에 문 연 곳이 없으면 코스 0개 + `notice`
+- 앱에서 칩으로 보여주려면 `conditions.playDetails` 그대로 표시
+
 ### 4. 장소 수별 총 시간 기준
 
 | 장소 수 | 목표 | 허용 |
@@ -94,7 +103,7 @@
 
 ### 8. 검색 응답에 추가
 
-- `conditions`: `courseType`, `excludedCategories`, `includedCategories`
+- `conditions`: `courseType`, `excludedCategories`, `includedCategories`, `playDetails`
 - 맨 위: `titlesBy`, `order`(받은 순서), `keepPlaceIds`(받은 킵)
 
 ## v0.6에서 바뀐 점 (11주차 첫째)

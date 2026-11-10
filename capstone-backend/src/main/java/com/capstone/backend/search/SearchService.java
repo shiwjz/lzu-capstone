@@ -7,6 +7,7 @@ import com.capstone.backend.course.CoursePlan;
 import com.capstone.backend.course.CourseRequest;
 import com.capstone.backend.course.CourseRules;
 import com.capstone.backend.course.CourseShape;
+import com.capstone.backend.course.PlayDetail;
 import com.capstone.backend.course.PlaceScore;
 import com.capstone.backend.course.PlaceScorer;
 import com.capstone.backend.course.Slot;
@@ -148,6 +149,9 @@ public class SearchService {
             c = c.withShape(c.courseType(), edits.get(0), edits.get(1));
         }
         if (req.courseType() != null) c = c.withShape(req.courseType(), c.excludedCategories(), c.includedCategories());
+        if (req.conditions() == null && (c.playDetails() == null || c.playDetails().isEmpty())) {
+            c = c.withPlayDetails(RuleConditionExtractor.playDetails(req.query()));
+        }
         if (my != null) {
             // 조건 화면에서 직접 고친 조건(USER)이면 알레르기만 더하고, 문장이면 빈 칸을 내 설정으로
             c = req.conditions() != null
@@ -180,7 +184,13 @@ public class SearchService {
         List<Slot> order = parseOrder(req.order());
         List<String> keeps = checkKeeps(req.keepPlaceIds(), c.region());
 
-        CourseRequest courseRequest = c.toCourseRequest(order, keeps);
+        // 놀거리 세부 취향 장소들 (그 지역에 하나도 없으면 제한 안 함)
+        List<String> details = c.playDetails();
+        String region = c.region();
+        List<String> mustPlay = details.isEmpty() ? List.of() : store.coursePlaces().stream()
+                .filter(p -> p.region().equals(region) && PlayDetail.matches(p, details))
+                .map(CoursePlace::placeId).toList();
+        CourseRequest courseRequest = c.toCourseRequest(order, keeps, mustPlay);
         PlaceScorer scorer = scorers.forConditions(c);
         List<String> cuisines = c.cuisines();
         Boolean drinking = c.drinking();
@@ -305,6 +315,9 @@ public class SearchService {
     private static String noCourseNotice(CourseRequest r, SearchConditions c) {
         if (Boolean.TRUE.equals(r.drinking()) && r.startMinute() < 15 * 60) {
             return "술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 3시 이후로 바꿔 보세요.";
+        }
+        if (!r.mustPlay().isEmpty()) {
+            return "이 시간엔 '" + String.join("·", c.playDetails()) + "' 할 수 있는 곳이 문을 안 열었거나 코스가 안 맞아요. 시간을 바꿔 보세요.";
         }
         if (!r.keeps().isEmpty()) {
             return "킵한 장소를 넣어서는 시간에 맞는 코스를 못 찾았어요. 시간을 바꾸거나 킵을 하나 빼 보세요.";
@@ -552,6 +565,9 @@ public class SearchService {
         if (!CourseShape.EDIT_CODES.containsAll(c.excludedCategories())
                 || !CourseShape.EDIT_CODES.containsAll(c.includedCategories())) {
             throw ApiException.invalid("excludedCategories·includedCategories 값을 확인해 주세요.");
+        }
+        if (!PlayDetail.SENTENCE_WORDS.keySet().containsAll(c.playDetails())) {
+            throw ApiException.invalid("playDetails 값을 확인해 주세요.");
         }
     }
 

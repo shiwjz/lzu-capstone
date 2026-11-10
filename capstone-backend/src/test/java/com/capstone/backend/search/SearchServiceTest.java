@@ -200,6 +200,22 @@ class SearchServiceTest {
     }
 
     @Test
+    @DisplayName("놀거리 세부 취향: '카페는 빼고 보드게임하면서' → 모든 코스에 보드게임카페 (11/10 예민 테스트 문장)")
+    void playDetailBoardGame() {
+        assertEquals(List.of("보드게임"), RuleConditionExtractor.playDetails("보드게임하면서 놀고싶어"));
+        assertEquals(List.of(), RuleConditionExtractor.playDetails("보드게임카페는 빼고"));
+        assertEquals(List.of("방탈출", "노래방"), RuleConditionExtractor.playDetails("방탈출하고 코노 가자"));
+        Map<String, Object> data = service().search(query("토요일 오후 3시에 성수에서 놀건데 카페는 빼고 보드게임하면서 놀고싶어"));
+        assertEquals(List.of("보드게임"), ((Map<?, ?>) data.get("conditions")).get("playDetails"));
+        List<CoursePlan> cs = courses(data);
+        assertTrue(cs.size() > 2);                  // 보드게임카페는 2곳뿐이지만 겹쳐도 돼서 코스 여러 개
+        for (CoursePlan c : cs) {
+            assertTrue(c.route().startsWith("보드게임") || c.route().contains("→ 보드게임"), c.route());
+            assertFalse(slots(c).contains(Slot.CAFE));
+        }
+    }
+
+    @Test
     @DisplayName("데이터: 장소 3,306곳, 혼잡도 자정 넘어도 조회")
     void store() {
         assertEquals(3306, STORE.all().size());
