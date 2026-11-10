@@ -59,15 +59,21 @@ SLEEP_SEC = 0.2           # 요청 사이 쉬기
 
 # 태그 7개(예린)와 같은 이름, 리뷰에 이 단어가 있으면 그 태그 '언급'으로 셈
 # - 블로그 태그 사전이랑 일부러 똑같이 하지 않음 (같으면 또 순환) → 리뷰에서 자연스럽게 쓰는 말 위주
+# 11/4 예린 태그 v3 이름 (고르는 6개 + 상황 4개)
 TAG_WORDS = {
-    '조용함': ['조용', '한적', '아늑', '차분', '잔잔'],
+    '조용한': ['조용', '한적', '아늑', '차분', '잔잔'],
+    '활기찬': ['활기', '북적', '시끌', '신나', '핫플', '힙'],
+    '감성적인': ['감성', '분위기', '인테리어', '사진', '인스타', '예쁘', '이쁘'],
+    '가성비좋은': ['가성비', '저렴', '싸고', '착한 가격', '가격 대비', '양 많'],
+    '넓고편한': ['넓', '편한', '편하게', '여유롭', '소파'],
+    '뷰좋은': ['뷰', '전망', '루프탑', '야경', '테라스', '창가'],
     '데이트': ['데이트', '연인', '남자친구', '여자친구', '남친', '여친', '기념일'],
     '단체': ['단체', '모임', '회식', '여럿이', '단체석', '룸'],
-    '혼자가능': ['혼밥', '혼자', '혼술', '혼카페', '1인'],
-    '디저트': ['디저트', '케이크', '빵', '마카롱', '쿠키', '타르트'],
-    '사진': ['사진', '인스타', '포토', '감성', '예쁘', '이쁘'],
-    '가성비': ['가성비', '저렴', '싸고', '착한 가격', '가격 대비', '양 많'],
+    '혼자': ['혼밥', '혼자', '혼술', '혼카페', '1인'],
+    '아이': ['아이', '아기', '애기', '키즈', '유모차', '어린이'],
 }
+# 예전 이름 (v2 태그로 만든 평가 파일·결과 파일도 읽히게)
+OLD_NAME = {'조용함': '조용한', '가성비': '가성비좋은', '혼자가능': '혼자', '사진': '감성적인'}
 # 혼잡 반대 신호 (조용함 판단 때 같이 봄)
 BUSY_WORDS = ['시끄', '북적', '웨이팅', '줄 서', '줄서', '복잡', '사람 많']
 
@@ -182,6 +188,8 @@ def fetch(args):
     key = os.environ.get('GOOGLE_PLACES_API_KEY')
     if not key:
         sys.exit('GOOGLE_PLACES_API_KEY 환경변수 넣고 다시 실행 (키는 코드에 쓰지 않기)')
+    if not key.isascii() or ' ' in key:
+        sys.exit('키에 한글·공백이 들어가 있음 → export GOOGLE_PLACES_API_KEY=AIza... 처럼 키만 다시 넣기')
 
     new_file = not os.path.exists(args.out)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
@@ -189,6 +197,7 @@ def fetch(args):
         w = csv.DictWriter(f, fieldnames=OUT_COLS)
         if new_file:
             w.writeheader()
+        errors = 0
         for k, pid in enumerate(todo, 1):
             place = places[pid]
             try:
@@ -201,21 +210,26 @@ def fetch(args):
                 if e.code == 429:
                     print('요청 너무 많음 → 30초 쉬고 다음 장소'); time.sleep(30)
                 row = {'place_id': pid, 'name': place['name'], 'status': f'HTTP_{e.code}'}
-            except Exception as e:      # 인터넷 끊김 등 → 다음에 다시 돌리면 이어서 (ERROR 줄은 지우고)
-                row = {'place_id': pid, 'name': place['name'], 'status': f'ERROR_{type(e).__name__}'}
+            except Exception as e:      # 인터넷 끊김 등 → 저장 안 하고 넘어감 (다시 돌리면 그 장소만 다시 함)
+                errors += 1
+                print(f'  실패 {pid} {type(e).__name__}')
+                if errors >= 3:
+                    sys.exit('3번 연속 실패 → 멈춤 (키·인터넷 확인)')
+                continue
+            errors = 0
             w.writerow(row)
             f.flush()
             if k % 20 == 0 or k == len(todo):
                 print(f'  {k}/{len(todo)}')
             time.sleep(SLEEP_SEC)
-    print(f'저장: {args.out}  (OK 아닌 줄은 지우고 다시 돌리면 그 장소만 다시 함)')
+    print(f'저장: {args.out}')
 
 
 # ---------------- score ----------------
 def relevance(flag_row, moods):
     """구글 기준 '맞는 장소' 점수 0~1 (윤경이랑 맞출 것, 지금은 초안)
     - 요청 분위기 있으면: 분위기마다 리뷰 1개 이상 언급 → 1, 아니면 0 → 평균
-      · 조용함은 '시끄·웨이팅' 언급이 조용 언급보다 많으면 0
+      · 조용한은 '시끄·웨이팅' 언급이 조용 언급보다 많으면 0
     - 요청 분위기 없으면: 구글 별점 4.0 이상 → 1
     - 구글에서 못 찾은 장소는 None (평가에서 뺌)"""
     if flag_row is None or flag_row.get('status') != 'OK':
@@ -227,8 +241,10 @@ def relevance(flag_row, moods):
             return None
     hits = []
     for t in moods:
-        n = int(flag_row.get(f'flag_{t}') or 0)
-        if t == '조용함' and int(flag_row.get('flag_busy') or 0) > n:
+        new = OLD_NAME.get(t, t)
+        col = f'flag_{new}' if f'flag_{new}' in flag_row else f'flag_{t}'      # 새 이름 열 없으면 예전 이름 열
+        n = int(flag_row.get(col) or 0)
+        if new == '조용한' and int(flag_row.get('flag_busy') or 0) > n:
             n = 0
         hits.append(1.0 if n >= 1 else 0.0)
     return sum(hits) / len(hits)

@@ -21,7 +21,7 @@
     · 음식 취향: 장소마다 큰 종류(cuisine)·세부(detail) → place_cuisine.csv(예린 확정본) 있으면 그걸, 없으면 임시 분류
       (카카오 분류 → 없으면 가게 이름 → 그것도 없으면 큰 종류만) → 저장소 맨 위 place_cuisine_draft.csv로도 저장
     · 음식 큰 종류 고르면 식사 칸은 그 종류만, 세부 고르면 사용자 요구 점수에 가점 (딱 맞음 1.0 / 세부 없음 0.5 / 다른 세부 0.2)
-    · 인원 → 분위기 자동 (1명 혼자가능, 2명 데이트(친구·가족·회사 빼고), 4명 이상 단체)
+    · 동행·인원 → 상황 태그 자동 (데이트: 연인 / 단체: 4명 이상·회사 / 혼자: 1명 / 아이: 가족) - 예린 태그 v3
     · 코스 최대 10개, 코스마다 keywords
 - 거리·도보 시간·도착 시각·코스 조합: 코스 생성 규칙대로 실제 계산
 - SNACK(베이커리·아이스크림 등)은 코스 칸에 안 넣음. 장소 추천·코스에 직접 추가만 가능
@@ -32,6 +32,7 @@
     (places.tsv, congestion.tsv, congestion_seoul.tsv, cell_profile.tsv)
 """
 import csv
+import datetime
 import itertools
 import json
 import math
@@ -57,12 +58,34 @@ STAY_MIN = {'FOOD': 60, 'CAFE': 50, 'CULTURE': 60, 'ACTIVITY': 60, 'EXPERIENCE':
             'SHOPPING': 40, 'TOUR': 40, 'NATURE': 40, 'SNACK': 30}
 WALK_M_PER_MIN = 67          # 걷는 속도 4km/h
 DETOUR = 1.3                 # 직선거리 → 실제 걷는 거리 보정
-TARGET_MIN, TOL_MIN = 180, 30  # 총 3시간 ±30분
+TARGET_MIN, TOL_MIN = 180, 30  # 총 3시간 ±30분 (3곳 기준)
+
+
+def target_min(n):
+    """장소 수별 목표 시간 (서버 CourseRules.targetMinutes): 2곳 135 / 3곳 180 / 4곳 245"""
+    return 135 if n <= 2 else TARGET_MIN if n == 3 else 245
+
+
+def tol_min(n):
+    return 35 if n <= 2 else TOL_MIN if n == 3 else 45
+
+
+def duration_text(m):
+    return f'{m // 60}시간' if m % 60 == 0 else f'{m // 60}시간 {m % 60}분'
 WALK_ZERO_MIN = 40           # 총 도보 40분이면 이동 효율 0
 TOP_K = 10                   # 칸별 후보 수
 W_PLACE = {'request': 0.45, 'target': 0.30, 'congestion': 0.25}
 W_COURSE = {'placeAvg': 0.70, 'moveEfficiency': 0.20, 'timeFit': 0.10}
 BAR_FROM_HOUR = 18           # 술집은 18시 이후 도착일 때만
+# 11주차: 종류별 기본 영업시간 (여는 시, 닫는 시) - 서버 CourseRules.DEFAULT_HOURS랑 같게, 24 넘으면 다음날
+DEFAULT_HOURS = {'FOOD': (11, 22), 'CAFE': (9, 22), 'SNACK': (9, 21), 'CULTURE': (10, 19), 'EXPERIENCE': (10, 21),
+                 'ACTIVITY': (10, 24), 'SHOPPING': (11, 21), 'TOUR': (0, 24), 'NATURE': (0, 24)}
+BAR_HOURS = (17, 26)
+LATE_CULTURE_HOURS = (10, 24)  # 영화관·공연장
+THEME_PLAY = ['CULTURE', 'NATURE', 'SHOPPING', 'TOUR']   # 놀거리 종류 하나만 말하면 놀거리 → 카페 → 식사
+NOMINAL_STAY = {'MEAL': 60, 'CAFE': 50, 'PLAY': 60, 'BAR': 60}
+BAR_LABEL = {'호프,요리주점': '호프', '일본식주점': '이자카야', '실내포장마차': '포차'}   # 경로 이름용
+BETTER_START_MIN_GAIN = 8    # 덜 붐비는 출발 시간: 평균 혼잡도가 8%p 이상 낮아질 때만
 # 조용한 곳 원하면 놀거리 칸에서 빼는 시끄러운 곳 (노래방 문제 대책, 카카오 카테고리·이름 기준)
 NOISY_PLAY = ['노래방', '노래연습장', '코인노래', '멀티방', '오락실', 'PC방', '볼링', '당구', '클럽', 'VR', '사격']
 PLAY_LABEL = {'미술,공예': '공방', '화랑': '전시', '보드카페': '보드게임', '방탈출카페': '방탈출', '만화방': '만화카페'}   # 코스 제목용
@@ -88,7 +111,7 @@ def slot_of(cat):
 
 
 def hm(minutes):
-    return f'{minutes // 60:02d}:{minutes % 60:02d}'
+    return f'{(minutes // 60) % 24:02d}:{minutes % 60:02d}'   # 자정 넘으면 00:xx (서버 CourseRules.hhmm이랑 같게)
 
 
 def to_min(hhmm):
@@ -107,6 +130,54 @@ def dist_m(p, q):
 
 def walk_min(meters):
     return max(1, math.ceil(meters * DETOUR / WALK_M_PER_MIN))
+
+
+def is_bar(p):
+    return p.get('cuisine') == 'BAR' or '술집' in p['kakaoCategory']
+
+
+def slot_of_place(p):
+    """술집이면 BAR (11주차), 아니면 카테고리대로"""
+    return 'BAR' if is_bar(p) else slot_of(p['category'])
+
+
+def open_at(p, hour):
+    """종류별 기본 영업시간 안에 도착하는지 (서버 CourseRules.openAt)"""
+    if is_bar(p):
+        o, c = BAR_HOURS
+    elif '영화관' in p['kakaoCategory'] or '공연장' in p['kakaoCategory']:
+        o, c = LATE_CULTURE_HOURS
+    else:
+        o, c = DEFAULT_HOURS.get(p['category'], (0, 24))
+    h = hour % 24
+    return (o <= h < c) or (o <= h + 24 < c)
+
+
+def drinking(cond):
+    """술 코스인지: 제외 음식에 술 → False, 음식 취향에 술집 → True, 말 없으면 None"""
+    if '술' in (cond.get('excludedFoods') or []):
+        return False
+    if 'BAR' in (cond.get('cuisines') or []):
+        return True
+    if any(DETAIL_FAMILY.get(d) == 'BAR' for d in (cond.get('cuisineDetails') or [])):
+        return True
+    return None
+
+
+def course_order(cond, start):
+    """코스 틀 (서버 CourseRules.slotOrder(start, drinking, playCategories))"""
+    hh = start // 60
+    d = drinking(cond)
+    picked = [c for c in cond['categories'] if c in PLAY_CATS]
+    if d is True:
+        if hh >= 17:
+            return ['MEAL', 'BAR', 'BAR']
+        return ['PLAY', 'CAFE', 'MEAL', 'BAR'] if hh == 15 else ['PLAY', 'MEAL', 'BAR']
+    if hh < 17 and len(picked) == 1 and picked[0] in THEME_PLAY:
+        return ['PLAY', 'CAFE', 'MEAL']
+    if hh >= 20 and d is None:
+        return ['MEAL', 'PLAY', 'BAR']
+    return slot_order(start)
 
 
 def slot_order(start):
@@ -199,22 +270,17 @@ def cuisine_of(p):
 
 
 def wants_cuisine(p, cond):
-    """음식 큰 종류 골랐으면 식사 칸은 그 종류만 (카페·놀거리는 상관없음)"""
-    return not cond.get('cuisines') or p['category'] != 'FOOD' or p['cuisine'] in cond['cuisines']
+    """음식 큰 종류 골랐으면 식사 칸은 그 종류만 (카페·놀거리는 상관없음)
+    11주차: 술집(BAR)은 술 코스 틀 술집 칸용 → 식사 거르기엔 안 씀"""
+    cu = cond.get('cuisines') or []
+    if not cu or p['category'] != 'FOOD':
+        return True
+    if is_bar(p):
+        return 'BAR' in cu
+    meal = [c for c in cu if c != 'BAR']
+    return not meal or p['cuisine'] in meal
 
 
-def detail_fit(p, cond):
-    """세부 취향 가점: 딱 맞음 1.0 / 큰 종류만 맞고 세부 없음 0.5 / 같은 큰 종류인데 다른 세부 0.2 / 해당 없음 None
-    - 사용자가 고른 세부가 속한 큰 종류에서만 판단 (일식 세부만 골랐으면 카페는 가점 계산 안 함)"""
-    wanted = cond.get('cuisineDetails') or []
-    if not wanted or p['cuisine'] is None:
-        return None
-    families = {DETAIL_FAMILY.get(d) for d in wanted}
-    if p['cuisine'] not in families:
-        return None
-    if p['cuisineDetail'] in wanted:
-        return 1.0
-    return 0.5 if p['cuisineDetail'] is None else 0.2
 
 
 DETAIL_FAMILY = {}   # 세부 → 큰 종류 (아래에서 채움)
@@ -227,18 +293,17 @@ DETAIL_FAMILY.update({'해물·생선': 'KOREAN', '중국요리': 'CHINESE', '�
 
 
 def party_moods(cond):
-    """인원 → 분위기 자동 (10/31 회의): 1명 혼자가능, 2명 데이트(친구·가족·회사 빼고), 4명 이상 단체"""
-    n = cond.get('partySize')
-    add = None
-    if n == 1:
-        add = '혼자가능'
-    elif n == 2 and cond.get('companionType') not in ('FRIEND', 'FAMILY', 'COWORKER'):
-        add = '데이트'
-    elif n is not None and n >= 4:
-        add = '단체'
-    if add and add not in cond['moods']:
-        cond = {**cond, 'moods': cond['moods'] + [add]}
-    return cond
+    """동행·인원 → 상황 태그 자동 (예린 tag_dictionary.py v3 SITUATION_RULES, 11/4, 서버 withPartyMoods랑 같게)
+    데이트: COUPLE / 단체: 4명 이상 또는 COWORKER / 혼자: 1명 또는 SOLO / 아이: FAMILY"""
+    n, comp = cond.get('partySize'), cond.get('companionType')
+    moods = list(cond['moods'])
+    for tag, ok in (('데이트', comp == 'COUPLE'),
+                    ('단체', (n is not None and n >= 4) or comp == 'COWORKER'),
+                    ('혼자', n == 1 or comp == 'SOLO'),
+                    ('아이', comp == 'FAMILY')):
+        if ok and tag not in moods:
+            moods.append(tag)
+    return {**cond, 'moods': moods}
 
 
 def congestion(p, day_type, hour, basis='same_time'):
@@ -253,11 +318,8 @@ def place_score(p, cond, hour):
     cong = congestion(p, cond['dayType'], hour)
     cell = p['cellId']
     cluster = TARGET['cluster_avg'].get(TARGET['cell_cluster'].get(cell))
-    req = ps.request_score(cond['moods'], {t['tag']: t['mentions'] for t in p['tags']})
-    fit_d = detail_fit(p, cond)
-    if fit_d is not None:   # 세부 취향 가점: 분위기 점수들과 같이 평균 (분위기 없으면 세부 점수만) - 윤경 확정 전 임시
-        n = len(cond['moods'])
-        req = (req * n + fit_d) / (n + 1) if n else fit_d
+    req = ps.request_score(cond['moods'], {t['tag']: t['mentions'] for t in p['tags']},   # 윤경 11/4: 세부 음식 포함
+                           cond.get('cuisineDetails'), p['cuisine'], p['cuisineDetail'])
     tgt = ps.target_score(TARGET['cells'].get(cell), cluster, TARGET['region_avg'][p['region']],
                           cond.get('gender'), cond.get('ageGroup'))
     fit = ps.congestion_fit(cond['crowdPreference'], cong['level'])
@@ -349,7 +411,7 @@ def load_team_data(root):
             TAGS.setdefault(r['place_id'], []).append({'tag': r['tag'], 'mentions': int(r['mentions'])})
     for tags in TAGS.values():
         tags.sort(key=lambda t: -t['mentions'])       # 언급 많은 순 (같으면 파일 순서)
-    final = os.path.join(root, 'place_cuisine.csv')  # 예린 확정본 (place_id, cuisine, detail, source)
+    final = os.path.join(root, 'blog_tag', 'place_cuisine.csv')  # 예린 확정본 (place_id, cuisine, detail, source)
     if os.path.exists(final):
         with open(final, encoding='utf-8-sig', newline='') as f:
             for r in csv.DictReader(f):
@@ -372,6 +434,8 @@ def allowed(p, cond, arrive_hour):
         return False
     if '술집' in p['kakaoCategory'] and arrive_hour < BAR_FROM_HOUR:
         return False
+    if not open_at(p, arrive_hour):
+        return False                                   # 종류별 기본 영업시간 (11주차)
     if p['category'] == 'FOOD' and ('간식' in p['kakaoCategory'] or '구내식당' in p['kakaoCategory']):
         return False                                   # 혹시 남은 간식·구내식당은 식사 칸 제외
     if wants_quiet(cond) and slot_of(p['category']) == 'PLAY' and is_noisy(p):
@@ -385,7 +449,7 @@ def allowed(p, cond, arrive_hour):
 
 
 def wants_quiet(cond):
-    return cond['crowdPreference'] == 'QUIET' or '조용함' in cond['moods']
+    return cond['crowdPreference'] == 'QUIET' or '조용한' in cond['moods']
 
 
 def is_noisy(p):
@@ -406,7 +470,7 @@ def build_course(stops_in, cond, start):
             walk_total += w
             dist_total += d
         score, cong = place_score(p, cond, t // 60)   # 도착 시각 기준 혼잡도 재반영
-        stops.append({'order': i, 'slot': slot_of(p['category']), 'placeId': p['placeId'],
+        stops.append({'order': i, 'slot': slot_of_place(p), 'placeId': p['placeId'],
                       'name': p['name'], 'category': p['category'], 'lat': p['lat'], 'lng': p['lng'],
                       'arriveAt': hm(t), 'leaveAt': hm(t + stay), 'stayMinutes': stay,
                       'walkMinutesFromPrev': w, 'distanceMetersFromPrev': d,
@@ -415,9 +479,12 @@ def build_course(stops_in, cond, start):
         t += stay
         prev = p
     total = t - start
-    place_avg = sum(s['placeScore'] for s in stops) / len(stops)
+    acc = 0.0
+    for s in stops:                 # sum() 대신 하나씩 더하기: 파이썬 3.12 sum()은 보정 덧셈이라 Java(+=)랑 끝자리가 달라짐
+        acc += s['placeScore']
+    place_avg = acc / len(stops)
     move_eff = max(0.0, 1 - walk_total / WALK_ZERO_MIN)
-    time_fit = max(0.0, 1 - abs(total - TARGET_MIN) / TOL_MIN)
+    time_fit = max(0.0, 1 - abs(total - target_min(len(stops_in))) / tol_min(len(stops_in)))
     course_total = (W_COURSE['placeAvg'] * place_avg + W_COURSE['moveEfficiency'] * move_eff
                     + W_COURSE['timeFit'] * time_fit)
     return {'startAt': hm(start), 'endAt': hm(t), 'totalMinutes': total,
@@ -439,6 +506,68 @@ def play_label(p):
     if parts[i] == '테마카페' and len(parts) > i + 1:
         i += 1
     return PLAY_LABEL.get(parts[i], parts[i].replace(',', '·'))
+
+
+def stop_label(p):
+    """경로 이름용 장소 종류 (서버 CourseText.stopLabel)"""
+    parts = p['kakaoCategory'].split(' > ')
+    if is_bar(p):
+        return BAR_LABEL.get(parts[2], parts[2].replace(',', '·')) if len(parts) > 2 else '술집'
+    cat = p['category']
+    if cat == 'FOOD':
+        if p['cuisineDetail']:
+            return p['cuisineDetail']
+        if p['cuisine'] and p['cuisine'] != 'ETC':
+            return CUISINE_LABEL[p['cuisine']]
+        return parts[1].replace(',', '·') if len(parts) > 1 else '식당'
+    if cat == 'CAFE':
+        return play_label(p) if '테마카페' in p['kakaoCategory'] else '카페'
+    if cat == 'SNACK':
+        return '디저트'
+    return play_label(p)
+
+
+def course_route(course, by_id):
+    """코스 경로 이름 (11주차): 칵테일바 → 카페 → 방탈출"""
+    return ' → '.join(stop_label(by_id[s['placeId']]) for s in course['stops'])
+
+
+def jround(x):
+    """Java Math.round (반올림, .5는 올림)"""
+    return int(math.floor(x + 0.5))
+
+
+def avg_all_day(course, cond, shift, by_id):
+    total = 0
+    for s in course['stops']:
+        hour = math.trunc((to_min(s['arriveAt']) + shift) / 60)   # Java 정수 나눗셈
+        if shift != 0 and not open_at(by_id[s['placeId']], hour):
+            return None
+        total += congestion(by_id[s['placeId']], cond['dayType'], hour, 'all_day')['percentile']
+    return total / len(course['stops'])
+
+
+def better_start(course, cond, by_id):
+    """덜 붐비는 출발 시간 (11주차, 서버 SearchService.betterStart)"""
+    if cond['crowdPreference'] == 'LIVELY':
+        return None
+    start = to_min(course['startAt'])
+    current = avg_all_day(course, cond, 0, by_id)
+    best, best_shift = current, None
+    for shift in (-120, -60, 60, 120):
+        st = start + shift
+        if st < 9 * 60 or st > 22 * 60:
+            continue
+        avg = avg_all_day(course, cond, shift, by_id)
+        if avg is not None and avg < best:
+            best, best_shift = avg, shift
+    if best_shift is None or current - best < BETTER_START_MIN_GAIN:
+        return None
+    cur, now = jround(current), jround(best)
+    word = '일찍' if best_shift < 0 else '늦게'
+    return {'startTime': hm(start + best_shift), 'shiftMinutes': best_shift,
+            'avgPercentile': now, 'currentAvgPercentile': cur,
+            'message': f"{abs(best_shift) // 60}시간 {word} 출발하면 덜 붐벼요 (혼잡 {cur}% → {now}%)"}
 
 
 def course_text(course, cond, by_id):
@@ -483,39 +612,60 @@ def course_keywords(course, cond, by_id):
     return out[:4]
 
 
-def warnings_of(course, cond):
+def warnings_of(course, cond, by_id=None):
     out = []
-    if course['totalMinutes'] > TARGET_MIN + TOL_MIN:
-        out.append({'code': 'TOTAL_TIME_OVER', 'message': f"총 {course['totalMinutes']}분으로 3시간 30분을 넘어요"})
-    if course['totalMinutes'] < TARGET_MIN - TOL_MIN:
-        out.append({'code': 'TOTAL_TIME_UNDER', 'message': f"총 {course['totalMinutes']}분으로 2시간 30분보다 짧아요"})
+    n = len(course['stops'])
+    hi, lo = target_min(n) + tol_min(n), target_min(n) - tol_min(n)
+    if course['totalMinutes'] > hi:
+        out.append({'code': 'TOTAL_TIME_OVER', 'message': f"총 {course['totalMinutes']}분으로 {duration_text(hi)}을 넘어요"})
+    if course['totalMinutes'] < lo:
+        out.append({'code': 'TOTAL_TIME_UNDER', 'message': f"총 {course['totalMinutes']}분으로 {duration_text(lo)}보다 짧아요"})
     for s in course['stops']:
         if s['walkMinutesFromPrev'] and s['walkMinutesFromPrev'] > 15:
             out.append({'code': 'LONG_WALK', 'message': f"{s['name']}까지 걸어서 {s['walkMinutesFromPrev']}분 걸려요"})
         if cond['crowdPreference'] == 'QUIET' and s['congestion']['level'] == 'BUSY':
             out.append({'code': 'BUSY_AT_ARRIVAL', 'message': f"{s['arriveAt']}에 {s['name']} 주변이 붐벼요"})
+    for s in course['stops'] if by_id else []:      # 11주차: 기본 영업시간 밖 도착
+        if not open_at(by_id[s['placeId']], int(s['arriveAt'][:2])):
+            out.append({'code': 'MAYBE_CLOSED',
+                        'message': f"{s['arriveAt']}에는 {s['name']} 영업이 끝났을 수 있어요 (종류별 기본 영업시간 기준)"})
     return out
+
+
+def tie_break(p, cond):
+    """점수 같을 때 순서 (11/4): 원하는 분위기 태그 언급 수 합 큰 곳 먼저 (서버 PlaceScorer.tieBreak랑 같게)"""
+    return sum(t['mentions'] for t in p['tags'] if t['tag'] in cond['moods'])
 
 
 def recommend(places, cond):
     start = to_min(cond['startTime'])
-    order = slot_order(start)
-    # 칸별 대략 도착 시각 (후보 순위용), 이동은 칸마다 10분으로 가정
-    nominal, t = {}, start
+    order = course_order(cond, start)
+    # 칸별 대략 도착 시각 (후보 순위용), 이동은 칸마다 10분으로 가정 - 술집 2번처럼 같은 칸 두 번 → 칸 순서대로 목록
+    nominal, t = [], start
     for slot in order:
-        nominal[slot] = t // 60
-        t += {'MEAL': 60, 'CAFE': 50, 'PLAY': 60}[slot] + 10
+        nominal.append(t // 60)
+        t += NOMINAL_STAY[slot] + 10
+    bar_slot = 'BAR' in order
     play_cats = [c for c in cond['categories'] if c in PLAY_CATS] or PLAY_CATS
-    cands = {}
-    for slot in order:
-        cats = {'MEAL': ['FOOD'], 'CAFE': ['CAFE'], 'PLAY': play_cats}[slot]
-        pool = [p for p in places if p['category'] in cats and allowed(p, cond, nominal[slot])]
-        pool.sort(key=lambda p: -place_score(p, cond, nominal[slot])[0]['total'])
-        cands[slot] = pool[:TOP_K]
+
+    def fits(p, slot):
+        if slot == 'MEAL':
+            return p['category'] == 'FOOD' and not (bar_slot and is_bar(p))
+        if slot == 'BAR':
+            return p['category'] == 'FOOD' and is_bar(p)
+        return p['category'] in {'CAFE': ['CAFE'], 'PLAY': play_cats}[slot]
+
+    cands = []
+    for k, slot in enumerate(order):
+        pool = [p for p in places if fits(p, slot) and allowed(p, cond, nominal[k])]
+        pool.sort(key=lambda p: (-place_score(p, cond, nominal[k])[0]['total'], -tie_break(p, cond)))
+        cands.append(pool[:TOP_K])
     combos, passed = [], 0
-    for combo in itertools.product(*(cands[s] for s in order)):
+    for combo in itertools.product(*cands):
+        if len({p['placeId'] for p in combo}) < len(combo):
+            continue                                   # 술집 → 술집: 같은 곳 두 번은 안 됨
         c = build_course([(p, STAY_MIN[p['category']]) for p in combo], cond, start)
-        if abs(c['totalMinutes'] - TARGET_MIN) <= TOL_MIN:
+        if abs(c['totalMinutes'] - target_min(len(combo))) <= tol_min(len(combo)):
             passed += 1
             combos.append(c)
     combos.sort(key=lambda c: -c['score']['total'])
@@ -534,17 +684,18 @@ def recommend(places, cond):
         c['rank'] = i
         c['title'], c['reason'] = course_text(c, cond, by_id)
         c['keywords'] = course_keywords(c, cond, by_id)
+        c['route'] = course_route(c, by_id)
     # 추천 장소 목록: 후보 전체에서 점수 상위 10곳
     seen, plist = set(), []
-    for slot in order:
-        for p in cands[slot]:
+    for k in range(len(order)):
+        for p in cands[k]:
             if p['placeId'] not in seen:
                 seen.add(p['placeId'])
-                plist.append(summary(p, cond, nominal[slot]))
-    plist.sort(key=lambda x: -x['score']['total'])
-    stats = {'order': order, 'candidates': {s: len(v) for s, v in cands.items()},
-             'combos': math.prod(len(v) for v in cands.values()), 'passedTimeRule': passed}
-    return plist[:10], [ {k: c[k] for k in ['courseId', 'rank', 'title', 'reason', 'keywords', 'startAt', 'endAt', 'totalMinutes',
+                plist.append(summary(p, cond, nominal[k]))
+    plist.sort(key=lambda x: (-x['score']['total'], -tie_break(by_id[x['placeId']], cond)))
+    stats = {'order': order, 'candidates': [len(v) for v in cands],
+             'combos': math.prod(len(v) for v in cands), 'passedTimeRule': passed}
+    return plist[:10], [ {k: c[k] for k in ['courseId', 'rank', 'title', 'reason', 'keywords', 'route', 'startAt', 'endAt', 'totalMinutes',
                           'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']} for c in chosen], stats
 
 
@@ -594,6 +745,11 @@ def dump_server_data(root, places):
                 if p['cuisine']:
                     w.writerow([p['placeId'], p['name'], p['region'], p['category'], p['kakaoCategory'],
                                 p['cuisine'], p['cuisineDetail'] or '', p['cuisineSource']])
+    # 11주차: 셀 가운데 좌표 (혼잡 레이더 GET /api/congestion/grid용), 50m 칸
+    with open(os.path.join(out, 'cells.tsv'), 'w', encoding='utf-8', newline='\n') as f:
+        f.write('cellId\tregion\tlat\tlng\n')
+        for c, region, lat, lng in sorted(CELLS):
+            f.write(f"{c}\t{region}\t{lat!r}\t{lng!r}\n")
     cells = sorted({p['cellId'] for p in places})
     write_congestion(os.path.join(out, 'congestion.tsv'), cells, CONG)
     if CONG_SEOUL:
@@ -629,17 +785,23 @@ def write_congestion(path, cells, cong):
 SCENARIOS = [
     ('search_seongsu_weekend_quiet.json', '토요일 오후 3시에 성수에서 친구랑 조용한 카페 가고 저녁도 먹고 싶어',
      {'region': 'SEONGSU', 'date': '2026-10-17', 'dayType': 'WEEKEND', 'startTime': '15:00', 'partySize': 2,
-      'categories': ['CAFE', 'FOOD'], 'moods': ['조용함'], 'crowdPreference': 'QUIET', 'allergies': [],
+      'categories': ['CAFE', 'FOOD'], 'moods': ['조용한'], 'crowdPreference': 'QUIET', 'allergies': [],
       'gender': None, 'ageGroup': None, 'companionType': 'FRIEND', 'excludedFoods': [], 'cuisines': [], 'cuisineDetails': []}),
     ('search_hongdae_weekend_lively.json', '토요일 저녁 7시 홍대에서 남자친구랑 신나게 놀 수 있는 사람 많은 곳',
      {'region': 'HONGDAE', 'date': '2026-10-17', 'dayType': 'WEEKEND', 'startTime': '19:00', 'partySize': 2,
-      'categories': ['FOOD', 'ACTIVITY'], 'moods': ['데이트'], 'crowdPreference': 'LIVELY', 'allergies': [],
+      'categories': ['FOOD', 'ACTIVITY'], 'moods': ['활기찬'], 'crowdPreference': 'LIVELY', 'allergies': [],
       'gender': None, 'ageGroup': None, 'companionType': 'COUPLE', 'excludedFoods': [], 'cuisines': [], 'cuisineDetails': []}),
     ('search_gangnam_weekday_group.json', '금요일 저녁 7시 강남역 근처에서 회사 동기 4명 모임, 한 명이 갑각류 알레르기 있어',
      {'region': 'GANGNAM', 'date': '2026-10-16', 'dayType': 'WEEKDAY', 'startTime': '19:00', 'partySize': 4,
-      'categories': ['FOOD'], 'moods': ['단체'], 'crowdPreference': 'DEFAULT', 'allergies': ['SHELLFISH'],
+      'categories': ['FOOD'], 'moods': [], 'crowdPreference': 'DEFAULT', 'allergies': ['SHELLFISH'],
       'gender': None, 'ageGroup': None, 'companionType': 'COWORKER', 'excludedFoods': [], 'cuisines': [], 'cuisineDetails': []}),
 ]
+
+
+def no_course_notice(cond):
+    if drinking(cond) is True and to_min(cond['startTime']) < 15 * 60:
+        return '술집은 저녁 6시 이후로 넣어요. 시작 시간을 오후 3시 이후로 바꿔 보세요.'
+    return '조건에 맞는 코스를 찾지 못했어요. 시간이나 조건을 바꿔 보세요.'
 
 
 def main(root, out_dir):
@@ -657,9 +819,12 @@ def main(root, out_dir):
         data = {'searchId': f's_20261016_{i:04d}', 'query': query,
                 # 분위기는 DB(user_preference.atmosphere)랑 이름 맞춰서 atmospheres로
                 'conditions': {**{('atmospheres' if k == 'moods' else k): v for k, v in cond.items()},
+                               'courseType': None, 'excludedCategories': [], 'includedCategories': [], 'playDetails': [],   # v0.7
                                'extractedBy': 'GEMINI'},
                 'places': plist, 'courses': courses,
-                'notice': None if courses else '조건에 맞는 코스를 찾지 못했어요. 시간이나 조건을 바꿔 보세요.'}
+                'titlesBy': 'RULE', 'order': [], 'keepPlaceIds': [],   # v0.7: 감성 제목은 진짜 서버에서만
+                'betterStart': better_start(courses[0], cond, by_id) if courses else None,
+                'notice': None if courses else no_course_notice(cond)}
         dump(out_dir, fname, wrap(data))
         print(fname, stats)
         for c in courses:
@@ -681,7 +846,17 @@ def main(root, out_dir):
                    'congestionByHour': {'date': cond['date'], 'dayType': cond['dayType'],
                                         'basis': 'ALL_DAY',
                                         'hours': [congestion(p, cond['dayType'], hr, 'all_day')
-                                                  for hr in range(9, 24)]}})
+                                                  for hr in range(9, 24)]},
+                   # 11주차: 평일·주말 탭 (테이블링처럼) - 둘 다 9~23시, 하루 전체 비교
+                   'congestionByDayType': {d: [congestion(p, d, hr, 'all_day') for hr in range(9, 24)]
+                                           for d in ('WEEKDAY', 'WEEKEND')},
+                   # 11주차: 요일 탭 7개 - 요일별 파일(윤경) 나오기 전엔 월~금 = 평일, 토·일 = 주말 값
+                   'congestionByDay': {'source': 'DAY_TYPE',
+                                       'today': ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][
+                                           datetime.date.fromisoformat(cond['date']).weekday()],
+                                       'days': {d: [congestion(p, 'WEEKEND' if d in ('SAT', 'SUN') else 'WEEKDAY',
+                                                               hr, 'all_day') for hr in range(9, 24)]
+                                                for d in ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')}}})
     dump(out_dir, 'place_detail.json', wrap(detail))
 
     # 코스 수정 예시: 1번 체류 90분으로 늘리고 2번 카페를 다른 카페로 교체
@@ -699,9 +874,11 @@ def main(root, out_dir):
     upd = build_course(edited, cond, to_min(cond['startTime']))
     upd['title'], upd['reason'] = course_text(upd, cond, by_id)
     upd['keywords'] = course_keywords(upd, cond, by_id)
+    upd['route'] = course_route(upd, by_id)
     upd = {'courseId': c1['courseId'], 'rank': None, 'title': upd['title'], 'reason': upd['reason'], 'keywords': upd['keywords'],
+           'route': upd['route'],
            **{k: upd[k] for k in ['startAt', 'endAt', 'totalMinutes',
-           'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']}, 'warnings': warnings_of(upd, cond)}
+           'totalWalkMinutes', 'totalDistanceMeters', 'score', 'stops']}, 'warnings': warnings_of(upd, cond, by_id)}
     dump(out_dir, 'course_update_response.json', wrap(upd))
 
     # 공유
@@ -720,7 +897,7 @@ def main(root, out_dir):
     dump(out_dir, 'auth_login_response.json', wrap({'accessToken': 'eyJhbGciOiJIUzI1NiJ9.mock.token', 'tokenType': 'Bearer',
          'expiresIn': 3600, 'user': user}))
     dump(out_dir, 'auth_error_duplicate_email.json', error('DUPLICATE_EMAIL', '이미 사용 중인 이메일입니다.'))
-    dump(out_dir, 'preferences.json', wrap({'region': 'SEONGSU', 'atmospheres': ['조용함', '사진'],
+    dump(out_dir, 'preferences.json', wrap({'region': 'SEONGSU', 'atmospheres': ['조용한', '감성적인'],
          'allergies': ['SHELLFISH']}))
 
     # 에러 예시

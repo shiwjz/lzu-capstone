@@ -12,6 +12,7 @@ public record CoursePlan(
         String title,
         String reason,
         List<String> keywords,   // 코스 키워드 태그 (v0.5, 예: 조용함·한산·초밥·롤·도보 5분 이내)
+        String route,            // 코스 경로 이름 (11주차, 예: 칵테일바 → 카페 → 방탈출) - 제목 밑 태그용
         String startAt,
         String endAt,
         int totalMinutes,
@@ -50,7 +51,12 @@ public record CoursePlan(
     }
 
     public CoursePlan withMeta(String courseId, Integer rank, String title, String reason, List<String> keywords) {
-        return new CoursePlan(courseId, rank, title, reason, keywords, startAt, endAt, totalMinutes,
+        return withMeta(courseId, rank, title, reason, keywords, route);
+    }
+
+    public CoursePlan withMeta(String courseId, Integer rank, String title, String reason, List<String> keywords,
+                               String route) {
+        return new CoursePlan(courseId, rank, title, reason, keywords, route, startAt, endAt, totalMinutes,
                 totalWalkMinutes, totalDistanceMeters, score, stops);
     }
 }

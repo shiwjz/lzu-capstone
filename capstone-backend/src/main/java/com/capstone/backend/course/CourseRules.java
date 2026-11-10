@@ -17,6 +17,23 @@ public final class CourseRules {
 
     public static final int TARGET_MINUTES = 180;        // 총 3시간
     public static final int TOLERANCE_MINUTES = 30;      // ±30분 → 150~210분만 남김
+    public static final int MAX_STOPS = 4;               // 코스 장소 최대 수 (11주차: 빼기·추가로 2~4곳)
+
+    /** 장소 수별 목표 시간 (11주차): 2곳 135분 / 3곳 180분(예전 그대로) / 4곳 245분 */
+    public static int targetMinutes(int stops) {
+        return stops <= 2 ? 135 : stops == 3 ? TARGET_MINUTES : 245;
+    }
+
+    /** 장소 수별 허용 폭: 2곳 ±35 (100~170분) / 3곳 ±30 (150~210분) / 4곳 ±45 (200~290분) */
+    public static int toleranceMinutes(int stops) {
+        return stops <= 2 ? 35 : stops == 3 ? TOLERANCE_MINUTES : 45;
+    }
+
+    /** 분 → "3시간 30분" */
+    public static String durationText(int minutes) {
+        int h = minutes / 60, m = minutes % 60;
+        return m == 0 ? h + "시간" : h + "시간 " + m + "분";
+    }
     public static final int WALK_ZERO_MINUTES = 40;      // 총 도보 40분이면 이동 효율 0
     public static final int CANDIDATES_PER_SLOT = 10;    // 칸별 후보 수 → 10 × 10 × 10 조합
     public static final int COURSE_COUNT = 10;           // 추천 코스 최대 수 (v0.5, 예전 3)
@@ -41,7 +58,23 @@ public final class CourseRules {
 
     // 후보 고를 때 쓰는 칸별 대략 체류 시간
     private static final Map<Slot, Integer> NOMINAL_STAY = Map.of(
-            Slot.MEAL, 60, Slot.CAFE, 50, Slot.PLAY, 60);
+            Slot.MEAL, 60, Slot.CAFE, 50, Slot.PLAY, 60, Slot.BAR, 60);
+
+    /**
+     * 종류별 기본 영업시간 {여는 시, 닫는 시} (11주차) - 가게별 영업시간 정보가 없어서 임시로 종류별 숫자
+     * - 닫는 시가 24 넘으면 다음날 (술집 17~26 = 오후 5시 ~ 새벽 2시)
+     * - 도착 시(hour)가 여는 시 이상, 닫는 시 미만이면 열려 있다고 봄
+     * - 구글 영업시간 붙이면 이 표 대신 가게별 값
+     */
+    private static final Map<String, int[]> DEFAULT_HOURS = Map.of(
+            "FOOD", new int[]{11, 22}, "CAFE", new int[]{9, 22}, "SNACK", new int[]{9, 21},
+            "CULTURE", new int[]{10, 19}, "EXPERIENCE", new int[]{10, 21}, "ACTIVITY", new int[]{10, 24},
+            "SHOPPING", new int[]{11, 21}, "TOUR", new int[]{0, 24}, "NATURE", new int[]{0, 24});
+    private static final int[] BAR_HOURS = {17, 26};
+    private static final int[] LATE_CULTURE_HOURS = {10, 24};   // 영화관·공연장은 밤늦게까지
+
+    // 문화·산책·쇼핑 코스 틀: 놀거리 종류를 하나만 말하면 놀거리부터 (전시 → 카페 → 식사)
+    private static final List<String> THEME_PLAY = List.of("CULTURE", "NATURE", "SHOPPING", "TOUR");
 
     // 조용한 곳 원하면 놀거리 칸에서 빼는 곳 (카카오 카테고리·이름 기준, '조용한데 노래방' 문제 대책)
     private static final List<String> NOISY_PLAY = List.of(
@@ -69,11 +102,48 @@ public final class CourseRules {
         return List.of(Slot.MEAL, Slot.CAFE, Slot.PLAY);                  // 저녁 먼저
     }
 
+    /**
+     * 코스 틀 고르기 (11주차, 문장에 순서가 있으면 그 순서가 우선)
+     * - 술 (음식 취향에 술집): 저녁 5시 이후 식사 → 술집 → 술집(2차), 4시 출발 놀거리 → 식사 → 술집,
+ *   3시 출발 놀거리 → 카페 → 식사 → 술집
+     *   (술집은 6시 이후만이라 그보다 이르면 술집 칸 후보가 없어서 코스 0개 → 앱에 안내)
+     * - 문화·산책·쇼핑 (놀거리 종류 하나만, 5시 전): 놀거리 → 카페 → 식사
+     * - 밤 8시 이후 (술 싫다고 안 했으면): 식사 → 놀거리 → 술집 (카페는 대부분 10시에 닫음)
+     * - 나머지: 시작 시각별 기본 순서
+     * - drinking: true = 술 원함, false = 술 빼달라고 함, null = 말 없음
+     */
+    public static List<Slot> slotOrder(int startMinute, Boolean drinking, List<String> playCategories) {
+        int hour = startMinute / 60;
+        if (Boolean.TRUE.equals(drinking)) {
+            if (hour >= 17) return List.of(Slot.MEAL, Slot.BAR, Slot.BAR);
+            if (hour == 15) return List.of(Slot.PLAY, Slot.CAFE, Slot.MEAL, Slot.BAR);   // 3시 출발은 4곳으로 술집 6시 넘기기
+            return List.of(Slot.PLAY, Slot.MEAL, Slot.BAR);
+        }
+        if (hour < 17 && playCategories != null && playCategories.size() == 1
+                && THEME_PLAY.contains(playCategories.get(0))) {
+            return List.of(Slot.PLAY, Slot.CAFE, Slot.MEAL);
+        }
+        if (hour >= 20 && drinking == null) {
+            return List.of(Slot.MEAL, Slot.PLAY, Slot.BAR);
+        }
+        return slotOrder(startMinute);
+    }
+
+    /** 기본 영업시간 안에 도착하는지 (hour는 24 넘어가도 됨: 자정 넘는 코스) */
+    public static boolean openAt(CoursePlace place, int hour) {
+        int[] oc = place.isBar() ? BAR_HOURS
+                : (place.kakaoCategory().contains("영화관") || place.kakaoCategory().contains("공연장")) ? LATE_CULTURE_HOURS
+                : DEFAULT_HOURS.getOrDefault(place.category(), new int[]{0, 24});
+        int h = Math.floorMod(hour, 24);
+        return (oc[0] <= h && h < oc[1]) || (oc[0] <= h + 24 && h + 24 < oc[1]);
+    }
+
     /** 칸에 넣을 수 있는 장소인지 (지역·술집 시간·식사 칸 제외·알레르기) */
     public static boolean allowed(CoursePlace place, String region, int arriveHour, Set<String> allergies) {
         if (!place.region().equals(region)) return false;
         String kakao = place.kakaoCategory();
         if (kakao.contains("술집") && arriveHour < BAR_FROM_HOUR) return false;
+        if (!openAt(place, arriveHour)) return false;     // 종류별 기본 영업시간 (11주차)
         if (place.category().equals("FOOD") && (kakao.contains("간식") || kakao.contains("구내식당"))) {
             return false;   // 베이커리·아이스크림·구내식당은 식사 칸 제외
         }

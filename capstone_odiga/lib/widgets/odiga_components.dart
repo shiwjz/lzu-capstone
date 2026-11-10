@@ -189,6 +189,83 @@ class OdigaMapPin extends StatelessWidget {
   );
 }
 
+/// Figma 2073:2965–2981. Color and icon describe place category;
+/// the numbered badge is the route visit order, never congestion.
+class CourseCategoryMapPin extends StatelessWidget {
+  const CourseCategoryMapPin({
+    super.key,
+    required this.category,
+    this.visitOrder,
+    this.onTap,
+  });
+
+  final String category;
+  final int? visitOrder;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final (background, icon) = switch (category) {
+      '음식점' => ('map_pin_restaurant_bg.svg', 'map_pin_restaurant_icon.svg'),
+      '카페' => ('map_pin_cafe_bg.svg', 'map_pin_cafe_icon.svg'),
+      _ => ('map_pin_play_bg.svg', 'map_pin_play_icon.svg'),
+    };
+    return Semantics(
+      label: visitOrder == null ? category : '$category · 방문 순서 $visitOrder',
+      button: onTap != null,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          width: 44,
+          height: 48,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: 3,
+                top: 4,
+                width: 34,
+                height: 40,
+                child: SvgPicture.asset('assets/$background'),
+              ),
+              Positioned(
+                left: 10,
+                top: 10,
+                width: 19,
+                height: 19,
+                child: SvgPicture.asset('assets/$icon'),
+              ),
+              if (visitOrder != null)
+                Positioned(
+                  left: 26,
+                  top: 0,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: OdigaTokens.border),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Text(
+                      '$visitOrder',
+                      style: OdigaTokens.text(
+                        10,
+                        weight: FontWeight.w700,
+                      ).copyWith(height: 1.1),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class OdigaAvatar extends StatelessWidget {
   const OdigaAvatar({super.key, required this.initial});
   final String initial;
@@ -307,10 +384,12 @@ class PlaceCard extends StatelessWidget {
     required this.level,
     this.image = const AssetImage('assets/756cc.png'),
     this.onTap,
+    this.trailing,
   });
   final String title, category, description;
   final double? rating;
-  final CongestionLevel level;
+  final CongestionLevel? level;
+  final Widget? trailing;
   final ImageProvider image;
   final VoidCallback? onTap;
   @override
@@ -339,15 +418,36 @@ class PlaceCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   _text(description, 11, color: OdigaTokens.muted),
-                  const SizedBox(height: 8),
-                  CongestionBadge(level: level),
+                  if (level case final crowd?) ...[
+                    const SizedBox(height: 8),
+                    CongestionBadge(level: crowd),
+                  ],
                 ],
               ),
             ),
+            ?trailing,
           ],
         ),
       ),
     ),
+  );
+}
+
+class RouteTags extends StatelessWidget {
+  const RouteTags({super.key, required this.categories});
+  final List<String> categories;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 6,
+    runSpacing: 4,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      for (final (index, category) in categories.indexed) ...[
+        if (index > 0) const Icon(Icons.chevron_right, size: 14),
+        OdigaTag(label: category, selected: true),
+      ],
+    ],
   );
 }
 
@@ -358,11 +458,15 @@ class CourseCard extends StatelessWidget {
     required this.route,
     required this.summary,
     required this.reason,
+    this.places,
+    this.keywords = const [],
     this.congestion = '평균 한산',
     this.image = const AssetImage('assets/5788c.png'),
     this.onTap,
   });
   final String title, route, summary, reason, congestion;
+  final String? places;
+  final List<String> keywords;
   final ImageProvider image;
   final VoidCallback? onTap;
   @override
@@ -376,7 +480,17 @@ class CourseCard extends StatelessWidget {
           children: [
             _text(title, 18, weight: FontWeight.w700),
             const SizedBox(height: 8),
-            _text(route, 14, color: OdigaTokens.muted),
+            if (places != null) _text(places!, 13, color: OdigaTokens.muted),
+            RouteTags(categories: route.split(' → ')),
+            if (keywords.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  for (final keyword in keywords.take(4))
+                    OdigaTag(label: keyword, selected: true),
+                ],
+              ),
             const SizedBox(height: 8),
             _text(summary, 11, color: OdigaTokens.muted),
             const SizedBox(height: 8),
@@ -407,59 +521,103 @@ class RankedCourseCard extends StatelessWidget {
     required this.title,
     required this.summary,
     required this.reason,
+    this.route = const [],
+    this.onMap,
+    this.keywords = const [],
     this.selected = false,
+    this.onSelected,
     this.onReason,
-    this.onDetails,
   });
   final int rank;
   final String title, summary, reason;
+  final List<String> keywords, route;
+  final VoidCallback? onMap;
   final bool selected;
-  final VoidCallback? onReason, onDetails;
+  final VoidCallback? onSelected, onReason;
   @override
-  Widget build(BuildContext context) => OdigaCardSurface(
-    selected: selected,
-    padding: const EdgeInsets.all(10),
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 126),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _text(
-            '$rank순위',
-            14,
-            color: OdigaTokens.brand,
-            weight: FontWeight.w500,
-          ),
-          const SizedBox(height: 3),
-          _text(title, 16, weight: FontWeight.w500),
-          const SizedBox(height: 3),
-          _text(summary, 11, color: OdigaTokens.green),
-          const SizedBox(height: 3),
-          _text(reason, 11, color: OdigaTokens.muted),
-          const SizedBox(height: 3),
-          Row(
-            children: [
-              Expanded(
-                child: OdigaButton(
-                  label: '추천 근거 보기',
-                  onPressed: onReason,
-                  variant: OdigaButtonVariant.secondary,
-                  height: 36,
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTap: onSelected,
+    child: OdigaCardSurface(
+      selected: selected,
+      padding: const EdgeInsets.all(12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 106),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                _text(
+                  '$rank순위',
+                  12,
+                  color: OdigaTokens.brand,
+                  weight: FontWeight.w500,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OdigaButton(
-                  label: '코스 상세',
-                  onPressed: onDetails,
-                  variant: OdigaButtonVariant.secondary,
-                  height: 36,
-                ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(child: _text(title, 16, weight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            _text(summary, 12, color: OdigaTokens.muted),
+            if (route.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              RouteTags(categories: route),
             ],
-          ),
-        ],
+            const SizedBox(height: 4),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (keywords.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: keywords
+                        .take(4)
+                        .map(
+                          (keyword) => Material(
+                            color: OdigaTokens.lavender,
+                            borderRadius: BorderRadius.circular(6),
+                            child: InkWell(
+                              onTap: onReason,
+                              borderRadius: BorderRadius.circular(6),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                child: _text(
+                                  keyword,
+                                  12,
+                                  color: OdigaTokens.ink,
+                                  weight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+              ],
+            ),
+            Row(
+              children: [
+                if (onMap != null)
+                  TextButton(onPressed: onMap, child: const Text('지도에서 보기')),
+                const Spacer(),
+                IconButton(
+                  tooltip: '추천 근거 보기',
+                  onPressed: onReason,
+                  icon: const Icon(Icons.info_outline, size: 18),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -556,14 +714,16 @@ class BottomSheetSurface extends StatelessWidget {
   final Widget? child;
   final VoidCallback? onHandleTap;
   final GestureDragEndCallback? onHandleDragEnd;
+  static double heightFor(RecommendationSheetSize size) => switch (size) {
+    RecommendationSheetSize.collapsed => 100,
+    RecommendationSheetSize.medium => 340,
+    RecommendationSheetSize.expanded => 610,
+  };
+
   @override
   Widget build(BuildContext context) => AnimatedContainer(
     duration: const Duration(milliseconds: 220),
-    height: switch (size) {
-      RecommendationSheetSize.collapsed => 100,
-      RecommendationSheetSize.medium => 340,
-      RecommendationSheetSize.expanded => 610,
-    },
+    height: heightFor(size),
     padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
     decoration: BoxDecoration(
       color: Colors.white,

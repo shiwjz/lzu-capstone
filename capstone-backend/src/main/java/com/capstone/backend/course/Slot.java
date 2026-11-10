@@ -1,11 +1,12 @@
 package com.capstone.backend.course;
 
 /**
- * 코스 칸. 식사 = FOOD, 카페 = CAFE, 놀거리 = 나머지 6개 카테고리
+ * 코스 칸. 식사 = FOOD, 카페 = CAFE, 놀거리 = 나머지 6개 카테고리, 술집 = 음식점 중 술집 (11주차 추가)
  * - SNACK(베이커리·아이스크림)은 코스 생성엔 안 쓰고, 코스에 직접 추가하면 카페 칸으로 표시
+ * - 술집인지는 카테고리만으론 모름 (FOOD 안에 있음) → CoursePlace.slot()에서 판단
  */
 public enum Slot {
-    MEAL, CAFE, PLAY;
+    MEAL, CAFE, PLAY, BAR;
 
     public static Slot of(String category) {
         return switch (category) {

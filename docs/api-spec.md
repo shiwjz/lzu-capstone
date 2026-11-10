@@ -1,6 +1,164 @@
-# 오디가 API 명세 v0.5
+# 오디가 API 명세 v0.7
 
-2026-11-02 · 김예민
+2026-11-08 · 김예민
+
+## v0.7에서 바뀐 점 (11주차 둘째, 11/7 회의)
+
+예전 요청·응답 그대로 돌아감 (필드만 추가). 우선순위: **앱에서 직접 고친 순서(order) > 코스 틀 + 빼기·추가 > 자동(문장·시간)**
+
+### 1. 검색 요청에 추가 (POST /api/search, 전부 선택)
+
+```json
+{ "query": "토요일 오후 3시 성수에서 카페 말고 놀자",
+  "courseType": "DRINK",
+  "order": ["MEAL", "PLAY", "BAR"],
+  "keepPlaceIds": ["921699059"] }
+```
+
+| 필드 | 뜻 | 값 |
+| --- | --- | --- |
+| `courseType` | 코스 틀 칩 | `BASIC` 기본 / `DRINK` 술 / `CULTURE` 문화 / `WALK` 산책 / `SHOPPING` 쇼핑 (없으면 자동) |
+| `order` | 칸 편집 칩으로 직접 고친 순서 | `MEAL` 식사 · `CAFE` · `PLAY` 놀거리 · `BAR` 술집, 2~4칸 |
+| `keepPlaceIds` | 📌킵한 장소 | 최대 2곳, 검색 지역이랑 같은 지역 → **모든 코스에 꼭 들어감** |
+
+조건 화면에서 직접 고칠 때는 `conditions` 안에 `courseType`, `excludedCategories`, `includedCategories`를 넣으면 됨.
+
+### 2. 코스 틀 5종류
+
+| 틀 | 순서 (여러 개면 전부 만들어서 점수순으로 섞음) | 놀거리 종류 |
+| --- | --- | --- |
+| BASIC 기본 | 식사→카페→놀거리, 카페→놀거리→식사 | 전부 |
+| DRINK 술 | 식사→술집, 식사→술집→술집, 놀거리→식사→술집 | 전부 |
+| CULTURE 문화 | 놀거리→카페→식사 | 전시·공연 (CULTURE) |
+| WALK 산책 | 놀거리→카페→식사 | 공원·자연 (NATURE) |
+| SHOPPING 쇼핑 | 놀거리→카페→식사 | 쇼핑 (SHOPPING) |
+
+- 틀을 안 고르면 예전처럼 자동: 술 말이 있으면 술 틀 (저녁 5시~ 식사→술집→술집, 4시 놀거리→식사→술집, 3시 놀거리→카페→식사→술집), 놀거리 종류 하나만 말하면 놀거리→카페→식사, 밤 8시~ 식사→놀거리→술집, 나머지는 시간별 기본
+- 시간에 맞는 곳이 없으면 코스 0개 + `notice` (예: "이 시간엔 '문화' 코스에 맞는 곳이 없어요. 시간을 바꿔 보세요.")
+
+### 3. 빼기 / 추가 (`conditions.excludedCategories` / `includedCategories`)
+
+- 종류 코드: `FOOD`(식사) · `CAFE` · `BAR`(술집) · 놀거리 6개 (`CULTURE` · `ACTIVITY` · `EXPERIENCE` · `SHOPPING` · `TOUR` · `NATURE`)
+- 문장에서 자동으로 찾음 (규칙, Gemini 지시문은 @최예린이 추가 예정)
+
+| 문장 | 결과 |
+| --- | --- |
+| "카페 말고", "카페는 빼고", "카페 안 갈래" | excluded `CAFE` |
+| "밥은 먹고 왔어" | excluded `FOOD` |
+| "술은 빼고" | excluded `BAR` (술집도 빠짐) |
+| "보드게임카페는 빼고" | excluded `ACTIVITY` (카페 아님) |
+| "노래방도 가고 싶어", "꼭 방탈출" | included `ACTIVITY` |
+| "카페도 넣어줘", "술집도 가자" | included `CAFE`, `BAR` |
+
+- 뺀 칸은 다른 걸로 채워서 장소 수 유지: 카페 → 놀거리, 식사 → 카페(이미 있으면 놀거리), 술집 → 놀거리
+- 추가는 그 칸이 없을 때만 넣음 (술집은 맨 끝, 나머지는 술집 앞), 장소 최대 4곳
+- 놀거리가 두 번이면 서로 다른 종류 (방탈출 → 볼링, 방탈출 → 방탈출은 안 나옴)
+
+### 3-1. 놀거리 세부 취향 (`conditions.playDetails`, 11/10 추가)
+
+- "보드게임하면서 놀고 싶어"처럼 놀거리 종류를 콕 집으면 **모든 코스에 그 종류 장소를 하나 꼭 넣음** (놀거리 칸이 없으면 칸 추가)
+- 놀거리 큰 종류(ACTIVITY) 안에 오락실·노래방·클라이밍·보드게임이 다 섞여 있어서, 큰 종류만으로는 보드게임이 잘 안 나왔음
+- 세부 장소는 몇 곳 안 돼서(성수 보드게임카페 2곳) 코스끼리 같은 곳이 들어가도 됨
+- 값: 보드게임 · 방탈출 · 노래방 · 볼링 · 오락실 · 만화카페 · 클라이밍 · 사주·타로 · 고양이카페 · 공방 · 전시 · 공연 · 영화 · 사격 · 탁구 · 소품샵 (`course/PlayDetail`)
+- 그 시간에 문 연 곳이 없으면 코스 0개 + `notice`
+- 앱에서 칩으로 보여주려면 `conditions.playDetails` 그대로 표시
+
+### 4. 장소 수별 총 시간 기준
+
+| 장소 수 | 목표 | 허용 |
+| --- | --- | --- |
+| 2곳 | 2시간 15분 | 1시간 40분 ~ 2시간 50분 |
+| 3곳 | 3시간 (예전 그대로) | 2시간 30분 ~ 3시간 30분 |
+| 4곳 | 4시간 5분 | 3시간 20분 ~ 4시간 50분 |
+
+코스 수정 경고(`TOTAL_TIME_OVER/UNDER`) 문구도 장소 수 기준으로 나옴.
+
+### 5. 장소 킵 (`keepPlaceIds`)
+
+- 킵한 장소는 자기 칸에 들어감 (식당 → 식사, 카페 → 카페, 술집 → 술집, 나머지 → 놀거리). 틀에 그 칸이 없으면 칸 추가 (4곳까지)
+- 킵한 장소는 모든 코스에 들어가니까 "코스끼리 장소 안 겹치게"에서 빠짐 → 코스는 여전히 여러 개
+- 킵은 이번 검색에서만 쓰는 임시 고정 (DB 저장 안 함). 계정에 남기려면 저장한 장소 API
+- 잘못된 값: 3곳 이상·다른 지역 → `INVALID_INPUT`, 없는 장소 → `PLACE_NOT_FOUND`
+
+### 6. Gemini 감성 제목
+
+- `courses[].title` = Gemini 감성 제목 (실패하거나 4초 넘으면 규칙 제목), `courses[].route` = 경로 태그 (그대로)
+- 검색 응답 `titlesBy`: `GEMINI` / `RULE` (가짜 JSON은 항상 RULE)
+- 검색 한 번에 Gemini 1번 (코스 10개 묶어서). 보내는 것: 지역, 요일·시간, 분위기, 경로, 키워드 (사용자 문장·개인정보·LG 데이터 없음)
+- 코스 수정해도 감성 제목은 유지, 규칙 제목이면 바뀐 장소로 다시
+- 서버 환경변수: `GEMINI_API_KEY`(조건 추출이랑 같음), 끄려면 `GEMINI_TITLES=false`
+- 지시문: `GeminiCourseTitleWriter.PROMPT` (@최예린이 다듬기)
+
+### 7. 요일별 혼잡도 (장소 상세 `congestionByDay`)
+
+```json
+"congestionByDay": {"source": "DAY_TYPE", "today": "SAT",
+                    "days": {"MON": [{"hour": 9, "level": "QUIET", "percentile": 20}, ...], "TUE": [...], ..., "SUN": [...]}}
+```
+- 요일 탭 7개 (9~23시), `today` = 검색 날짜 요일 → 처음 선택할 탭
+- `source`: `DOW` = 요일별 파일 있음 / `DAY_TYPE` = 아직 없어서 월~금은 평일, 토·일은 주말 값으로 대신
+- 요일별 파일 (@이윤경): `capstone-backend/src/main/resources/data/congestion_dow.tsv` (서울시 버전, 렌더용) 또는 `ODIGA_DATA_DIR/congestion_dow_lg.tsv` (LG, 노트북만)
+  - 모양: `cellId \t dow(MON~SUN) \t allDay(h0..h23)`, 24칸은 congestion.tsv랑 같은 `Q20 N55 B88` (등급 첫 글자 + 하루 전체 비교 백분위)
+  - 만드는 법: 요일별 = 평일/주말 시간대 모양 × 그 요일 비율 → 같은 칸·요일 안에서 시간대끼리 백분위 → 등급
+
+### 8. 검색 응답에 추가
+
+- `conditions`: `courseType`, `excludedCategories`, `includedCategories`, `playDetails`
+- 맨 위: `titlesBy`, `order`(받은 순서), `keepPlaceIds`(받은 킵)
+
+## v0.6에서 바뀐 점 (11주차 첫째)
+
+예전 앱도 그대로 돌아감 (필드만 추가, 지운 것 없음). 칸 이름 `BAR` 하나만 새로 생겼으니 칸별 아이콘 쓰면 술집 아이콘 추가 (@서예령)
+
+| 바뀐 것 | 예전 | 지금 | 앱에서 |
+| --- | --- | --- | --- |
+| 코스 경로 이름 | 없음 | `courses[].route` 예: `"칵테일바 → 카페 → 방탈출"` (장소 종류를 이음) | 제목 밑에 태그처럼. 제목(title)은 그대로, 감성 제목(Gemini)은 회의 후 |
+| 칸 이름 | MEAL·CAFE·PLAY | + **`BAR`** (술집). 술집은 어느 코스든 `stops[].slot = "BAR"` | 술집 아이콘 |
+| 코스 틀 | 시작 시각별 1개 | 술 (`cuisines`에 BAR나 이자카야 같은 술집 세부): 저녁 5시~ **식사 → 술집 → 술집**, 4시 **놀거리 → 식사 → 술집** / 놀거리 종류 하나(문화·산책·쇼핑·관광)만 + 5시 전: **놀거리 → 카페 → 식사** / 밤 8시~ (술 빼달라고 안 했으면): **식사 → 놀거리 → 술집** | - |
+| 영업시간 | 술집 18시~만 | 종류별 기본 영업시간 안에 도착하는 곳만 (아래 표). 가게별 영업시간 없어서 임시 | - |
+| 덜 붐비는 출발 시간 | 없음 | `betterStart` (검색 응답 맨 위, 없으면 null) | "2시간 늦게 출발하면 덜 붐벼요" 한 줄 + 누르면 그 시각으로 다시 검색 |
+| 코스 수정 경고 | 3종류 | + `MAYBE_CLOSED` (기본 영업시간 밖 도착) | 경고 한 줄 그대로 |
+| 장소 상세 | 그 날짜 요일 그래프 | + `congestionByDayType` {WEEKDAY: [...], WEEKEND: [...]} 9~23시 | 평일/주말 탭 그래프 (테이블링처럼) |
+| 혼잡 레이더 | 없음 | **`GET /api/congestion/grid`** | 지도에 칸별 색 |
+| 가게 사진 | 없음 | **`GET /api/places/{placeId}/photos?max=1`** (구글, 저장 안 함) | 사진 + 밑에 찍은 사람 이름·"사진 제공: Google" |
+
+**종류별 기본 영업시간** (도착 시각이 여는 시 이상 ~ 닫는 시 미만이면 OK, `CourseRules.DEFAULT_HOURS`)
+
+| 종류 | 시간 | 종류 | 시간 |
+| --- | --- | --- | --- |
+| 식당 FOOD | 11~22시 | 술집 | 17시~새벽 2시 (그리고 예전처럼 18시 이후 도착만) |
+| 카페 CAFE | 9~22시 | 문화 CULTURE | 10~19시 (영화관·공연장은 10~24시) |
+| 체험 EXPERIENCE | 10~21시 | 놀거리 ACTIVITY | 10~24시 |
+| 쇼핑 SHOPPING | 11~21시 | 관광·자연 TOUR·NATURE | 항상 |
+
+**betterStart** (활기찬 곳 원하면 안 줌): 1등 코스를 1~2시간 당기거나 미뤘을 때 장소들 혼잡도(하루 전체 비교 백분위) 평균이 **8%p 이상** 낮아지면
+
+```json
+"betterStart": {"startTime": "17:00", "shiftMinutes": 120, "avgPercentile": 29, "currentAvgPercentile": 38,
+                "message": "2시간 늦게 출발하면 덜 붐벼요 (혼잡 38% → 29%)"}
+```
+
+**GET /api/congestion/grid**: `region` 필수, `date`(기본 오늘), `hour`(기본 지금), `lat`·`lng`·`radius`(m, 기본 500, 100~2000)를 주면 그 반경 안 칸만
+
+```json
+{"region": "SEONGSU", "dayType": "WEEKEND", "hour": 15, "basis": "SAME_TIME", "cellSizeMeters": 50,
+ "count": {"QUIET": 40, "NORMAL": 80, "BUSY": 30},
+ "cells": [{"cellId": "19198_38984", "lat": 37.5414, "lng": 127.0462, "level": "BUSY", "percentile": 88}],
+ "date": "2026-11-14"}
+```
+- 50m 칸 가운데 좌표, 장소 있는 칸만 (LG 결과 붙이면 칸 더 많아짐). 같은 지역·시간끼리 비교라 "지금 이 동네에서 어디가 붐비나"
+
+**GET /api/places/{placeId}/photos?max=1** (1~3장, 기본 1장 - 구글 요금)
+
+```json
+{"placeId": "921699059", "available": true, "attribution": "사진 제공: Google",
+ "photos": [{"url": "https://lh3.googleusercontent.com/...", "width": 1200, "height": 800,
+             "authorName": "작성자", "authorUri": "https://maps.google.com/..."}],
+ "notice": null}
+```
+- 서버 환경변수 `GOOGLE_PLACES_API_KEY` 없으면 `available: false`, 빈 목록 → 앱은 사진 칸 숨기기 (@성정헌 렌더 환경변수에 키 넣기)
+- 구글 정책: 사진 주소는 저장하지 말고 받을 때마다 바로 띄우기, 찍은 사람 이름 꼭 표시
+- 구글에서 찾은 가게가 우리 좌표에서 300m 넘게 떨어져 있으면 다른 가게로 보고 사진 안 줌
 
 ## v0.5에서 바뀐 점 (10주차, 10/31 회의 반영)
 
@@ -12,6 +170,42 @@
 | 장소 정보 | tags까지 | + `cuisine`, `cuisineDetail` (장소 목록·상세·검색 카드) | 위 음식 취향 |
 | 코스 개수 | 최대 3개 | **최대 10개** | 10/31 회의 |
 | 코스 키워드 | 없음 | `courses[].keywords` (최대 4개, 카드에 칩으로) | 10/31 회의 |
+
+**11/5 추가**
+
+- Gemini 조건 추출 합침 (예린 `search/GeminiConditionExtractor`, 환경변수 `GEMINI_API_KEY` 없거나 실패하면 규칙 기반)
+  - 음식 취향(cuisines·cuisineDetails), 태그 v3, 알레르기 2개 출력
+  - 날짜표에 '이번 주/다음 주'(월요일 시작) 같이 줘서 규칙 기반이랑 같은 날짜 나오게, 기다리는 시간 6초 (앱 15초 안에 끝나게)
+- 음식 취향 확정본 `blog_tag/place_cuisine.csv` (예린: 카카오 1,803 · 블로그 287 · 이름 71 · 세부 못 정함 299) → places.tsv 반영
+- 블로그 태그 정확도 개선본 반영 (태그 있는 장소 1,995곳)
+- DB 꺼져도 서버 켜짐: 검색·장소·코스는 계속, 회원·내 설정만 에러. 표 검사(validate)는 기본 끔 → 로컬에서 볼 때만 `DDL_AUTO=validate`
+- LG 진짜 데이터: `lg/make_lg_data.py`로 저장소 밖 폴더에 만들고, 서버는 `ODIGA_DATA_DIR=그 폴더`일 때만 읽음 (깃허브·jar엔 가짜만)
+
+**태그 v3 (11/4, 예린 `blog_tag/tag_dictionary.py`)** - 이름 글자 하나까지 앱·Gemini·서버 똑같이
+
+| 종류 | 태그 | 누가 정하나 |
+| --- | --- | --- |
+| 고르는 분위기 (SELECT) | 조용한 · 활기찬 · 감성적인 · 가성비좋은 · 넓고편한 · 뷰좋은 | 사용자 (앱 분위기 칩 = 이 6개) |
+| 상황 (SITUATION) | 데이트 · 단체 · 혼자 · 아이 | 서버 자동 (`withPartyMoods`): 데이트 = 연인(COUPLE) / 단체 = 4명 이상·회사(COWORKER) / 혼자 = 1명·SOLO / 아이 = 가족(FAMILY) |
+
+- 예전 이름 바뀜: 조용함 → 조용한, 가성비 → 가성비좋은, 혼자가능 → 혼자 / 디저트·사진 없어짐 (사진 → 감성적인, 디저트는 카페 세부)
+- 혼잡 선호 자동: 분위기에 조용한 → QUIET, 활기찬 → LIVELY
+- 10/31의 '2명이면 데이트'는 없앰 → 연인일 때만 데이트 (예린 SITUATION_RULES 따름)
+- 태그 있는 장소 2,237 / 3,306곳 (v2는 2,459곳)
+
+**사용자 요구 점수 확정 (11/4, 윤경 place_score.py + 테스트 17개)**
+
+- 사용자 요구 = (분위기 점수 합 + 음식 세부 점수) ÷ (분위기 수 + 1), 세부 계산 안 하면 분위기 평균, 둘 다 없으면 0.5
+- 분위기 하나 = min(언급 수, 3) ÷ 3, **태그가 하나도 없는 장소는 0.5** (모르니까 중립, B안) / 태그는 있는데 요청 태그 없으면 0
+- 음식 세부 = 딱 맞음 1.0 / 같은 큰 종류인데 세부 없음 0.5 / 같은 큰 종류 다른 세부 0.2 / 다른 큰 종류는 계산 안 함
+- 서버 `PlaceScoreModel` 같이 바꾸고 윤경 테스트 17개 Java로 옮겨서 통과, 음식 취향 넣은 검색 3가지도 파이썬이랑 같음
+
+**점수 같을 때 순서 (11/4 추가)**
+
+- 장소 점수는 태그 언급 3번이면 만점이라 1등 동점이 시나리오마다 5~299곳 → 전에는 사실상 장소 ID 순서로 뽑힘
+- 이제 점수 같으면 **원하는 분위기 태그 언급 수 합**이 큰 곳 먼저 (서버 `PlaceScorer.tieBreak`, 파이썬 `tie_break`)
+- 구글 리뷰로 채점 (윤경 평가 9개 시나리오, `eval/google_reviews.py`): 오디가 Precision@5 0.40 → 0.76, nDCG@5 0.71 → 0.94 (인기순 0.27 · 거리순 0.23 · 랜덤 0.16)
+- 성수 조용함 코스는 10개 → 8개 (동점 정렬로 후보가 바뀌어서 장소 안 겹치는 조합이 줄어듦)
 
 **인원 → 분위기 (서버가 자동, 인원 모르면 안 붙임)**
 
@@ -170,6 +364,8 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 | 검색·추천 | POST /api/search | 선택 | 김예민 (조건 추출 최예린, 점수 이윤경) | 검색 → 추천 결과·지도·코스 |
 | 장소 목록 (v0.3) | GET /api/places | 불필요 | 김예민 | 홈 지도 내 주변 장소 |
 | 장소 상세 | GET /api/places/{placeId} | 불필요 | 김예민 (원래 성정헌, 9주차 변경) | 장소 카드 상세 |
+| 가게 사진 (v0.6) | GET /api/places/{placeId}/photos | 불필요 | 김예민 | 장소 카드 상세 |
+| 혼잡 레이더 (v0.6) | GET /api/congestion/grid | 불필요 | 김예민 | 지도 |
 | 코스 수정 | PUT /api/courses/{courseId} | 선택 | 김예민 | 커스텀 |
 | 공유 만들기 | POST /api/courses/{courseId}/share | 선택 | 김예민 | 공유 |
 | 공유 코스 보기 | GET /api/share/{shareCode} | 불필요 | 김예민 | 공유 링크로 연 화면 |
@@ -434,7 +630,7 @@ MVP API 8개 + v0.3 추가 3개(장소 목록, 저장 코스, 저장한 장소).
 | search_hongdae_weekend_lively.json | 홍대 · 토 19시 · 커플 · 활기 | 서예령 |
 | search_gangnam_weekday_group.json | 강남 · 금 19시 · 4명 · 갑각류 알레르기 | 서예령 |
 | search_error_condition_missing.json | 지역 없는 문장 → CONDITION_MISSING | 서예령 |
-| place_detail.json | 장소 상세 + 시간대별 혼잡도 | 서예령 |
+| place_detail.json | 장소 상세 + 시간대별 혼잡도 (+ 평일·주말, v0.6) | 서예령 |
 | course_update_request.json, course_update_response.json | 코스 수정 → 다시 계산 + 경고 | 서예령, 김예민 |
 | share_create_response.json, share_view_response.json | 공유 만들기·보기 | 서예령 |
 | auth_signup_request.json, auth_signup_response.json, auth_error_duplicate_email.json | 회원가입 성공·중복 이메일 | 서예령, 성정헌 |

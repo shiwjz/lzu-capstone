@@ -3,7 +3,7 @@
 
 입력: output/places.csv + blog_tag/raw/{place_id}.json (1단계 결과)
 출력:
-  blog_tag/place_tag.csv          장소별 확정 태그 (이윤경 전달용)
+  blog_tag/place_tag.csv          장소별 확정 태그 (tag_type: SELECT 사용자 선택 / SITUATION 자동 점수)
   blog_tag/place_blog_stats.csv   장소별 수집·필터 통계 (확인용)
   blog_tag/review_sample.csv      직접 읽어볼 글 샘플 (필터 정확도 확인용)
 
@@ -17,6 +17,7 @@ import random
 from collections import Counter, defaultdict
 
 from extract_tags import extract_tags
+from tag_dictionary import TAG_TYPE, TAG_KEYWORDS
 from blog_filter import (
     get_base_place_name,
     normalize_text,
@@ -169,6 +170,7 @@ def analyze_place(place, blogs):
             "region": place["region"],
             "category": place["category"],
             "tag": tag,
+            "tag_type": TAG_TYPE[tag],
             "mentions": count,
             "ratio": round(count / blogger_count, 2) if blogger_count else 0,
             "blogger_count": blogger_count
@@ -181,6 +183,7 @@ def analyze_place(place, blogs):
         "other_branch": reason_counter["OTHER_BRANCH"],
         "other_region": reason_counter["OTHER_REGION"],
         "short_name_no_region": reason_counter["SHORT_NAME_WITHOUT_REGION"],
+        "name_part_of_word": reason_counter["NAME_PART_OF_OTHER_WORD"],
         "self_paid_count": self_paid_count,
         "blogger_count": blogger_count,
         "tag_count": len(tag_rows)
@@ -245,7 +248,7 @@ def main():
     with open(OUTPUT_TAG_CSV, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=[
             "place_id", "place_name", "region", "category",
-            "tag", "mentions", "ratio", "blogger_count"
+            "tag", "tag_type", "mentions", "ratio", "blogger_count"
         ])
         writer.writeheader()
         writer.writerows(all_tag_rows)
@@ -312,6 +315,17 @@ def main():
 
     print()
     print(f"프랜차이즈: {franchise_total}곳 중 {franchise_tagged}곳 태그 확정")
+    print()
+    # 태그별로 몇 곳에 붙었는지 (너무 적거나 너무 많은 태그 찾기용)
+    print()
+    print("태그별 장소 수 (분석한 장소 중 비율)")
+    tag_places = Counter(row["tag"] for row in all_tag_rows)
+    for tag in TAG_KEYWORDS:
+        count = tag_places.get(tag, 0)
+        ratio = count / len(all_stats) if all_stats else 0
+        note = "  ← 너무 적음" if ratio < 0.03 else "  ← 너무 많음" if ratio > 0.5 else ""
+        print(f"  [{TAG_TYPE[tag]:<9}] {tag:<10} {count:>5}곳 ({ratio:.0%}){note}")
+
     print()
     print(f"저장: {OUTPUT_TAG_CSV}, {OUTPUT_STATS_CSV}, {OUTPUT_REVIEW_CSV}")
     print("=" * 60)

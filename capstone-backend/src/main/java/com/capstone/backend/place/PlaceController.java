@@ -24,7 +24,8 @@ import java.util.Set;
 /**
  * 장소 API - 김예민 (원래 정헌 담당, 9주차에 가져옴)
  * - GET /api/places?region=SEONGSU&category=CAFE&date=2026-10-31&hour=15   홈 지도 '내 주변 장소' (v0.3 추가)
- * - GET /api/places/{placeId}?date=2026-10-31                               장소 상세 + 시간대별 혼잡도
+ * - GET /api/places/{placeId}?date=2026-10-31                               장소 상세 + 시간대별 혼잡도 (+ 평일·주말 둘 다, 11주차)
+ * - GET /api/places/{placeId}/photos?max=1                                  가게 사진 (구글, 11주차)
  * - 지금은 PlaceStore(파일), ERD 확정 후 DB로 바뀌어도 이 API 모양은 그대로
  */
 @CrossOrigin(origins = "*")
@@ -38,9 +39,22 @@ public class PlaceController {
             "SHOPPING", "TOUR", "NATURE", "SNACK");
 
     private final PlaceStore store;
+    private final PlacePhotoService photos;
 
-    public PlaceController(PlaceStore store) {
+    public PlaceController(PlaceStore store, PlacePhotoService photos) {
         this.store = store;
+        this.photos = photos;
+    }
+
+    /** 가게 사진 (11주차): 구글에 그때그때 물어봄, 저장 안 함. max 1~3장 (기본 1장 - 비용) */
+    @GetMapping("/{placeId}/photos")
+    public ResponseEntity<Map<String, Object>> photos(@PathVariable("placeId") String placeId,
+                                                      @RequestParam(name = "max", defaultValue = "1") int max) {
+        try {
+            return ApiBody.ok(photos.photos(placeId, max));
+        } catch (ApiException e) {
+            return ApiBody.error(e);
+        }
     }
 
     @GetMapping
@@ -102,13 +116,17 @@ public class PlaceController {
                 .orElseThrow(() -> ApiException.notFound("PLACE_NOT_FOUND", "장소를 찾을 수 없어요."));
         String dayType = RuleConditionExtractor.dayType(day);
         List<PlaceStore.Congestion> hours = new ArrayList<>();
+        // 요일별 파일(윤경)이 있으면 그 날짜 요일 값, 없으면 평일·주말 값 (앱 요일 탭이 날짜 바꿔서 이걸 다시 부름)
+        String today = PlaceStore.DOWS.get(day.getDayOfWeek().getValue() - 1);
+        boolean hasDow = store.dowSource() != null;
         for (int h = 9; h <= 23; h++) {
-            hours.add(store.congestion(placeId, dayType, h, PlaceStore.Basis.ALL_DAY));
+            hours.add(hasDow ? store.congestionByDow(placeId, today, h)
+                    : store.congestion(placeId, dayType, h, PlaceStore.Basis.ALL_DAY));
         }
         Map<String, Object> byHour = new LinkedHashMap<>();
         byHour.put("date", day.toString());
         byHour.put("dayType", dayType);
-        byHour.put("basis", "ALL_DAY");
+        byHour.put("basis", hasDow ? "ALL_DAY_DOW" : "ALL_DAY");
         byHour.put("hours", hours);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("placeId", p.placeId());
@@ -127,6 +145,26 @@ public class PlaceController {
         m.put("openingHours", null);    // 구글 Places 연동 전까지 null → 화면에 "영업시간 정보 없음"
         m.put("tags", p.tags());
         m.put("congestionByHour", byHour);
+        // 11주차: 평일·주말 탭 (테이블링처럼) - 날짜랑 상관없이 둘 다, 9~23시, 하루 전체 비교
+        Map<String, Object> byDay = new LinkedHashMap<>();
+        for (String d : List.of("WEEKDAY", "WEEKEND")) {
+            List<PlaceStore.Congestion> list = new ArrayList<>();
+            for (int h = 9; h <= 23; h++) list.add(store.congestion(placeId, d, h, PlaceStore.Basis.ALL_DAY));
+            byDay.put(d, list);
+        }
+        m.put("congestionByDayType", byDay);
+        // 11주차: 요일 탭 7개 (MON~SUN, 9~23시) - 요일별 파일 없으면 평일·주말 값으로 대신 (source = DAY_TYPE)
+        Map<String, Object> byDow = new LinkedHashMap<>();
+        for (String d : PlaceStore.DOWS) {
+            List<PlaceStore.Congestion> list = new ArrayList<>();
+            for (int h = 9; h <= 23; h++) list.add(store.congestionByDow(placeId, d, h));
+            byDow.put(d, list);
+        }
+        Map<String, Object> dow = new LinkedHashMap<>();
+        dow.put("source", store.dowSource() == null ? "DAY_TYPE" : "DOW");
+        dow.put("today", PlaceStore.DOWS.get(day.getDayOfWeek().getValue() - 1));
+        dow.put("days", byDow);
+        m.put("congestionByDay", dow);
         return m;
     }
 

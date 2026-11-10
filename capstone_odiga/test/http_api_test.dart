@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:capstone_odiga/api/http_odiga_api.dart';
 import 'package:capstone_odiga/api/odiga_api.dart';
+import 'package:capstone_odiga/state/app_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -43,17 +44,65 @@ void main() {
     );
     expect(sent.single.method, 'POST');
     expect(sent.single.url.toString(), 'http://localhost:8080/api/search');
-    expect(jsonDecode(sent.single.body), {'query': '성수 조용한 카페', 'date': '2026-10-31'});
+    expect(jsonDecode(sent.single.body), {
+      'query': '성수 조용한 카페',
+      'date': '2026-10-31',
+    });
     expect(result.conditions.region, 'SEONGSU');
     expect(result.courses, hasLength(3));
     expect(result.courses.first.title, isNotEmpty);
   });
 
   test('검색: 지역 없음(422) → ApiException CONDITION_MISSING', () async {
-    final client = api((_) async => _ok('search_error_condition_missing', status: 422));
+    final client = api(
+      (_) async => _ok('search_error_condition_missing', status: 422),
+    );
     await expectLater(
       client.search(const SearchRequestDto(query: '조용한 카페')),
       _apiError('CONDITION_MISSING'),
+    );
+  });
+
+  test('서버 모드 시작은 고정 장소 상세나 장소 혼잡도에 의존하지 않음', () async {
+    final client = api((req) async {
+      if (req.url.path == '/api/users/me/preferences') {
+        return http.Response('{"success":false,"code":"UNAUTHORIZED"}', 401);
+      }
+      if (req.url.path != '/api/search') {
+        fail('Unexpected startup request: ${req.url.path}');
+      }
+      final file = switch (jsonDecode(req.body)['query']) {
+        '성수' => 'search_seongsu_weekend_quiet',
+        '홍대' => 'search_hongdae_weekend_lively',
+        _ => 'search_gangnam_weekday_group',
+      };
+      final response = jsonDecode(_mock(file));
+      for (final place in response['data']['places']) {
+        place.remove('congestion');
+      }
+      for (final course in response['data']['courses']) {
+        for (final stop in course['stops']) {
+          stop.remove('congestion');
+        }
+      }
+      return http.Response.bytes(utf8.encode(jsonEncode(response)), 200);
+    });
+
+    final app = await AppState.load(api: client);
+    addTearDown(app.dispose);
+    expect(app.repository.places, isNotEmpty);
+    expect(sent.where((req) => req.url.path == '/api/search'), hasLength(3));
+  });
+
+  test('초기 검색 실패에 지역과 원래 API 오류 코드가 남음', () async {
+    final client = api((_) async => throw const SocketException('refused'));
+    await expectLater(
+      AppState.load(api: client),
+      throwsA(
+        isA<ApiException>()
+            .having((e) => e.code, 'code', 'NETWORK_ERROR')
+            .having((e) => e.message, 'message', contains('초기 검색')),
+      ),
     );
   });
 
@@ -66,12 +115,17 @@ void main() {
       return _ok('share_view_response');
     });
     final place = await client.getPlace('780757764', date: '2026-10-31');
-    expect(sent.last.url.toString(), 'http://localhost:8080/api/places/780757764?date=2026-10-31');
+    expect(
+      sent.last.url.toString(),
+      'http://localhost:8080/api/places/780757764?date=2026-10-31',
+    );
     expect(place.congestionByHour.basis, 'ALL_DAY');
 
     final updated = await client.updateCourse(
       'c_1_1',
-      const CourseUpdateRequestDto(stops: [StopInputDto(placeId: '1', stayMinutes: 90)]),
+      const CourseUpdateRequestDto(
+        stops: [StopInputDto(placeId: '1', stayMinutes: 90)],
+      ),
     );
     expect(sent.last.method, 'PUT');
     expect(sent.last.url.path, '/api/courses/c_1_1');
@@ -90,30 +144,51 @@ void main() {
   });
 
   test('로그인하면 이후 요청에 토큰 헤더', () async {
-    final client = api((req) async => req.url.path == '/api/auth/login'
-        ? _ok('auth_login_response')
-        : _ok('preferences'));
-    await client.login(const LoginRequestDto(email: 'test@example.com', password: 'test1234!'));
+    final client = api(
+      (req) async => req.url.path == '/api/auth/login'
+          ? _ok('auth_login_response')
+          : _ok('preferences'),
+    );
+    await client.login(
+      const LoginRequestDto(email: 'test@example.com', password: 'test1234!'),
+    );
     await client.getPreferences();
-    expect(sent.last.headers['Authorization'], 'Bearer eyJhbGciOiJIUzI1NiJ9.mock.token');
+    expect(
+      sent.last.headers['Authorization'],
+      'Bearer eyJhbGciOiJIUzI1NiJ9.mock.token',
+    );
   });
 
   test('서버 꺼짐 → NETWORK_ERROR, 없는 API(404) → NOT_READY', () async {
     final down = api((_) async => throw const SocketException('refused'));
     await expectLater(down.getShare('x'), _apiError('NETWORK_ERROR'));
 
-    final notReady = api((_) async => http.Response('{"status":404,"error":"Not Found"}', 404));
+    final notReady = api(
+      (_) async => http.Response('{"status":404,"error":"Not Found"}', 404),
+    );
     await expectLater(
-      notReady.signup(const SignupRequestDto(email: 'a@b.c', password: '12345678', region: 'SEONGSU')),
+      notReady.signup(
+        const SignupRequestDto(
+          email: 'a@b.c',
+          password: '12345678',
+          region: 'SEONGSU',
+        ),
+      ),
       _apiError('NOT_READY'),
     );
   });
 
   test('내 설정 API 아직 없으면 앱 안 기본값으로 (앱 안 멈춤)', () async {
-    final client = api((_) async => http.Response('{"status":404,"error":"Not Found"}', 404));
+    final client = api(
+      (_) async => http.Response('{"status":404,"error":"Not Found"}', 404),
+    );
     expect((await client.getPreferences()).region, 'SEONGSU');
     await client.updatePreferences(
-      PreferencesDto(region: 'HONGDAE', atmospheres: const ['데이트'], allergies: const []),
+      PreferencesDto(
+        region: 'HONGDAE',
+        atmospheres: const ['데이트'],
+        allergies: const [],
+      ),
     );
     expect((await client.getPreferences()).region, 'HONGDAE');
   });

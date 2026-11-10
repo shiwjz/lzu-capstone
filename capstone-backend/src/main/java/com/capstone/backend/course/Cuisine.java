@@ -41,10 +41,16 @@ public final class Cuisine {
             Map.entry("디저트카페", "CAFE"), Map.entry("개인카페", "CAFE"), Map.entry("프랜차이즈", "CAFE"),
             Map.entry("갤러리·북카페", "CAFE"), Map.entry("차·음료", "CAFE"));
 
-    /** 식사 칸 거르기: 큰 종류 골랐으면 음식점은 그 종류만 (카페·놀거리는 상관없음) */
+    /**
+     * 식사 칸 거르기: 큰 종류 골랐으면 음식점은 그 종류만 (카페·놀거리는 상관없음)
+     * - 11주차: 술집(BAR)은 술 코스 틀의 술집 칸용이라 식사 거르기엔 안 씀
+     *   (술집만 골랐으면 식사는 아무 음식점, '일식 + 술집'이면 식사는 일식만, 술집은 술집 칸으로)
+     */
     public static boolean wanted(CoursePlace place, List<String> cuisines) {
-        return cuisines == null || cuisines.isEmpty() || !place.category().equals("FOOD")
-                || cuisines.contains(place.cuisine());
+        if (cuisines == null || cuisines.isEmpty() || !place.category().equals("FOOD")) return true;
+        if (place.isBar()) return cuisines.contains("BAR");
+        List<String> meal = cuisines.stream().filter(c -> !c.equals("BAR")).toList();
+        return meal.isEmpty() || meal.contains(place.cuisine());
     }
 
     /**
@@ -52,10 +58,10 @@ public final class Cuisine {
      * - 사용자가 고른 세부가 속한 큰 종류에서만 판단 (일식 세부만 골랐으면 카페는 계산 안 함)
      */
     public static Double detailFit(String placeCuisine, String placeDetail, List<String> wanted) {
-        if (wanted == null || wanted.isEmpty() || placeCuisine == null) return null;
-        boolean family = wanted.stream().anyMatch(d -> placeCuisine.equals(DETAIL_FAMILY.get(d)));
+        if (wanted == null || wanted.isEmpty()) return null;
+        if (placeDetail != null && wanted.contains(placeDetail)) return 1.0;        // 윤경 place_score.py detail_score 순서 그대로
+        boolean family = placeCuisine != null && wanted.stream().anyMatch(d -> placeCuisine.equals(DETAIL_FAMILY.get(d)));
         if (!family) return null;
-        if (placeDetail != null && wanted.contains(placeDetail)) return 1.0;
         return placeDetail == null ? 0.5 : 0.2;
     }
 

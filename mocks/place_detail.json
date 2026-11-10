@@ -19,20 +19,12 @@
     "openingHours": null,
     "tags": [
       {
-        "tag": "디저트",
-        "mentions": 20
+        "tag": "감성적인",
+        "mentions": 11
       },
       {
-        "tag": "조용함",
-        "mentions": 7
-      },
-      {
-        "tag": "데이트",
-        "mentions": 6
-      },
-      {
-        "tag": "사진",
-        "mentions": 2
+        "tag": "조용한",
+        "mentions": 4
       }
     ],
     "congestionByHour": {
@@ -116,6 +108,707 @@
           "percentile": 13
         }
       ]
+    },
+    "congestionByDayType": {
+      "WEEKDAY": [
+        {
+          "hour": 9,
+          "level": "NORMAL",
+          "percentile": 65
+        },
+        {
+          "hour": 10,
+          "level": "NORMAL",
+          "percentile": 69
+        },
+        {
+          "hour": 11,
+          "level": "BUSY",
+          "percentile": 70
+        },
+        {
+          "hour": 12,
+          "level": "BUSY",
+          "percentile": 73
+        },
+        {
+          "hour": 13,
+          "level": "BUSY",
+          "percentile": 75
+        },
+        {
+          "hour": 14,
+          "level": "BUSY",
+          "percentile": 78
+        },
+        {
+          "hour": 15,
+          "level": "BUSY",
+          "percentile": 78
+        },
+        {
+          "hour": 16,
+          "level": "BUSY",
+          "percentile": 76
+        },
+        {
+          "hour": 17,
+          "level": "NORMAL",
+          "percentile": 66
+        },
+        {
+          "hour": 18,
+          "level": "NORMAL",
+          "percentile": 58
+        },
+        {
+          "hour": 19,
+          "level": "NORMAL",
+          "percentile": 49
+        },
+        {
+          "hour": 20,
+          "level": "NORMAL",
+          "percentile": 32
+        },
+        {
+          "hour": 21,
+          "level": "QUIET",
+          "percentile": 21
+        },
+        {
+          "hour": 22,
+          "level": "QUIET",
+          "percentile": 14
+        },
+        {
+          "hour": 23,
+          "level": "QUIET",
+          "percentile": 14
+        }
+      ],
+      "WEEKEND": [
+        {
+          "hour": 9,
+          "level": "QUIET",
+          "percentile": 20
+        },
+        {
+          "hour": 10,
+          "level": "QUIET",
+          "percentile": 26
+        },
+        {
+          "hour": 11,
+          "level": "NORMAL",
+          "percentile": 33
+        },
+        {
+          "hour": 12,
+          "level": "NORMAL",
+          "percentile": 47
+        },
+        {
+          "hour": 13,
+          "level": "NORMAL",
+          "percentile": 47
+        },
+        {
+          "hour": 14,
+          "level": "NORMAL",
+          "percentile": 52
+        },
+        {
+          "hour": 15,
+          "level": "NORMAL",
+          "percentile": 56
+        },
+        {
+          "hour": 16,
+          "level": "NORMAL",
+          "percentile": 50
+        },
+        {
+          "hour": 17,
+          "level": "NORMAL",
+          "percentile": 49
+        },
+        {
+          "hour": 18,
+          "level": "NORMAL",
+          "percentile": 43
+        },
+        {
+          "hour": 19,
+          "level": "QUIET",
+          "percentile": 28
+        },
+        {
+          "hour": 20,
+          "level": "QUIET",
+          "percentile": 23
+        },
+        {
+          "hour": 21,
+          "level": "QUIET",
+          "percentile": 14
+        },
+        {
+          "hour": 22,
+          "level": "QUIET",
+          "percentile": 15
+        },
+        {
+          "hour": 23,
+          "level": "QUIET",
+          "percentile": 13
+        }
+      ]
+    },
+    "congestionByDay": {
+      "source": "DAY_TYPE",
+      "today": "SAT",
+      "days": {
+        "MON": [
+          {
+            "hour": 9,
+            "level": "NORMAL",
+            "percentile": 65
+          },
+          {
+            "hour": 10,
+            "level": "NORMAL",
+            "percentile": 69
+          },
+          {
+            "hour": 11,
+            "level": "BUSY",
+            "percentile": 70
+          },
+          {
+            "hour": 12,
+            "level": "BUSY",
+            "percentile": 73
+          },
+          {
+            "hour": 13,
+            "level": "BUSY",
+            "percentile": 75
+          },
+          {
+            "hour": 14,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 15,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 16,
+            "level": "BUSY",
+            "percentile": 76
+          },
+          {
+            "hour": 17,
+            "level": "NORMAL",
+            "percentile": 66
+          },
+          {
+            "hour": 18,
+            "level": "NORMAL",
+            "percentile": 58
+          },
+          {
+            "hour": 19,
+            "level": "NORMAL",
+            "percentile": 49
+          },
+          {
+            "hour": 20,
+            "level": "NORMAL",
+            "percentile": 32
+          },
+          {
+            "hour": 21,
+            "level": "QUIET",
+            "percentile": 21
+          },
+          {
+            "hour": 22,
+            "level": "QUIET",
+            "percentile": 14
+          },
+          {
+            "hour": 23,
+            "level": "QUIET",
+            "percentile": 14
+          }
+        ],
+        "TUE": [
+          {
+            "hour": 9,
+            "level": "NORMAL",
+            "percentile": 65
+          },
+          {
+            "hour": 10,
+            "level": "NORMAL",
+            "percentile": 69
+          },
+          {
+            "hour": 11,
+            "level": "BUSY",
+            "percentile": 70
+          },
+          {
+            "hour": 12,
+            "level": "BUSY",
+            "percentile": 73
+          },
+          {
+            "hour": 13,
+            "level": "BUSY",
+            "percentile": 75
+          },
+          {
+            "hour": 14,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 15,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 16,
+            "level": "BUSY",
+            "percentile": 76
+          },
+          {
+            "hour": 17,
+            "level": "NORMAL",
+            "percentile": 66
+          },
+          {
+            "hour": 18,
+            "level": "NORMAL",
+            "percentile": 58
+          },
+          {
+            "hour": 19,
+            "level": "NORMAL",
+            "percentile": 49
+          },
+          {
+            "hour": 20,
+            "level": "NORMAL",
+            "percentile": 32
+          },
+          {
+            "hour": 21,
+            "level": "QUIET",
+            "percentile": 21
+          },
+          {
+            "hour": 22,
+            "level": "QUIET",
+            "percentile": 14
+          },
+          {
+            "hour": 23,
+            "level": "QUIET",
+            "percentile": 14
+          }
+        ],
+        "WED": [
+          {
+            "hour": 9,
+            "level": "NORMAL",
+            "percentile": 65
+          },
+          {
+            "hour": 10,
+            "level": "NORMAL",
+            "percentile": 69
+          },
+          {
+            "hour": 11,
+            "level": "BUSY",
+            "percentile": 70
+          },
+          {
+            "hour": 12,
+            "level": "BUSY",
+            "percentile": 73
+          },
+          {
+            "hour": 13,
+            "level": "BUSY",
+            "percentile": 75
+          },
+          {
+            "hour": 14,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 15,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 16,
+            "level": "BUSY",
+            "percentile": 76
+          },
+          {
+            "hour": 17,
+            "level": "NORMAL",
+            "percentile": 66
+          },
+          {
+            "hour": 18,
+            "level": "NORMAL",
+            "percentile": 58
+          },
+          {
+            "hour": 19,
+            "level": "NORMAL",
+            "percentile": 49
+          },
+          {
+            "hour": 20,
+            "level": "NORMAL",
+            "percentile": 32
+          },
+          {
+            "hour": 21,
+            "level": "QUIET",
+            "percentile": 21
+          },
+          {
+            "hour": 22,
+            "level": "QUIET",
+            "percentile": 14
+          },
+          {
+            "hour": 23,
+            "level": "QUIET",
+            "percentile": 14
+          }
+        ],
+        "THU": [
+          {
+            "hour": 9,
+            "level": "NORMAL",
+            "percentile": 65
+          },
+          {
+            "hour": 10,
+            "level": "NORMAL",
+            "percentile": 69
+          },
+          {
+            "hour": 11,
+            "level": "BUSY",
+            "percentile": 70
+          },
+          {
+            "hour": 12,
+            "level": "BUSY",
+            "percentile": 73
+          },
+          {
+            "hour": 13,
+            "level": "BUSY",
+            "percentile": 75
+          },
+          {
+            "hour": 14,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 15,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 16,
+            "level": "BUSY",
+            "percentile": 76
+          },
+          {
+            "hour": 17,
+            "level": "NORMAL",
+            "percentile": 66
+          },
+          {
+            "hour": 18,
+            "level": "NORMAL",
+            "percentile": 58
+          },
+          {
+            "hour": 19,
+            "level": "NORMAL",
+            "percentile": 49
+          },
+          {
+            "hour": 20,
+            "level": "NORMAL",
+            "percentile": 32
+          },
+          {
+            "hour": 21,
+            "level": "QUIET",
+            "percentile": 21
+          },
+          {
+            "hour": 22,
+            "level": "QUIET",
+            "percentile": 14
+          },
+          {
+            "hour": 23,
+            "level": "QUIET",
+            "percentile": 14
+          }
+        ],
+        "FRI": [
+          {
+            "hour": 9,
+            "level": "NORMAL",
+            "percentile": 65
+          },
+          {
+            "hour": 10,
+            "level": "NORMAL",
+            "percentile": 69
+          },
+          {
+            "hour": 11,
+            "level": "BUSY",
+            "percentile": 70
+          },
+          {
+            "hour": 12,
+            "level": "BUSY",
+            "percentile": 73
+          },
+          {
+            "hour": 13,
+            "level": "BUSY",
+            "percentile": 75
+          },
+          {
+            "hour": 14,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 15,
+            "level": "BUSY",
+            "percentile": 78
+          },
+          {
+            "hour": 16,
+            "level": "BUSY",
+            "percentile": 76
+          },
+          {
+            "hour": 17,
+            "level": "NORMAL",
+            "percentile": 66
+          },
+          {
+            "hour": 18,
+            "level": "NORMAL",
+            "percentile": 58
+          },
+          {
+            "hour": 19,
+            "level": "NORMAL",
+            "percentile": 49
+          },
+          {
+            "hour": 20,
+            "level": "NORMAL",
+            "percentile": 32
+          },
+          {
+            "hour": 21,
+            "level": "QUIET",
+            "percentile": 21
+          },
+          {
+            "hour": 22,
+            "level": "QUIET",
+            "percentile": 14
+          },
+          {
+            "hour": 23,
+            "level": "QUIET",
+            "percentile": 14
+          }
+        ],
+        "SAT": [
+          {
+            "hour": 9,
+            "level": "QUIET",
+            "percentile": 20
+          },
+          {
+            "hour": 10,
+            "level": "QUIET",
+            "percentile": 26
+          },
+          {
+            "hour": 11,
+            "level": "NORMAL",
+            "percentile": 33
+          },
+          {
+            "hour": 12,
+            "level": "NORMAL",
+            "percentile": 47
+          },
+          {
+            "hour": 13,
+            "level": "NORMAL",
+            "percentile": 47
+          },
+          {
+            "hour": 14,
+            "level": "NORMAL",
+            "percentile": 52
+          },
+          {
+            "hour": 15,
+            "level": "NORMAL",
+            "percentile": 56
+          },
+          {
+            "hour": 16,
+            "level": "NORMAL",
+            "percentile": 50
+          },
+          {
+            "hour": 17,
+            "level": "NORMAL",
+            "percentile": 49
+          },
+          {
+            "hour": 18,
+            "level": "NORMAL",
+            "percentile": 43
+          },
+          {
+            "hour": 19,
+            "level": "QUIET",
+            "percentile": 28
+          },
+          {
+            "hour": 20,
+            "level": "QUIET",
+            "percentile": 23
+          },
+          {
+            "hour": 21,
+            "level": "QUIET",
+            "percentile": 14
+          },
+          {
+            "hour": 22,
+            "level": "QUIET",
+            "percentile": 15
+          },
+          {
+            "hour": 23,
+            "level": "QUIET",
+            "percentile": 13
+          }
+        ],
+        "SUN": [
+          {
+            "hour": 9,
+            "level": "QUIET",
+            "percentile": 20
+          },
+          {
+            "hour": 10,
+            "level": "QUIET",
+            "percentile": 26
+          },
+          {
+            "hour": 11,
+            "level": "NORMAL",
+            "percentile": 33
+          },
+          {
+            "hour": 12,
+            "level": "NORMAL",
+            "percentile": 47
+          },
+          {
+            "hour": 13,
+            "level": "NORMAL",
+            "percentile": 47
+          },
+          {
+            "hour": 14,
+            "level": "NORMAL",
+            "percentile": 52
+          },
+          {
+            "hour": 15,
+            "level": "NORMAL",
+            "percentile": 56
+          },
+          {
+            "hour": 16,
+            "level": "NORMAL",
+            "percentile": 50
+          },
+          {
+            "hour": 17,
+            "level": "NORMAL",
+            "percentile": 49
+          },
+          {
+            "hour": 18,
+            "level": "NORMAL",
+            "percentile": 43
+          },
+          {
+            "hour": 19,
+            "level": "QUIET",
+            "percentile": 28
+          },
+          {
+            "hour": 20,
+            "level": "QUIET",
+            "percentile": 23
+          },
+          {
+            "hour": 21,
+            "level": "QUIET",
+            "percentile": 14
+          },
+          {
+            "hour": 22,
+            "level": "QUIET",
+            "percentile": 15
+          },
+          {
+            "hour": 23,
+            "level": "QUIET",
+            "percentile": 13
+          }
+        ]
+      }
     }
   }
 }

@@ -6,20 +6,21 @@
     "courseId": "c_seongsu_1",
     "rank": null,
     "title": "성수 오후 전시관 코스",
-    "reason": "'조용함' 후기 많은 곳 2곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 20분",
+    "reason": "'조용한' 후기 많은 곳 2곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 20분",
     "keywords": [
-      "조용함",
+      "조용한",
       "한산",
       "분식"
     ],
+    "route": "전시관 → 카페 → 분식",
     "startAt": "15:00",
     "endAt": "18:40",
     "totalMinutes": 220,
     "totalWalkMinutes": 20,
     "totalDistanceMeters": 960,
     "score": {
-      "total": 0.54,
-      "placeAvg": 0.62,
+      "total": 0.59,
+      "placeAvg": 0.7,
       "moveEfficiency": 0.5,
       "timeFit": 0.0
     },
@@ -60,7 +61,7 @@
           "level": "BUSY",
           "percentile": 92
         },
-        "placeScore": 0.17
+        "placeScore": 0.4
       },
       {
         "order": 3,

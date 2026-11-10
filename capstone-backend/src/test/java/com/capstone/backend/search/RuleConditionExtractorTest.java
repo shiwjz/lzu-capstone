@@ -25,7 +25,7 @@ class RuleConditionExtractorTest {
     }
 
     @Test
-    @DisplayName("성수 주말 조용함 (가짜 JSON 시나리오 1)")
+    @DisplayName("성수 주말 조용한 (가짜 JSON 시나리오 1)")
     void seongsu() {
         SearchConditions c = x("토요일 오후 3시에 성수에서 친구랑 조용한 카페 가고 저녁도 먹고 싶어");
         assertEquals("SEONGSU", c.region());
@@ -34,7 +34,7 @@ class RuleConditionExtractorTest {
         assertEquals("15:00", c.startTime());
         assertEquals(2, c.partySize().intValue());
         assertEquals(List.of("CAFE", "FOOD"), c.categories());
-        assertEquals(List.of("조용함"), c.atmospheres());
+        assertEquals(List.of("조용한"), c.atmospheres());
         assertEquals("QUIET", c.crowdPreference());
         assertEquals("FRIEND", c.companionType());
         assertEquals("RULE", c.extractedBy());
@@ -47,7 +47,7 @@ class RuleConditionExtractorTest {
         assertEquals("HONGDAE", c.region());
         assertEquals("19:00", c.startTime());
         assertEquals(2, c.partySize().intValue());
-        assertEquals(List.of("데이트"), c.atmospheres());
+        assertEquals(List.of("데이트", "활기찬"), c.atmospheres());
         assertEquals("LIVELY", c.crowdPreference());
         assertEquals("COUPLE", c.companionType());
         assertTrue(c.categories().contains("ACTIVITY"));
@@ -80,7 +80,7 @@ class RuleConditionExtractorTest {
     }
 
     @Test
-    @DisplayName("다음 주 일요일, 20대 여자 둘, 전시·디저트")
+    @DisplayName("다음 주 일요일, 20대 여자 둘, 전시·디저트(카페)")
     void nextWeekGenderAge() {
         SearchConditions c = x("다음 주 일요일 오전 11시 강남에서 20대 여자 둘이 전시 보고 디저트 먹을래");
         assertEquals("2026-10-25", c.date());
@@ -89,7 +89,7 @@ class RuleConditionExtractorTest {
         assertEquals("F", c.gender());
         assertEquals("20s", c.ageGroup());
         assertTrue(c.categories().contains("CULTURE"));
-        assertTrue(c.atmospheres().contains("디저트"));
+        assertTrue(c.categories().contains("CAFE"));
     }
 
     @Test

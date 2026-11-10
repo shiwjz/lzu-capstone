@@ -16,7 +16,7 @@
         "FOOD"
       ],
       "atmospheres": [
-        "조용함"
+        "조용한"
       ],
       "crowdPreference": "QUIET",
       "allergies": [],
@@ -26,9 +26,91 @@
       "excludedFoods": [],
       "cuisines": [],
       "cuisineDetails": [],
+      "courseType": null,
+      "excludedCategories": [],
+      "includedCategories": [],
+      "playDetails": [],
       "extractedBy": "GEMINI"
     },
     "places": [
+      {
+        "placeId": "756927927",
+        "name": "커피냅로스터스 성수",
+        "category": "CAFE",
+        "region": "SEONGSU",
+        "address": "서울 성동구 성수일로4길 35-12",
+        "lat": 37.5423088,
+        "lng": 127.0531901,
+        "phone": "02-466-4131",
+        "placeUrl": "http://place.map.kakao.com/756927927",
+        "tags": [
+          {
+            "tag": "조용한",
+            "mentions": 12
+          },
+          {
+            "tag": "감성적인",
+            "mentions": 6
+          },
+          {
+            "tag": "활기찬",
+            "mentions": 3
+          }
+        ],
+        "cuisine": "CAFE",
+        "cuisineDetail": "개인카페",
+        "congestion": {
+          "hour": 16,
+          "level": "QUIET",
+          "percentile": 25
+        },
+        "score": {
+          "total": 0.85,
+          "request": 1.0,
+          "target": 0.5,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 16시 주변이 한산해요"
+      },
+      {
+        "placeId": "524367320",
+        "name": "비아트 성수",
+        "category": "CAFE",
+        "region": "SEONGSU",
+        "address": "서울 성동구 아차산로5길 24-45",
+        "lat": 37.5471016,
+        "lng": 127.0542538,
+        "phone": "070-5213-5586",
+        "placeUrl": "http://place.map.kakao.com/524367320",
+        "tags": [
+          {
+            "tag": "넓고편한",
+            "mentions": 25
+          },
+          {
+            "tag": "감성적인",
+            "mentions": 13
+          },
+          {
+            "tag": "조용한",
+            "mentions": 9
+          }
+        ],
+        "cuisine": "CAFE",
+        "cuisineDetail": "개인카페",
+        "congestion": {
+          "hour": 16,
+          "level": "QUIET",
+          "percentile": 14
+        },
+        "score": {
+          "total": 0.85,
+          "request": 1.0,
+          "target": 0.5,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 16시 주변이 한산해요"
+      },
       {
         "placeId": "1292703398",
         "name": "코사이어티 서울숲점",
@@ -41,19 +123,11 @@
         "placeUrl": "http://place.map.kakao.com/1292703398",
         "tags": [
           {
-            "tag": "조용함",
-            "mentions": 8
+            "tag": "조용한",
+            "mentions": 7
           },
           {
-            "tag": "데이트",
-            "mentions": 3
-          },
-          {
-            "tag": "디저트",
-            "mentions": 2
-          },
-          {
-            "tag": "단체",
+            "tag": "감성적인",
             "mentions": 2
           }
         ],
@@ -70,57 +144,30 @@
           "target": 0.5,
           "congestion": 1.0
         },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 15시 주변이 한산해요"
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 15시 주변이 한산해요"
       },
       {
-        "placeId": "1849426207",
-        "name": "유어네임히얼",
-        "category": "SHOPPING",
-        "region": "SEONGSU",
-        "address": "서울 성동구 뚝섬로1길 25",
-        "lat": 37.543638,
-        "lng": 127.046396,
-        "phone": "1644-0819",
-        "placeUrl": "http://place.map.kakao.com/1849426207",
-        "tags": [
-          {
-            "tag": "디저트",
-            "mentions": 11
-          },
-          {
-            "tag": "조용함",
-            "mentions": 3
-          }
-        ],
-        "cuisine": null,
-        "cuisineDetail": null,
-        "congestion": {
-          "hour": 15,
-          "level": "QUIET",
-          "percentile": 1
-        },
-        "score": {
-          "total": 0.85,
-          "request": 1.0,
-          "target": 0.5,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 15시 주변이 한산해요"
-      },
-      {
-        "placeId": "1926018643",
-        "name": "단일서울",
+        "placeId": "449538350",
+        "name": "스윗번트",
         "category": "CAFE",
         "region": "SEONGSU",
-        "address": "서울 성동구 왕십리로 66-33",
-        "lat": 37.543031,
-        "lng": 127.0454995,
-        "phone": "02-461-9779",
-        "placeUrl": "http://place.map.kakao.com/1926018643",
+        "address": "서울 성동구 성수일로4길 37",
+        "lat": 37.5421747,
+        "lng": 127.0529286,
+        "phone": null,
+        "placeUrl": "http://place.map.kakao.com/449538350",
         "tags": [
           {
-            "tag": "조용함",
-            "mentions": 4
+            "tag": "조용한",
+            "mentions": 6
+          },
+          {
+            "tag": "감성적인",
+            "mentions": 5
+          },
+          {
+            "tag": "뷰좋은",
+            "mentions": 2
           }
         ],
         "cuisine": "CAFE",
@@ -128,7 +175,7 @@
         "congestion": {
           "hour": 16,
           "level": "QUIET",
-          "percentile": 11
+          "percentile": 17
         },
         "score": {
           "total": 0.85,
@@ -136,7 +183,7 @@
           "target": 0.5,
           "congestion": 1.0
         },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 16시 주변이 한산해요"
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 16시 주변이 한산해요"
       },
       {
         "placeId": "4868160",
@@ -150,15 +197,23 @@
         "placeUrl": "http://place.map.kakao.com/4868160",
         "tags": [
           {
-            "tag": "데이트",
+            "tag": "감성적인",
             "mentions": 5
           },
           {
-            "tag": "조용함",
+            "tag": "조용한",
             "mentions": 5
           },
           {
-            "tag": "디저트",
+            "tag": "넓고편한",
+            "mentions": 3
+          },
+          {
+            "tag": "뷰좋은",
+            "mentions": 2
+          },
+          {
+            "tag": "활기찬",
             "mentions": 2
           }
         ],
@@ -175,7 +230,42 @@
           "target": 0.5,
           "congestion": 1.0
         },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 16시 주변이 한산해요"
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 16시 주변이 한산해요"
+      },
+      {
+        "placeId": "1926018643",
+        "name": "단일서울",
+        "category": "CAFE",
+        "region": "SEONGSU",
+        "address": "서울 성동구 왕십리로 66-33",
+        "lat": 37.543031,
+        "lng": 127.0454995,
+        "phone": "02-461-9779",
+        "placeUrl": "http://place.map.kakao.com/1926018643",
+        "tags": [
+          {
+            "tag": "감성적인",
+            "mentions": 6
+          },
+          {
+            "tag": "조용한",
+            "mentions": 4
+          }
+        ],
+        "cuisine": "CAFE",
+        "cuisineDetail": "개인카페",
+        "congestion": {
+          "hour": 16,
+          "level": "QUIET",
+          "percentile": 11
+        },
+        "score": {
+          "total": 0.85,
+          "request": 1.0,
+          "target": 0.5,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 16시 주변이 한산해요"
       },
       {
         "placeId": "1229111120",
@@ -189,12 +279,12 @@
         "placeUrl": "http://place.map.kakao.com/1229111120",
         "tags": [
           {
-            "tag": "조용함",
+            "tag": "감성적인",
             "mentions": 5
           },
           {
-            "tag": "디저트",
-            "mentions": 2
+            "tag": "조용한",
+            "mentions": 4
           }
         ],
         "cuisine": "CAFE",
@@ -210,159 +300,7 @@
           "target": 0.5,
           "congestion": 1.0
         },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 16시 주변이 한산해요"
-      },
-      {
-        "placeId": "1758455789",
-        "name": "미유 MEOW",
-        "category": "CAFE",
-        "region": "SEONGSU",
-        "address": "서울 성동구 뚝섬로1가길 19-11",
-        "lat": 37.5425897,
-        "lng": 127.0474692,
-        "phone": "010-8814-1227",
-        "placeUrl": "http://place.map.kakao.com/1758455789",
-        "tags": [
-          {
-            "tag": "디저트",
-            "mentions": 4
-          },
-          {
-            "tag": "데이트",
-            "mentions": 3
-          },
-          {
-            "tag": "조용함",
-            "mentions": 3
-          }
-        ],
-        "cuisine": "CAFE",
-        "cuisineDetail": "개인카페",
-        "congestion": {
-          "hour": 16,
-          "level": "QUIET",
-          "percentile": 16
-        },
-        "score": {
-          "total": 0.85,
-          "request": 1.0,
-          "target": 0.5,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 16시 주변이 한산해요"
-      },
-      {
-        "placeId": "756927927",
-        "name": "커피냅로스터스 성수",
-        "category": "CAFE",
-        "region": "SEONGSU",
-        "address": "서울 성동구 성수일로4길 35-12",
-        "lat": 37.5423088,
-        "lng": 127.0531901,
-        "phone": "02-466-4131",
-        "placeUrl": "http://place.map.kakao.com/756927927",
-        "tags": [
-          {
-            "tag": "디저트",
-            "mentions": 18
-          },
-          {
-            "tag": "조용함",
-            "mentions": 13
-          },
-          {
-            "tag": "데이트",
-            "mentions": 7
-          }
-        ],
-        "cuisine": "CAFE",
-        "cuisineDetail": "개인카페",
-        "congestion": {
-          "hour": 16,
-          "level": "QUIET",
-          "percentile": 25
-        },
-        "score": {
-          "total": 0.85,
-          "request": 1.0,
-          "target": 0.5,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 16시 주변이 한산해요"
-      },
-      {
-        "placeId": "196139841",
-        "name": "휴먼 메이드 서울 카페 바이 블루보틀 커피",
-        "category": "CAFE",
-        "region": "SEONGSU",
-        "address": "서울 성동구 성수이로7길 39",
-        "lat": 37.5425331,
-        "lng": 127.0532332,
-        "phone": "1533-6906",
-        "placeUrl": "http://place.map.kakao.com/196139841",
-        "tags": [
-          {
-            "tag": "조용함",
-            "mentions": 4
-          },
-          {
-            "tag": "데이트",
-            "mentions": 3
-          }
-        ],
-        "cuisine": "CAFE",
-        "cuisineDetail": "프랜차이즈",
-        "congestion": {
-          "hour": 16,
-          "level": "QUIET",
-          "percentile": 25
-        },
-        "score": {
-          "total": 0.85,
-          "request": 1.0,
-          "target": 0.5,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 16시 주변이 한산해요"
-      },
-      {
-        "placeId": "449538350",
-        "name": "스윗번트",
-        "category": "CAFE",
-        "region": "SEONGSU",
-        "address": "서울 성동구 성수일로4길 37",
-        "lat": 37.5421747,
-        "lng": 127.0529286,
-        "phone": null,
-        "placeUrl": "http://place.map.kakao.com/449538350",
-        "tags": [
-          {
-            "tag": "디저트",
-            "mentions": 33
-          },
-          {
-            "tag": "데이트",
-            "mentions": 9
-          },
-          {
-            "tag": "조용함",
-            "mentions": 8
-          }
-        ],
-        "cuisine": "CAFE",
-        "cuisineDetail": "개인카페",
-        "congestion": {
-          "hour": 16,
-          "level": "QUIET",
-          "percentile": 17
-        },
-        "score": {
-          "total": 0.85,
-          "request": 1.0,
-          "target": 0.5,
-          "congestion": 1.0
-        },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 16시 주변이 한산해요"
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 16시 주변이 한산해요"
       },
       {
         "placeId": "921699059",
@@ -376,20 +314,12 @@
         "placeUrl": "http://place.map.kakao.com/921699059",
         "tags": [
           {
-            "tag": "디저트",
-            "mentions": 20
+            "tag": "감성적인",
+            "mentions": 11
           },
           {
-            "tag": "조용함",
-            "mentions": 7
-          },
-          {
-            "tag": "데이트",
-            "mentions": 6
-          },
-          {
-            "tag": "사진",
-            "mentions": 2
+            "tag": "조용한",
+            "mentions": 4
           }
         ],
         "cuisine": "CAFE",
@@ -405,7 +335,89 @@
           "target": 0.5,
           "congestion": 1.0
         },
-        "reason": "블로그 후기에서 '조용함' 언급이 많고, 주말 16시 주변이 한산해요"
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 16시 주변이 한산해요"
+      },
+      {
+        "placeId": "1797651729",
+        "name": "요호",
+        "category": "FOOD",
+        "region": "SEONGSU",
+        "address": "서울 성동구 성수일로3길 4",
+        "lat": 37.5421713,
+        "lng": 127.048321,
+        "phone": null,
+        "placeUrl": "http://place.map.kakao.com/1797651729",
+        "tags": [
+          {
+            "tag": "감성적인",
+            "mentions": 10
+          },
+          {
+            "tag": "데이트",
+            "mentions": 7
+          },
+          {
+            "tag": "조용한",
+            "mentions": 4
+          },
+          {
+            "tag": "가성비좋은",
+            "mentions": 3
+          },
+          {
+            "tag": "단체",
+            "mentions": 2
+          }
+        ],
+        "cuisine": "WESTERN",
+        "cuisineDetail": "이탈리안",
+        "congestion": {
+          "hour": 17,
+          "level": "QUIET",
+          "percentile": 25
+        },
+        "score": {
+          "total": 0.85,
+          "request": 1.0,
+          "target": 0.5,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 17시 주변이 한산해요"
+      },
+      {
+        "placeId": "1758455789",
+        "name": "미유 MEOW",
+        "category": "CAFE",
+        "region": "SEONGSU",
+        "address": "서울 성동구 뚝섬로1가길 19-11",
+        "lat": 37.5425897,
+        "lng": 127.0474692,
+        "phone": "010-8814-1227",
+        "placeUrl": "http://place.map.kakao.com/1758455789",
+        "tags": [
+          {
+            "tag": "조용한",
+            "mentions": 3
+          },
+          {
+            "tag": "감성적인",
+            "mentions": 2
+          }
+        ],
+        "cuisine": "CAFE",
+        "cuisineDetail": "개인카페",
+        "congestion": {
+          "hour": 16,
+          "level": "QUIET",
+          "percentile": 16
+        },
+        "score": {
+          "total": 0.85,
+          "request": 1.0,
+          "target": 0.5,
+          "congestion": 1.0
+        },
+        "reason": "블로그 후기에서 '조용한' 언급이 많고, 주말 16시 주변이 한산해요"
       }
     ],
     "courses": [
@@ -413,13 +425,14 @@
         "courseId": "c_seongsu_1",
         "rank": 1,
         "title": "성수 오후 전시관 코스",
-        "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 3분",
+        "reason": "'조용한' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 3분",
         "keywords": [
-          "조용함",
+          "조용한",
           "한산",
           "분식",
           "도보 5분 이내"
         ],
+        "route": "전시관 → 카페 → 분식",
         "startAt": "15:00",
         "endAt": "17:53",
         "totalMinutes": 173,
@@ -494,43 +507,44 @@
       {
         "courseId": "c_seongsu_2",
         "rank": 2,
-        "title": "성수 오후 만화카페 코스",
-        "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 12분",
+        "title": "성수 오후 전시관 코스",
+        "reason": "'조용한' 후기 많은 곳 2곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 10분",
         "keywords": [
-          "조용함",
+          "조용한",
           "한산",
-          "양식"
+          "이탈리안"
         ],
+        "route": "전시관 → 카페 → 이탈리안",
         "startAt": "15:00",
-        "endAt": "18:02",
-        "totalMinutes": 182,
-        "totalWalkMinutes": 12,
-        "totalDistanceMeters": 577,
+        "endAt": "18:00",
+        "totalMinutes": 180,
+        "totalWalkMinutes": 10,
+        "totalDistanceMeters": 455,
         "score": {
-          "total": 0.8,
-          "placeAvg": 0.81,
-          "moveEfficiency": 0.7,
-          "timeFit": 0.93
+          "total": 0.79,
+          "placeAvg": 0.77,
+          "moveEfficiency": 0.75,
+          "timeFit": 1.0
         },
         "stops": [
           {
             "order": 1,
             "slot": "PLAY",
-            "placeId": "65203",
-            "name": "캣툰 성수점",
-            "category": "ACTIVITY",
-            "lat": 37.5427992,
-            "lng": 127.0547338,
+            "placeId": "2057987489",
+            "name": "헬로우 아일랜드",
+            "category": "CULTURE",
+            "lat": 37.5425322,
+            "lng": 127.0532276,
             "arriveAt": "15:00",
             "leaveAt": "16:00",
             "stayMinutes": 60,
             "walkMinutesFromPrev": null,
             "distanceMetersFromPrev": null,
             "congestion": {
-              "level": "NORMAL",
-              "percentile": 64
+              "level": "QUIET",
+              "percentile": 20
             },
-            "placeScore": 0.72
+            "placeScore": 0.62
           },
           {
             "order": 2,
@@ -540,11 +554,11 @@
             "category": "CAFE",
             "lat": 37.5423088,
             "lng": 127.0531901,
-            "arriveAt": "16:03",
-            "leaveAt": "16:53",
+            "arriveAt": "16:01",
+            "leaveAt": "16:51",
             "stayMinutes": 50,
-            "walkMinutesFromPrev": 3,
-            "distanceMetersFromPrev": 147,
+            "walkMinutesFromPrev": 1,
+            "distanceMetersFromPrev": 25,
             "congestion": {
               "level": "QUIET",
               "percentile": 25
@@ -559,8 +573,8 @@
             "category": "FOOD",
             "lat": 37.5421713,
             "lng": 127.048321,
-            "arriveAt": "17:02",
-            "leaveAt": "18:02",
+            "arriveAt": "17:00",
+            "leaveAt": "18:00",
             "stayMinutes": 60,
             "walkMinutesFromPrev": 9,
             "distanceMetersFromPrev": 430,
@@ -575,258 +589,15 @@
       {
         "courseId": "c_seongsu_3",
         "rank": 3,
-        "title": "성수 오후 패션 코스",
-        "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 4분",
-        "keywords": [
-          "조용함",
-          "한산",
-          "양식",
-          "도보 5분 이내"
-        ],
-        "startAt": "15:00",
-        "endAt": "17:34",
-        "totalMinutes": 154,
-        "totalWalkMinutes": 4,
-        "totalDistanceMeters": 150,
-        "score": {
-          "total": 0.79,
-          "placeAvg": 0.85,
-          "moveEfficiency": 0.9,
-          "timeFit": 0.13
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "PLAY",
-            "placeId": "1849426207",
-            "name": "유어네임히얼",
-            "category": "SHOPPING",
-            "lat": 37.543638,
-            "lng": 127.046396,
-            "arriveAt": "15:00",
-            "leaveAt": "15:40",
-            "stayMinutes": 40,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "QUIET",
-              "percentile": 1
-            },
-            "placeScore": 0.85
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "1926018643",
-            "name": "단일서울",
-            "category": "CAFE",
-            "lat": 37.543031,
-            "lng": 127.0454995,
-            "arriveAt": "15:43",
-            "leaveAt": "16:33",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 3,
-            "distanceMetersFromPrev": 104,
-            "congestion": {
-              "level": "QUIET",
-              "percentile": 13
-            },
-            "placeScore": 0.85
-          },
-          {
-            "order": 3,
-            "slot": "MEAL",
-            "placeId": "1064667788",
-            "name": "소랑호젠",
-            "category": "FOOD",
-            "lat": 37.5426888,
-            "lng": 127.045205,
-            "arriveAt": "16:34",
-            "leaveAt": "17:34",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 1,
-            "distanceMetersFromPrev": 46,
-            "congestion": {
-              "level": "QUIET",
-              "percentile": 11
-            },
-            "placeScore": 0.85
-          }
-        ]
-      },
-      {
-        "courseId": "c_seongsu_4",
-        "rank": 4,
-        "title": "성수 오후 테마카페 코스",
-        "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 1곳이 도착 시간에 한산 · 총 도보 7분",
-        "keywords": [
-          "조용함",
-          "한식"
-        ],
-        "startAt": "15:00",
-        "endAt": "17:57",
-        "totalMinutes": 177,
-        "totalWalkMinutes": 7,
-        "totalDistanceMeters": 272,
-        "score": {
-          "total": 0.79,
-          "placeAvg": 0.76,
-          "moveEfficiency": 0.82,
-          "timeFit": 0.9
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "PLAY",
-            "placeId": "743690709",
-            "name": "쎄비",
-            "category": "ACTIVITY",
-            "lat": 37.5431313,
-            "lng": 127.0555273,
-            "arriveAt": "15:00",
-            "leaveAt": "16:00",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 70
-            },
-            "placeScore": 0.72
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "196139841",
-            "name": "휴먼 메이드 서울 카페 바이 블루보틀 커피",
-            "category": "CAFE",
-            "lat": 37.5425331,
-            "lng": 127.0532332,
-            "arriveAt": "16:05",
-            "leaveAt": "16:55",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 5,
-            "distanceMetersFromPrev": 213,
-            "congestion": {
-              "level": "QUIET",
-              "percentile": 25
-            },
-            "placeScore": 0.85
-          },
-          {
-            "order": 3,
-            "slot": "MEAL",
-            "placeId": "1452193831",
-            "name": "문화식당",
-            "category": "FOOD",
-            "lat": 37.5423013,
-            "lng": 127.0538294,
-            "arriveAt": "16:57",
-            "leaveAt": "17:57",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 2,
-            "distanceMetersFromPrev": 59,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 60
-            },
-            "placeScore": 0.72
-          }
-        ]
-      },
-      {
-        "courseId": "c_seongsu_5",
-        "rank": 5,
-        "title": "성수 오후 공방 코스",
-        "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 2분",
-        "keywords": [
-          "조용함",
-          "한산",
-          "한식",
-          "도보 5분 이내"
-        ],
-        "startAt": "15:00",
-        "endAt": "18:22",
-        "totalMinutes": 202,
-        "totalWalkMinutes": 2,
-        "totalDistanceMeters": 44,
-        "score": {
-          "total": 0.78,
-          "placeAvg": 0.8,
-          "moveEfficiency": 0.95,
-          "timeFit": 0.27
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "PLAY",
-            "placeId": "1335770255",
-            "name": "감정선프로젝트 성수점",
-            "category": "EXPERIENCE",
-            "lat": 37.5480124,
-            "lng": 127.0485171,
-            "arriveAt": "15:00",
-            "leaveAt": "16:30",
-            "stayMinutes": 90,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "QUIET",
-              "percentile": 20
-            },
-            "placeScore": 0.7
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "1431120740",
-            "name": "플디 성수점",
-            "category": "CAFE",
-            "lat": 37.5479295,
-            "lng": 127.0485193,
-            "arriveAt": "16:31",
-            "leaveAt": "17:21",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 1,
-            "distanceMetersFromPrev": 9,
-            "congestion": {
-              "level": "QUIET",
-              "percentile": 19
-            },
-            "placeScore": 0.85
-          },
-          {
-            "order": 3,
-            "slot": "MEAL",
-            "placeId": "603776217",
-            "name": "성수AGU",
-            "category": "FOOD",
-            "lat": 37.5482466,
-            "lng": 127.0485105,
-            "arriveAt": "17:22",
-            "leaveAt": "18:22",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 1,
-            "distanceMetersFromPrev": 35,
-            "congestion": {
-              "level": "QUIET",
-              "percentile": 1
-            },
-            "placeScore": 0.85
-          }
-        ]
-      },
-      {
-        "courseId": "c_seongsu_6",
-        "rank": 6,
         "title": "성수 오후 도자기 코스",
-        "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 4분",
+        "reason": "'조용한' 후기 많은 곳 3곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 4분",
         "keywords": [
-          "조용함",
+          "조용한",
           "한산",
-          "양식",
+          "이탈리안",
           "도보 5분 이내"
         ],
+        "route": "도자기 → 카페 → 이탈리안",
         "startAt": "15:00",
         "endAt": "18:24",
         "totalMinutes": 204,
@@ -899,19 +670,101 @@
         ]
       },
       {
-        "courseId": "c_seongsu_7",
-        "rank": 7,
+        "courseId": "c_seongsu_4",
+        "rank": 4,
         "title": "성수 오후 패션잡화점 코스",
-        "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 1곳이 도착 시간에 한산 · 총 도보 11분",
+        "reason": "'조용한' 후기 많은 곳 3곳 · 3곳 중 1곳이 도착 시간에 한산 · 총 도보 10분",
         "keywords": [
-          "조용함",
-          "피자"
+          "조용한",
+          "해물·생선"
         ],
+        "route": "패션잡화점 → 카페 → 해물·생선",
+        "startAt": "15:00",
+        "endAt": "17:40",
+        "totalMinutes": 160,
+        "totalWalkMinutes": 10,
+        "totalDistanceMeters": 480,
+        "score": {
+          "total": 0.72,
+          "placeAvg": 0.76,
+          "moveEfficiency": 0.75,
+          "timeFit": 0.33
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "PLAY",
+            "placeId": "2146921665",
+            "name": "오아시스",
+            "category": "SHOPPING",
+            "lat": 37.542931,
+            "lng": 127.0541772,
+            "arriveAt": "15:00",
+            "leaveAt": "15:40",
+            "stayMinutes": 40,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 59
+            },
+            "placeScore": 0.72
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "449538350",
+            "name": "스윗번트",
+            "category": "CAFE",
+            "lat": 37.5421747,
+            "lng": 127.0529286,
+            "arriveAt": "15:43",
+            "leaveAt": "16:33",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 3,
+            "distanceMetersFromPrev": 139,
+            "congestion": {
+              "level": "QUIET",
+              "percentile": 14
+            },
+            "placeScore": 0.85
+          },
+          {
+            "order": 3,
+            "slot": "MEAL",
+            "placeId": "1054855452",
+            "name": "어부오와",
+            "category": "FOOD",
+            "lat": 37.5444914,
+            "lng": 127.0503966,
+            "arriveAt": "16:40",
+            "leaveAt": "17:40",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 7,
+            "distanceMetersFromPrev": 341,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 66
+            },
+            "placeScore": 0.72
+          }
+        ]
+      },
+      {
+        "courseId": "c_seongsu_5",
+        "rank": 5,
+        "title": "성수 오후 패션잡화점 코스",
+        "reason": "'조용한' 후기 많은 곳 3곳 · 3곳 중 1곳이 도착 시간에 한산 · 총 도보 11분",
+        "keywords": [
+          "조용한",
+          "한식"
+        ],
+        "route": "패션잡화점 → 카페 → 한식",
         "startAt": "15:00",
         "endAt": "17:41",
         "totalMinutes": 161,
         "totalWalkMinutes": 11,
-        "totalDistanceMeters": 538,
+        "totalDistanceMeters": 499,
         "score": {
           "total": 0.72,
           "placeAvg": 0.76,
@@ -941,30 +794,30 @@
           {
             "order": 2,
             "slot": "CAFE",
-            "placeId": "449538350",
-            "name": "스윗번트",
+            "placeId": "196139841",
+            "name": "휴먼 메이드 서울 카페 바이 블루보틀 커피",
             "category": "CAFE",
-            "lat": 37.5421747,
-            "lng": 127.0529286,
+            "lat": 37.5425331,
+            "lng": 127.0532332,
             "arriveAt": "15:44",
             "leaveAt": "16:34",
             "stayMinutes": 50,
             "walkMinutesFromPrev": 4,
-            "distanceMetersFromPrev": 195,
+            "distanceMetersFromPrev": 156,
             "congestion": {
               "level": "QUIET",
-              "percentile": 14
+              "percentile": 20
             },
             "placeScore": 0.85
           },
           {
             "order": 3,
             "slot": "MEAL",
-            "placeId": "1167430948",
-            "name": "피제리아히오",
+            "placeId": "1080034632",
+            "name": "에피코어",
             "category": "FOOD",
-            "lat": 37.5422674,
-            "lng": 127.0490418,
+            "lat": 37.5422988,
+            "lng": 127.0493542,
             "arriveAt": "16:41",
             "leaveAt": "17:41",
             "stayMinutes": 60,
@@ -979,126 +832,46 @@
         ]
       },
       {
-        "courseId": "c_seongsu_8",
-        "rank": 8,
-        "title": "성수 오후 수예·자수 코스",
-        "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 5분",
+        "courseId": "c_seongsu_6",
+        "rank": 6,
+        "title": "성수 오후 패션 코스",
+        "reason": "'조용한' 후기 많은 곳 3곳 · 3곳 중 2곳이 도착 시간에 한산 · 총 도보 12분",
         "keywords": [
-          "조용함",
+          "조용한",
           "한산",
-          "양식",
-          "도보 5분 이내"
+          "초밥·롤"
         ],
+        "route": "패션 → 카페 → 초밥·롤",
         "startAt": "15:00",
-        "endAt": "18:25",
-        "totalMinutes": 205,
-        "totalWalkMinutes": 5,
-        "totalDistanceMeters": 227,
+        "endAt": "17:42",
+        "totalMinutes": 162,
+        "totalWalkMinutes": 12,
+        "totalDistanceMeters": 583,
         "score": {
-          "total": 0.72,
+          "total": 0.71,
           "placeAvg": 0.76,
-          "moveEfficiency": 0.88,
-          "timeFit": 0.17
+          "moveEfficiency": 0.7,
+          "timeFit": 0.4
         },
         "stops": [
           {
             "order": 1,
             "slot": "PLAY",
-            "placeId": "830790434",
-            "name": "마이페이보릿띵스",
-            "category": "EXPERIENCE",
-            "lat": 37.5421409,
-            "lng": 127.047642,
-            "arriveAt": "15:00",
-            "leaveAt": "16:30",
-            "stayMinutes": 90,
-            "walkMinutesFromPrev": null,
-            "distanceMetersFromPrev": null,
-            "congestion": {
-              "level": "QUIET",
-              "percentile": 4
-            },
-            "placeScore": 0.7
-          },
-          {
-            "order": 2,
-            "slot": "CAFE",
-            "placeId": "1229111120",
-            "name": "오카보카",
-            "category": "CAFE",
-            "lat": 37.5421881,
-            "lng": 127.0468059,
-            "arriveAt": "16:32",
-            "leaveAt": "17:22",
-            "stayMinutes": 50,
-            "walkMinutesFromPrev": 2,
-            "distanceMetersFromPrev": 74,
-            "congestion": {
-              "level": "QUIET",
-              "percentile": 15
-            },
-            "placeScore": 0.85
-          },
-          {
-            "order": 3,
-            "slot": "MEAL",
-            "placeId": "901250825",
-            "name": "희릿",
-            "category": "FOOD",
-            "lat": 37.5426604,
-            "lng": 127.0484412,
-            "arriveAt": "17:25",
-            "leaveAt": "18:25",
-            "stayMinutes": 60,
-            "walkMinutesFromPrev": 3,
-            "distanceMetersFromPrev": 153,
-            "congestion": {
-              "level": "NORMAL",
-              "percentile": 59
-            },
-            "placeScore": 0.72
-          }
-        ]
-      },
-      {
-        "courseId": "c_seongsu_9",
-        "rank": 9,
-        "title": "성수 오후 패션잡화점 코스",
-        "reason": "'조용함' 후기 많은 곳 3곳 · 3곳 중 1곳이 도착 시간에 한산 · 총 도보 18분",
-        "keywords": [
-          "조용함",
-          "한식"
-        ],
-        "startAt": "15:00",
-        "endAt": "17:48",
-        "totalMinutes": 168,
-        "totalWalkMinutes": 18,
-        "totalDistanceMeters": 908,
-        "score": {
-          "total": 0.7,
-          "placeAvg": 0.76,
-          "moveEfficiency": 0.55,
-          "timeFit": 0.6
-        },
-        "stops": [
-          {
-            "order": 1,
-            "slot": "PLAY",
-            "placeId": "2146921665",
-            "name": "오아시스",
+            "placeId": "1849426207",
+            "name": "유어네임히얼",
             "category": "SHOPPING",
-            "lat": 37.542931,
-            "lng": 127.0541772,
+            "lat": 37.543638,
+            "lng": 127.046396,
             "arriveAt": "15:00",
             "leaveAt": "15:40",
             "stayMinutes": 40,
             "walkMinutesFromPrev": null,
             "distanceMetersFromPrev": null,
             "congestion": {
-              "level": "NORMAL",
-              "percentile": 59
+              "level": "QUIET",
+              "percentile": 1
             },
-            "placeScore": 0.72
+            "placeScore": 0.7
           },
           {
             "order": 2,
@@ -1108,11 +881,11 @@
             "category": "CAFE",
             "lat": 37.5424305,
             "lng": 127.0466318,
-            "arriveAt": "15:53",
-            "leaveAt": "16:43",
+            "arriveAt": "15:43",
+            "leaveAt": "16:33",
             "stayMinutes": 50,
-            "walkMinutesFromPrev": 13,
-            "distanceMetersFromPrev": 668,
+            "walkMinutesFromPrev": 3,
+            "distanceMetersFromPrev": 136,
             "congestion": {
               "level": "QUIET",
               "percentile": 25
@@ -1122,25 +895,116 @@
           {
             "order": 3,
             "slot": "MEAL",
-            "placeId": "1080034632",
-            "name": "에피코어",
+            "placeId": "817789257",
+            "name": "아오미",
             "category": "FOOD",
-            "lat": 37.5422988,
-            "lng": 127.0493542,
-            "arriveAt": "16:48",
-            "leaveAt": "17:48",
+            "lat": 37.5464419,
+            "lng": 127.0463638,
+            "arriveAt": "16:42",
+            "leaveAt": "17:42",
             "stayMinutes": 60,
-            "walkMinutesFromPrev": 5,
-            "distanceMetersFromPrev": 240,
+            "walkMinutesFromPrev": 9,
+            "distanceMetersFromPrev": 447,
             "congestion": {
               "level": "NORMAL",
-              "percentile": 50
+              "percentile": 59
+            },
+            "placeScore": 0.72
+          }
+        ]
+      },
+      {
+        "courseId": "c_seongsu_7",
+        "rank": 7,
+        "title": "성수 오후 공방 코스",
+        "reason": "'조용한' 후기 많은 곳 2곳 · 3곳 중 1곳이 도착 시간에 한산 · 총 도보 7분",
+        "keywords": [
+          "조용한",
+          "일식"
+        ],
+        "route": "공방 → 카페 → 일식",
+        "startAt": "15:00",
+        "endAt": "18:27",
+        "totalMinutes": 207,
+        "totalWalkMinutes": 7,
+        "totalDistanceMeters": 329,
+        "score": {
+          "total": 0.66,
+          "placeAvg": 0.69,
+          "moveEfficiency": 0.82,
+          "timeFit": 0.1
+        },
+        "stops": [
+          {
+            "order": 1,
+            "slot": "PLAY",
+            "placeId": "1335770255",
+            "name": "감정선프로젝트 성수점",
+            "category": "EXPERIENCE",
+            "lat": 37.5480124,
+            "lng": 127.0485171,
+            "arriveAt": "15:00",
+            "leaveAt": "16:30",
+            "stayMinutes": 90,
+            "walkMinutesFromPrev": null,
+            "distanceMetersFromPrev": null,
+            "congestion": {
+              "level": "QUIET",
+              "percentile": 20
+            },
+            "placeScore": 0.62
+          },
+          {
+            "order": 2,
+            "slot": "CAFE",
+            "placeId": "27408657",
+            "name": "파머스카페",
+            "category": "CAFE",
+            "lat": 37.5460059,
+            "lng": 127.046092,
+            "arriveAt": "16:36",
+            "leaveAt": "17:26",
+            "stayMinutes": 50,
+            "walkMinutesFromPrev": 6,
+            "distanceMetersFromPrev": 309,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 64
+            },
+            "placeScore": 0.72
+          },
+          {
+            "order": 3,
+            "slot": "MEAL",
+            "placeId": "340271612",
+            "name": "유메이규",
+            "category": "FOOD",
+            "lat": 37.5460582,
+            "lng": 127.0458747,
+            "arriveAt": "17:27",
+            "leaveAt": "18:27",
+            "stayMinutes": 60,
+            "walkMinutesFromPrev": 1,
+            "distanceMetersFromPrev": 20,
+            "congestion": {
+              "level": "NORMAL",
+              "percentile": 38
             },
             "placeScore": 0.72
           }
         ]
       }
     ],
+    "titlesBy": "RULE",
+    "order": [],
+    "keepPlaceIds": [],
+    "betterStart": {
+      "startTime": "17:00",
+      "shiftMinutes": 120,
+      "avgPercentile": 29,
+      "currentAvgPercentile": 38,
+      "message": "2시간 늦게 출발하면 덜 붐벼요 (혼잡 38% → 29%)"
+    },
     "notice": null
   }
 }

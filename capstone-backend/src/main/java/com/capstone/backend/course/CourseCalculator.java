@@ -50,8 +50,9 @@ public class CourseCalculator {
         int total = time - startMinute;
         double placeAvg = stops.isEmpty() ? 0 : placeScoreSum / stops.size();
         double move = Math.max(0.0, 1 - (double) walkTotal / CourseRules.WALK_ZERO_MINUTES);
+        int n = stops.size();
         double timeFit = Math.max(0.0,
-                1 - Math.abs(total - CourseRules.TARGET_MINUTES) / (double) CourseRules.TOLERANCE_MINUTES);
+                1 - Math.abs(total - CourseRules.targetMinutes(n)) / (double) CourseRules.toleranceMinutes(n));
         double courseTotal = CourseRules.W_PLACE_AVG * placeAvg
                 + CourseRules.W_MOVE * move
                 + CourseRules.W_TIME * timeFit;
@@ -59,25 +60,29 @@ public class CourseCalculator {
         CoursePlan.Score courseScore = new CoursePlan.Score(
                 CourseRules.round2(courseTotal), CourseRules.round2(placeAvg),
                 CourseRules.round2(move), CourseRules.round2(timeFit));
-        return new CoursePlan(null, null, null, null, List.of(),
+        return new CoursePlan(null, null, null, null, List.of(), null,
                 CourseRules.hhmm(startMinute), CourseRules.hhmm(time),
                 total, walkTotal, distanceTotal, courseScore, List.copyOf(stops));
     }
 
-    /** 총 3시간 ±30분 안인지 */
+    /** 총 시간이 장소 수별 기준 안인지 (3곳이면 3시간 ±30분) */
     public static boolean withinTimeWindow(CoursePlan plan) {
-        return Math.abs(plan.totalMinutes() - CourseRules.TARGET_MINUTES) <= CourseRules.TOLERANCE_MINUTES;
+        int n = plan.stops().size();
+        return Math.abs(plan.totalMinutes() - CourseRules.targetMinutes(n)) <= CourseRules.toleranceMinutes(n);
     }
 
     /** 코스 수정 결과 경고 */
     public List<CourseWarning> warnings(CoursePlan plan, CrowdPreference crowdPreference) {
         List<CourseWarning> warnings = new ArrayList<>();
         int total = plan.totalMinutes();
-        if (total > CourseRules.TARGET_MINUTES + CourseRules.TOLERANCE_MINUTES) {
-            warnings.add(new CourseWarning("TOTAL_TIME_OVER", "총 " + total + "분으로 3시간 30분을 넘어요"));
+        int n = plan.stops().size();
+        int max = CourseRules.targetMinutes(n) + CourseRules.toleranceMinutes(n);
+        int min = CourseRules.targetMinutes(n) - CourseRules.toleranceMinutes(n);
+        if (total > max) {
+            warnings.add(new CourseWarning("TOTAL_TIME_OVER", "총 " + total + "분으로 " + CourseRules.durationText(max) + "을 넘어요"));
         }
-        if (total < CourseRules.TARGET_MINUTES - CourseRules.TOLERANCE_MINUTES) {
-            warnings.add(new CourseWarning("TOTAL_TIME_UNDER", "총 " + total + "분으로 2시간 30분보다 짧아요"));
+        if (total < min) {
+            warnings.add(new CourseWarning("TOTAL_TIME_UNDER", "총 " + total + "분으로 " + CourseRules.durationText(min) + "보다 짧아요"));
         }
         for (CoursePlan.Stop stop : plan.stops()) {
             if (stop.walkMinutesFromPrev() != null && stop.walkMinutesFromPrev() > 15) {

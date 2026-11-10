@@ -6,217 +6,330 @@ class RecommendationsScreen extends StatefulWidget {
     required this.app,
     this.group = false,
     this.expanded = false,
+    this.initialConditions,
   });
   final AppState app;
   final bool group, expanded;
+  final SearchConditions? initialConditions;
   @override
   State<RecommendationsScreen> createState() => _RecommendationsScreenState();
 }
 
 class _RecommendationsScreenState extends State<RecommendationsScreen> {
   AppState get app => widget.app;
-  bool get group => widget.group;
-  bool get expanded => widget.expanded;
-  Object? _requestKey;
-  Future<List<Course>>? _request;
+  late SearchConditions conditions =
+      (widget.initialConditions ?? app.conditions).copy();
+  late var request = app.repository.recommendResult(conditions, app.preference);
+  CourseFrame? frame;
+  final kept = <String>{};
+  Set<String> requiredPlaces = {};
+  int selectedIndex = 0;
 
-  Future<List<Course>> recommendations() {
-    final c = app.conditions;
-    final p = app.preference;
-    final key = (
-      app.repository,
-      c.region,
-      c.start,
-      c.people,
-      c.mood,
-      c.excluded,
-      c.query,
-      c.useSelectedRegion,
-      p.categories.join(','),
-      p.moods.join(','),
-      p.allergies,
-      p.dislikedFood,
-      group,
-    );
-    if (_requestKey != key) {
-      _requestKey = key;
-      _request = app.repository.recommend(c.copy(), p.copy(), group: group);
-    }
-    return _request!;
+  void refresh() {
+    selectedIndex = 0;
+    request = app.repository.recommendResult(conditions, app.preference);
+  }
+
+  Future<void> editConditions(SearchConditions resolved) async {
+    final edited =
+        await openPage<({SearchConditions conditions, CourseFrame? frame})>(
+          context,
+          ConditionsScreen(
+            app: app,
+            initialConditions: resolved,
+            initialFrame: frame,
+          ),
+          '/conditions',
+        );
+    if (!mounted || edited == null) return;
+    setState(() {
+      conditions = edited.conditions;
+      frame = edited.frame;
+      refresh();
+    });
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: app,
-    builder: (_, child) {
-      return FutureBuilder<List<Course>>(
-        future: recommendations(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return AppFrame(
-              app: app,
-              title: '추천 코스',
-              child: const Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasError) {
-            return AppFrame(
-              app: app,
-              title: '추천 코스',
-              child: Column(
+  Widget build(BuildContext context) => FutureBuilder(
+    future: request,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return AppFrame(
+          app: app,
+          title: '추천 코스',
+          showBottomNavigation: false,
+          child: const Center(child: CircularProgressIndicator()),
+        );
+      }
+      if (snapshot.hasError) {
+        final error = snapshot.error;
+        final code = error is ApiException ? error.code : null;
+        return AppFrame(
+          app: app,
+          title: '추천 코스',
+          showBottomNavigation: false,
+          child: stackItems([
+            label(apiFailureMessage(error)),
+            if (code == 'CONDITION_MISSING')
+              action('검색으로 돌아가기', () => Navigator.maybePop(context))
+            else
+              action('다시 시도', () => setState(refresh)),
+          ]),
+        );
+      }
+
+      final result = snapshot.data!;
+      final courses = result.courses.where((course) {
+        final ids = course.stops.map((stop) => stop.placeId).toSet();
+        return ids.containsAll(requiredPlaces) &&
+            (frame?.matches(ids.map(app.repository.place)) ?? true);
+      }).toList();
+      final selectedCourse = courses.elementAtOrNull(selectedIndex);
+      return MapSheetFrame(
+        app: app,
+        showBottomNavigation: false,
+        title:
+            '추천 ${courses.length}개 · ${visitConditionText(result.conditions)}',
+        sheetTitle: '추천 코스',
+        course: selectedCourse,
+        initialSize: widget.expanded
+            ? RecommendationSheetSize.expanded
+            : RecommendationSheetSize.medium,
+        onConditions: () => editConditions(result.conditions),
+        children: [
+          if (kept.isNotEmpty)
+            panel([
+              label('📌 킵 ${kept.length}곳', bold: true),
+              Wrap(
+                spacing: 6,
                 children: [
-                  Text(
-                    snapshot.error is ApiException
-                        ? (snapshot.error as ApiException).message
-                        : '추천을 불러오지 못했어요.',
-                  ),
-                  TextButton(
-                    onPressed: () => openPage(
-                      context,
-                      ConditionsScreen(app: app, group: group),
-                      '/conditions',
+                  for (final id in kept)
+                    InputChip(
+                      label: Text(app.repository.place(id).name),
+                      onDeleted: () => setState(() => kept.remove(id)),
                     ),
-                    child: const Text('검색 조건 수정'),
-                  ),
-                  TextButton(
-                    onPressed: () => setState(() => _requestKey = null),
-                    child: const Text('다시 시도'),
-                  ),
                 ],
               ),
-            );
-          }
-          final courses = snapshot.data ?? [];
-          return MapSheetFrame(
-            app: app,
-            title: courses.isEmpty
-                ? '추천 결과 없음'
-                : '추천 ${courses.length}개 · ${courses.first.title}',
-            course: courses.isEmpty ? null : courses.first,
-            initialSize: expanded
-                ? RecommendationSheetSize.expanded
-                : RecommendationSheetSize.collapsed,
-            children: [
-              if (courses.isEmpty) ...[
-                label('조건에 맞는 예시 장소가 없습니다.'),
-                action(
-                  '검색 조건 수정',
-                  () => openPage(
-                    context,
-                    ConditionsScreen(app: app, group: group),
-                    '/conditions',
-                  ),
-                ),
-              ],
-              for (var i = 0; i < courses.length; i++)
-                RankedCourseCard(
-                  rank: i + 1,
-                  title: courses[i].title,
-                  summary: summary(courses[i]),
-                  reason: courses[i].reason,
-                  selected: i == 0,
-                  onReason: () => openPage(
-                    context,
-                    ReasonScreen(
-                      app: app,
-                      course: courses[i],
-                      rank: i + 1,
-                      group: group,
-                    ),
-                    '/recommendation/reason/${i + 1}',
-                  ),
-                  onDetails: () => openPage(
-                    context,
-                    CourseDetailScreen(app: app, initial: courses[i]),
-                    '/course/${courses[i].id}',
-                  ),
-                ),
-              if (courses.isNotEmpty)
-                action(
-                  '조건 수정',
-                  () => openPage(
-                    context,
-                    ConditionsScreen(app: app, group: group),
-                    '/conditions',
-                  ),
-                  secondary: true,
-                ),
-            ],
-          );
-        },
+              action('이 장소로 다시 찾기', () {
+                setState(() {
+                  requiredPlaces = {...kept};
+                  refresh();
+                });
+              }),
+            ]),
+          if (requiredPlaces.isNotEmpty)
+            TextButton(
+              onPressed: () => setState(() {
+                requiredPlaces = {};
+                selectedIndex = 0;
+              }),
+              child: const Text('킵 필터 해제'),
+            ),
+          if (courses.isEmpty)
+            label(
+              requiredPlaces.isNotEmpty
+                  ? '킵한 장소를 모두 포함하는 코스가 없어요.'
+                  : '선택한 조건에 맞는 코스가 없어요.',
+            ),
+          for (final (index, course) in courses.indexed)
+            RankedCourseCard(
+              rank: index + 1,
+              title: course.title,
+              summary: coursePlaceNames(app, course),
+              route: courseRoute(app, course),
+              reason: course.reason,
+              keywords: course.keywords,
+              selected: index == selectedIndex,
+              onSelected: () {
+                setState(() => selectedIndex = index);
+                openPage(
+                  context,
+                  CourseDetailScreen(app: app, initial: course),
+                  '/course/${course.id}',
+                );
+              },
+              onMap: () => setState(() => selectedIndex = index),
+              onReason: () => _showRecommendationReasonPopup(
+                context,
+                app: app,
+                course: course,
+                rank: index + 1,
+                group: widget.group,
+              ),
+            ),
+          if (selectedCourse != null) ...[
+            label('선택한 코스의 장소', bold: true),
+            for (final stop in selectedCourse.stops)
+              PlaceCardView(
+                app: app,
+                place: app.repository.place(stop.placeId),
+                visit: stop.arrival,
+                kept: kept.contains(stop.placeId),
+                onKeep: () => setState(() {
+                  if (!kept.remove(stop.placeId)) kept.add(stop.placeId);
+                }),
+                onTap: () => openCourseStop(context, app, stop),
+              ),
+          ],
+        ],
       );
     },
   );
 }
 
-class ReasonScreen extends StatelessWidget {
-  const ReasonScreen({
-    super.key,
-    required this.app,
-    required this.course,
-    required this.rank,
-    this.group = false,
-  });
-  final AppState app;
-  final Course course;
-  final int rank;
-  final bool group;
-  @override
-  Widget build(BuildContext context) {
-    final values = course.stops.map(
-      (s) => app.repository.congestion(s.placeId, s.arrival).value,
-    );
-    final average = values.isEmpty
-        ? 0
-        : values.reduce((a, b) => a + b) / values.length;
-    return MapSheetFrame(
+String coursePlaceNames(AppState app, Course course) => course.stops
+    .take(3)
+    .map((stop) => stop.name ?? app.repository.place(stop.placeId).name)
+    .join(' · ');
+
+List<String> courseRoute(AppState app, Course course) => course.stops
+    .map((stop) => app.repository.place(stop.placeId).category)
+    .toList();
+
+void openCourseStop(BuildContext context, AppState app, CourseStop stop) {
+  openPage(
+    context,
+    PlaceDetailScreen(
       app: app,
-      title: group ? '그룹 추천 근거' : '추천 근거',
-      course: course,
-      initialSize: RecommendationSheetSize.expanded,
-      children: [
-        RecommendationRankHeader(rank: rank),
-        RecommendationReasonRow(
-          label: '코스 종합 점수',
-          value: '${course.matchScore}% · 예시 추천 점수',
+      place: app.repository.place(stop.placeId),
+      arrival: stop.arrival,
+    ),
+    '/place/${stop.placeId}',
+  );
+}
+
+void _showRecommendationScoreInfo(BuildContext context) {
+  showDialog<void>(
+    context: context,
+    barrierColor: const Color(0x2E1F1A2E),
+    builder: (dialogContext) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        width: 350,
+        constraints: const BoxConstraints(minHeight: 166),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
         ),
-        RecommendationReasonRow(
-          label: '예시 지역 혼잡도',
-          value: '평균 백분위 ${average.round()}',
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: label('추천에 반영한 조건', size: 14, bold: true)),
+                IconButton(
+                  tooltip: '닫기',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  icon: const Icon(
+                    Icons.close,
+                    size: 16,
+                    color: OdigaTokens.muted,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            label(
+              '장소 점수: 요청 적합도 0.45 · 타깃 특성 0.30 · 혼잡도 0.25',
+              size: 12,
+              color: OdigaTokens.muted,
+            ),
+            const SizedBox(height: 4),
+            label(
+              '코스 점수: 장소 평균 0.70 · 이동 효율 0.20 · 시간 적합도 0.10',
+              size: 12,
+              color: OdigaTokens.muted,
+            ),
+            const SizedBox(height: 8),
+            label('입력한 조건과 장소 정보를 함께 반영해 코스를 추천해요.', size: 12, bold: true),
+          ],
         ),
-        RecommendationReasonRow(
-          label: '이동거리',
-          value: '${course.distanceKm.toStringAsFixed(1)}km · 예시 도보 추정',
+      ),
+    ),
+  );
+}
+
+void _showRecommendationReasonPopup(
+  BuildContext context, {
+  required AppState app,
+  required Course course,
+  required int rank,
+  required bool group,
+}) {
+  final staySummary = course.stops
+      .map((stop) {
+        final category = app.repository.place(stop.placeId).category;
+        return '$category ${stop.stayMinutes}분';
+      })
+      .join(' · ');
+  final keyword = app.conditions.mood.isNotEmpty
+      ? app.conditions.mood
+      : app.preference.moods.isEmpty
+      ? '추천 포인트'
+      : app.preference.moods.first;
+  final selectedConditions = <String>[
+    if (app.conditions.mood.isNotEmpty) app.conditions.mood,
+    if (app.conditions.gender != '무관') app.conditions.gender,
+    if (app.conditions.ageGroup != '무관') app.conditions.ageGroup,
+    app.conditions.companionType,
+    '${app.conditions.people}명',
+    if (app.preference.categories.isNotEmpty)
+      app.preference.categories.join('·'),
+    if (app.preference.cuisines.isNotEmpty) app.preference.cuisines.join('·'),
+    if (app.preference.cuisineDetails.isNotEmpty)
+      app.preference.cuisineDetails.join('·'),
+    if (app.preference.dislikedFood.trim().isNotEmpty)
+      '제외 ${app.preference.dislikedFood.trim()}',
+    if (app.preference.allergies.trim().isNotEmpty)
+      '알레르기 ${app.preference.allergies.trim()}',
+  ];
+  final groupPreference = [
+    ...selectedConditions,
+    if (group) '그룹 평균 기준',
+  ].join(' · ');
+
+  showDialog<void>(
+    context: context,
+    barrierColor: const Color(0x660E0D15),
+    builder: (dialogContext) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 350,
+          maxHeight: MediaQuery.sizeOf(dialogContext).height - 32,
         ),
-        RecommendationReasonRow(
-          label: '체류시간',
-          value: course.stops.map((s) => '${s.stayMinutes}분').join(' · '),
-        ),
-        RecommendationReasonRow(label: '장소 특징', value: course.reason),
-        RecommendationReasonRow(
-          label: '그룹 선호도',
-          value: '지역별 고정 샘플 · 취향 변경은 결과에 반영되지 않아요',
-        ),
-        panel([
-          label('추천에 반영한 조건', bold: true),
-          label('장소 평균 점수 70% · 이동 효율 20% · 시간 적합도 10%', size: 11),
-          label(
-            '점수는 API 명세의 계산 기준을 따르는 예시입니다.',
-            size: 11,
-            color: OdigaTokens.muted,
+        child: SingleChildScrollView(
+          child: RecommendationReasonPopup(
+            state: rank == 1
+                ? RecommendationReasonPopupState.firstRank
+                : RecommendationReasonPopupState.keyword,
+            rank: rank,
+            courseTitle: course.title,
+            keyword: keyword,
+            conditionMatch:
+                '총점 ${(course.score['total'] ?? course.matchScore / 100).toStringAsFixed(2)} · 장소 ${(course.score['placeAvg'] ?? 0).toStringAsFixed(2)} · 이동 ${(course.score['moveEfficiency'] ?? 0).toStringAsFixed(2)} · 시간 ${(course.score['timeFit'] ?? 0).toStringAsFixed(2)}',
+            congestion: course.reason,
+            distance: '${course.distanceKm.toStringAsFixed(1)}km · 도보 이동 중심',
+            stay: staySummary,
+            placeFeatures: course.keywords.join(' · '),
+            groupPreference: groupPreference,
+            onClose: () => Navigator.of(dialogContext).pop(),
           ),
-        ]),
-        action(
-          '코스 상세',
-          () => openPage(
-            context,
-            CourseDetailScreen(app: app, initial: course),
-            '/course/${course.id}',
-          ),
         ),
-      ],
-    );
-  }
+      ),
+    ),
+  );
 }
 
 class CourseDetailScreen extends StatelessWidget {
@@ -236,19 +349,14 @@ class CourseDetailScreen extends StatelessWidget {
           initial;
       return MapSheetFrame(
         app: app,
-        title: '코스 상세 · ${course.stops.length}개 장소',
+        title: course.title,
+        sheetTitle: '코스 상세 · ${course.stops.length}개 장소',
         course: course,
         children: [
-          for (final stop in course.stops) ...[
+          RouteTags(categories: courseRoute(app, course)),
+          for (final (index, stop) in course.stops.indexed) ...[
             InkWell(
-              onTap: () => openPage(
-                context,
-                PlaceDetailScreen(
-                  app: app,
-                  place: app.repository.place(stop.placeId),
-                ),
-                '/place/${stop.placeId}',
-              ),
+              onTap: () => openCourseStop(context, app, stop),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -268,7 +376,7 @@ class CourseDetailScreen extends StatelessWidget {
                     Expanded(
                       child: stackItems([
                         label(
-                          '${stop.order}. ${app.repository.place(stop.placeId).name}',
+                          '${index + 1}. ${app.repository.place(stop.placeId).name}',
                           bold: true,
                         ),
                         label(
@@ -278,11 +386,13 @@ class CourseDetailScreen extends StatelessWidget {
                         ),
                       ], gap: 8),
                     ),
-                    CongestionBadge(
-                      level: level(
-                        app.repository.congestion(stop.placeId, stop.arrival),
-                      ),
-                    ),
+                    if (placeCongestion(
+                          app,
+                          app.repository.place(stop.placeId),
+                          stop.arrival,
+                        )
+                        case final crowd?)
+                      CongestionBadge(level: crowd),
                   ],
                 ),
               ),
@@ -290,10 +400,15 @@ class CourseDetailScreen extends StatelessWidget {
             if (stop.travelMinutesToNext > 0)
               CourseTravelDivider(label: '도보 ${stop.travelMinutesToNext}분'),
           ],
-          CourseSummaryCard(
-            summary: summary(course),
-            detail: '방문 시간에 따라 예상 지역 혼잡도가 달라집니다.',
-          ),
+          CourseSummaryCard(summary: summary(course), detail: '직선 거리 기준'),
+          if (course.stops.isNotEmpty)
+            action(
+              '카카오맵 길찾기',
+              () => openDirections(context, [
+                for (final stop in course.stops)
+                  app.repository.place(stop.placeId),
+              ]),
+            ),
           Row(
             children: [
               Expanded(
@@ -331,72 +446,108 @@ class CourseDetailScreen extends StatelessWidget {
 }
 
 String courseText(AppState app, Course course) =>
-    '${course.title}\n${summary(course)}\n${course.stops.map((s) => '${s.order}. ${app.repository.place(s.placeId).name} · ${clockText(s.arrival)} · ${s.stayMinutes}분').join('\n')}';
+    '${course.title}\n${summary(course)}\n${course.stops.indexed.map((entry) => '${entry.$1 + 1}. ${app.repository.place(entry.$2.placeId).name} · ${clockText(entry.$2.arrival)} · ${entry.$2.stayMinutes}분').join('\n')}';
 
-Future<void> _shareCourse(
-  BuildContext context,
-  AppState app,
-  Course course,
-) async {
-  try {
-    final share = await app.repository.api.createShare(course.id);
-    if (!context.mounted) return;
-    final sharedCourse = await app.repository.loadSharedCourse(share.shareCode);
-    if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('예시 코스 공유'),
-        content: SingleChildScrollView(
-          child: SelectableText(
-            '현재는 고정된 예시 공유 결과입니다.\n\n${share.shareText}\n\n${share.shareUrl}',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('닫기'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await Clipboard.setData(
-                ClipboardData(text: '${share.shareText}\n${share.shareUrl}'),
-              );
-              if (dialogContext.mounted) {
-                Navigator.pop(dialogContext);
-                toast(context, '코스 요약을 복사했습니다.');
-              }
-            },
-            child: const Text('복사'),
-          ),
-          TextButton(
-            onPressed: () {
-              app.sendMessage(
-                '함께 가고 싶은 코스예요! ${share.shareUrl}',
-                course: sharedCourse,
-              );
-              Navigator.pop(dialogContext);
-              openPage(context, ChatScreen(app: app), '/group/chat');
-            },
-            child: const Text('예시 모임에 공유'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              openPage(
-                context,
-                CourseDetailScreen(app: app, initial: sharedCourse),
-                '/share/${share.shareCode}',
-              );
-            },
-            child: const Text('공유 코스 보기'),
-          ),
-        ],
-      ),
-    );
-  } on ApiException catch (e) {
-    if (context.mounted) toast(context, e.message);
+void _shareCourse(BuildContext context, AppState app, Course course) {
+  openPage(
+    context,
+    CourseShareScreen(app: app, course: course),
+    '/course/${course.id}/share',
+  );
+}
+
+class CourseShareScreen extends StatefulWidget {
+  const CourseShareScreen({super.key, required this.app, required this.course});
+  final AppState app;
+  final Course course;
+  @override
+  State<CourseShareScreen> createState() => _CourseShareScreenState();
+}
+
+class _CourseShareScreenState extends State<CourseShareScreen> {
+  late Future<ShareCreateDto> share = widget.app.repository.api.createShare(
+    widget.course.id,
+  );
+
+  Future<void> openSharedCourse(ShareCreateDto value) async {
+    try {
+      final course = await widget.app.repository.loadSharedCourse(
+        value.shareCode,
+      );
+      if (!mounted) return;
+      openPage(
+        context,
+        CourseDetailScreen(app: widget.app, initial: course),
+        '/share/${value.shareCode}',
+      );
+    } on ApiException catch (error) {
+      if (mounted) toast(context, error.message);
+    }
   }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<ShareCreateDto>(
+    future: share,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return AppFrame(
+          app: widget.app,
+          title: '코스 공유',
+          child: stackItems([
+            label('공유 링크를 만들지 못했어요.'),
+            action(
+              '다시 시도',
+              () => setState(
+                () => share = widget.app.repository.api.createShare(
+                  widget.course.id,
+                ),
+              ),
+            ),
+          ]),
+        );
+      }
+      if (!snapshot.hasData) {
+        return AppFrame(
+          app: widget.app,
+          title: '코스 공유',
+          child: const Center(child: CircularProgressIndicator()),
+        );
+      }
+      final value = snapshot.data!;
+      return AppFrame(
+        app: widget.app,
+        title: '코스 공유',
+        subtitle: '친구에게 이 코스를 보내보세요',
+        child: stackItems([
+          panel([
+            label(widget.course.title, size: 18, bold: true),
+            label(summary(widget.course), color: OdigaTokens.brand),
+            SelectableText(value.shareText),
+          ], lavender: true),
+          panel([label('공유 링크', bold: true), SelectableText(value.shareUrl)]),
+          action('링크와 코스 설명 복사', () async {
+            await Clipboard.setData(
+              ClipboardData(text: '${value.shareText}\n${value.shareUrl}'),
+            );
+            if (context.mounted) toast(context, '공유 내용을 복사했습니다.');
+          }),
+          action('공유 코스 미리 보기', () => openSharedCourse(value), secondary: true),
+          action('예시 모임 채팅에 공유', () async {
+            final course = await widget.app.repository.loadSharedCourse(
+              value.shareCode,
+            );
+            if (!context.mounted) return;
+            widget.app.sendMessage(
+              '함께 가고 싶은 코스예요! ${value.shareUrl}',
+              course: course,
+            );
+            openPage(context, ChatScreen(app: widget.app), '/group/chat');
+          }, secondary: true),
+          label('현재는 예시 공유 응답을 표시합니다.', size: 11, color: OdigaTokens.muted),
+        ]),
+      );
+    },
+  );
 }
 
 class CourseEditorScreen extends StatefulWidget {
@@ -423,13 +574,8 @@ class _CourseEditorScreenState extends State<CourseEditorScreen> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('예시 코스 수정 결과'),
-          content: Text(
-            [
-              '현재는 입력과 관계없이 고정된 예시 수정 결과를 반환합니다.',
-              ...result.warnings.map((w) => w.message),
-            ].join('\n\n'),
-          ),
+          title: const Text('코스 수정 안내'),
+          content: Text(result.warnings.map((w) => w.message).join(' · ')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -519,6 +665,12 @@ class _CourseEditorScreenState extends State<CourseEditorScreen> {
         summary: summary(draft),
         detail: '변경하면 도착 시각·혼잡도 자동 재계산',
       ),
+      if (draft.totalMinutes > 210)
+        label(
+          '총 ${draft.totalMinutes}분으로 3시간 30분을 넘어요.',
+          color: OdigaTokens.red,
+          bold: true,
+        ),
       ReorderableListView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -532,14 +684,17 @@ class _CourseEditorScreenState extends State<CourseEditorScreen> {
         itemBuilder: (_, index) {
           final stop = draft.stops[index];
           final p = widget.app.repository.place(stop.placeId);
+          final crowd = placeCongestion(widget.app, p, stop.arrival);
           return Column(
             key: ValueKey(stop.id),
             children: [
               CourseStopTile(
                 order: index + 1,
                 title: p.name,
-                visitLabel:
-                    '${clockText(stop.arrival)} 방문 · ${level(widget.app.repository.congestion(p.id, stop.arrival)).label}',
+                visitLabel: [
+                  '${clockText(stop.arrival)} 방문',
+                  if (crowd != null) crowd.label,
+                ].join(' · '),
                 stayMinutes: stop.stayMinutes,
                 onStayPressed: () => stay(stop),
                 onDelete: () =>
@@ -604,16 +759,16 @@ class _SavedCoursesScreenState extends State<SavedCoursesScreen> {
       child: stackItems([
         OdigaCategoryFilter(
           selected: region,
-          categories: const ['전체', '성수', '홍대'],
+          categories: const ['전체', ...supportedCongestionRegions],
           onChanged: (v) => setState(() => region = v),
         ),
         for (final c in courses)
           stackItems([
             CourseCard(
               title: c.title,
-              route: c.stops
-                  .map((s) => widget.app.repository.place(s.placeId).category)
-                  .join(' → '),
+              route: courseRoute(widget.app, c).join(' → '),
+              places: coursePlaceNames(widget.app, c),
+              keywords: c.keywords,
               summary: summary(c),
               reason: '저장한 코스 · 상세보기 ›',
               congestion: '방문 시간별 지역 혼잡도 확인',
