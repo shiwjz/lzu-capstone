@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/domain.dart';
@@ -8,7 +10,7 @@ import 'odiga_components.dart';
 import 'odiga_widgets.dart';
 
 /// OpenStreetMap-backed map for nearby places and recommended courses.
-class PrototypeMap extends StatelessWidget {
+class PrototypeMap extends StatefulWidget {
   const PrototypeMap({
     super.key,
     required this.app,
@@ -31,6 +33,63 @@ class PrototypeMap extends StatelessWidget {
   final VoidCallback? homeInfo;
   final ValueChanged<Place> onPlace;
 
+  @override
+  State<PrototypeMap> createState() => _PrototypeMapState();
+}
+
+class _PrototypeMapState extends State<PrototypeMap> {
+  final controller = MapController();
+  LatLng? currentLocation;
+  bool locating = false;
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> locate() async {
+    setState(() => locating = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        message('기기에서 위치 서비스를 켜 주세요.');
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        message('앱의 위치 권한을 허용해 주세요.');
+        return;
+      }
+      const timeLimit = Duration(seconds: 15);
+      final settings =
+          !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+          ? AndroidSettings(forceLocationManager: true, timeLimit: timeLimit)
+          : const LocationSettings(timeLimit: timeLimit);
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: settings,
+      );
+      if (!mounted) return;
+      final point = LatLng(position.latitude, position.longitude);
+      setState(() => currentLocation = point);
+      controller.move(point, 15);
+    } catch (_) {
+      message('현재 위치를 가져오지 못했어요.');
+    } finally {
+      if (mounted) setState(() => locating = false);
+    }
+  }
+
+  void message(String value) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(value)));
+  }
+
   static const _regionCenters = <String, LatLng>{
     '성수': LatLng(37.5438, 127.0553),
     '홍대': LatLng(37.5563, 126.9236),
@@ -38,27 +97,30 @@ class PrototypeMap extends StatelessWidget {
   };
 
   List<Place> _visiblePlaces() {
-    final source =
-        course?.stops
-            .map((stop) => app.repository.place(stop.placeId))
-            .toList() ??
-        places ??
-        app.repository.places.where((place) => place.region == region).toList();
-    if (!home || homeCategories == null) return source;
-    return source
-        .where((place) => homeCategories!.contains(place.category))
-        .toList();
+    final app = widget.app;
+    final course = widget.course;
+    if (course != null) {
+      return [
+        for (final stop in course.stops) app.repository.place(stop.placeId),
+      ];
+    }
+    if (widget.places case final places?) return places;
+    if (!widget.home) return [];
+    final location = currentLocation;
+    const distance = Distance();
+    return app.repository.places.where((place) {
+      final nearby = location == null
+          ? place.region == widget.region
+          : distance(location, LatLng(place.latitude, place.longitude)) <= 2000;
+      return nearby &&
+          (widget.homeCategories?.contains(place.category) ?? true);
+    }).toList();
   }
 
-  CongestionBand _band(Place place, int index) {
-    if (course != null && index < course!.stops.length) {
-      final actual = course!.stops[index].congestionBand;
-      if (actual != null) return actual;
-      return app.repository
-          .congestion(place.id, course!.stops[index].arrival)
-          .band;
-    }
-    return app.repository.congestion(place.id, app.conditions.start).band;
+  CongestionBand? _band(Place place, CourseStop stop) {
+    if (!supportedCongestionRegions.contains(place.region)) return null;
+    return stop.congestionBand ??
+        widget.app.repository.congestionOrNull(place.id, stop.arrival)?.band;
   }
 
   Color _bandColor(CongestionBand band) => switch (band) {
@@ -69,151 +131,156 @@ class PrototypeMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final course = widget.course;
     final items = _visiblePlaces();
-    final points = <LatLng>[
+    final points = [
       for (final place in items) LatLng(place.latitude, place.longitude),
     ];
-    final center = points.isEmpty
-        ? _regionCenters[region] ?? _regionCenters['성수']!
-        : LatLng(
-            points.map((point) => point.latitude).reduce((a, b) => a + b) /
-                points.length,
-            points.map((point) => point.longitude).reduce((a, b) => a + b) /
-                points.length,
-          );
-    final route = course == null ? <LatLng>[] : points;
-    final polylines = <Polyline>[];
-    if (route.length > 1) {
-      for (var i = 0; i < route.length - 1; i++) {
-        polylines.add(
-          Polyline(
-            points: [route[i], route[i + 1]],
-            color: _bandColor(_band(items[i + 1], i + 1)),
-            strokeWidth: 6,
-            borderColor: Colors.white,
-            borderStrokeWidth: 2,
-          ),
-        );
-      }
-    }
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: FlutterMap(
-            options: MapOptions(
-              initialCenter: center,
-              initialZoom: course != null ? 15.7 : 14.4,
-              minZoom: 10,
-              maxZoom: 19,
+    final center =
+        currentLocation ??
+        points.firstOrNull ??
+        _regionCenters[widget.region] ??
+        _regionCenters['성수']!;
+    final polylines = course == null || points.length < 2
+        ? <Polyline>[]
+        : [
+            Polyline(
+              points: points,
+              color: OdigaTokens.brand,
+              strokeWidth: 4,
+              pattern: const StrokePattern.dotted(),
             ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.capstone_odiga',
+          ];
+    final circles = <CircleMarker>[
+      if (course != null)
+        for (final (i, stop) in course.stops.indexed)
+          if (_band(items[i], stop) case final band?)
+            CircleMarker(
+              point: points[i],
+              radius: 95,
+              useRadiusInMeter: true,
+              color: _bandColor(band).withValues(alpha: .18),
+              borderColor: _bandColor(band).withValues(alpha: .38),
+              borderStrokeWidth: 1,
+            ),
+    ];
+    return LayoutBuilder(
+      builder: (context, box) => Stack(
+        children: [
+          Positioned.fill(
+            child: FlutterMap(
+              key: course == null
+                  ? const ValueKey('places')
+                  : ValueKey((points.join(','), box.biggest)),
+              mapController: widget.home ? controller : null,
+              options: MapOptions(
+                initialCenter: center,
+                initialZoom: course == null ? 14.4 : 16,
+                initialCameraFit: course != null && points.length > 1
+                    ? CameraFit.coordinates(
+                        coordinates: points,
+                        padding: const EdgeInsets.fromLTRB(32, 16, 32, 64),
+                        maxZoom: 17,
+                      )
+                    : null,
+                minZoom: 3,
+                maxZoom: 19,
               ),
-              if (items.isNotEmpty)
-                CircleLayer(
-                  circles: [
-                    for (var i = 0; i < items.length; i++)
-                      CircleMarker(
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'Odiga',
+                ),
+                if (circles.isNotEmpty) CircleLayer(circles: circles),
+                if (polylines.isNotEmpty) PolylineLayer(polylines: polylines),
+                MarkerLayer(
+                  markers: [
+                    for (final (i, place) in items.indexed)
+                      Marker(
                         point: points[i],
-                        radius: 95,
-                        useRadiusInMeter: true,
-                        color: _bandColor(_band(items[i], i))
-                            .withValues(alpha: .18),
-                        borderColor: _bandColor(_band(items[i], i))
-                            .withValues(alpha: .38),
-                        borderStrokeWidth: 1,
+                        width: 50,
+                        height: 54,
+                        alignment: Alignment.topCenter,
+                        child: CourseCategoryMapPin(
+                          category: place.category,
+                          visitOrder: course == null ? null : i + 1,
+                          onTap: () => widget.onPlace(place),
+                        ),
+                      ),
+                    if (currentLocation case final location?)
+                      Marker(
+                        point: location,
+                        width: 30,
+                        height: 30,
+                        child: Semantics(
+                          label: '내 위치',
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.blue,
+                              border: Border.all(color: Colors.white, width: 3),
+                            ),
+                          ),
+                        ),
                       ),
                   ],
                 ),
-              if (polylines.isNotEmpty) PolylineLayer(polylines: polylines),
-              MarkerLayer(
-                markers: [
-                  for (var i = 0; i < items.length; i++)
-                    Marker(
-                      point: points[i],
-                      width: 50,
-                      height: 54,
-                      alignment: Alignment.topCenter,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          CourseCategoryMapPin(
-                            category: items[i].category,
-                            visitOrder: course == null ? null : i + 1,
-                            onTap: () => onPlace(items[i]),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              RichAttributionWidget(
-                attributions: [
-                  TextSourceAttribution('© OpenStreetMap contributors'),
-                ],
-              ),
-            ],
-          ),
-        ),
-        if (homeSearch != null)
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 12,
-            left: 20,
-            right: 20,
-            child: homeSearch!,
-          ),
-        if (home)
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 78,
-            left: 20,
-            right: 16,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      '내 주변 · ${homeCategories?.join(' · ') ?? '음식점 · 카페 · 놀거리'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                RichAttributionWidget(
+                  attributions: [
+                    TextSourceAttribution('© OpenStreetMap contributors'),
+                  ],
                 ),
-                if (homeInfo != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    tooltip: '추천 점수 계산 기준',
-                    onPressed: homeInfo,
-                    icon: const Icon(Icons.info_outline),
-                  ),
-                ],
               ],
             ),
           ),
-        Positioned(
-          left: 12,
-          bottom: 12,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+          if (widget.homeSearch case final search?)
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 12,
+              left: 20,
+              right: 20,
+              child: search,
             ),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              child: Text('한산 · 보통 · 혼잡', style: TextStyle(fontSize: 10)),
+          if (widget.home)
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 78,
+              right: 16,
+              child: Column(
+                children: [
+                  FloatingActionButton.small(
+                    heroTag: null,
+                    tooltip: '내 위치',
+                    onPressed: locating ? null : locate,
+                    child: locating
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.my_location),
+                  ),
+                  if (widget.homeInfo case final onInfo?)
+                    IconButton.filledTonal(
+                      tooltip: '추천 점수 계산 기준',
+                      onPressed: onInfo,
+                      icon: const Icon(Icons.info_outline),
+                    ),
+                ],
+              ),
             ),
-          ),
-        ),
-      ],
+          if (polylines.isNotEmpty)
+            Positioned(
+              left: 12,
+              bottom: 16,
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  child: Text('직선 거리 기준', style: TextStyle(fontSize: 10)),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api/http_odiga_api.dart';
+import 'api/odiga_api.dart';
 import 'screens/app_screens.dart';
 import 'state/app_state.dart';
 import 'widgets/odiga_widgets.dart';
@@ -20,7 +21,8 @@ class _MyAppState extends State<MyApp> {
   Future<AppState> load() async {
     // 서버 주소 넣고 실행하면 진짜 서버, 안 넣으면 가짜 JSON (예민)
     final state =
-        await (widget.loadState ?? () => AppState.load(api: defaultOdigaApi()))();
+        await (widget.loadState ??
+            () => AppState.load(api: defaultOdigaApi()))();
     if (mounted) {
       app = state;
     } else {
@@ -54,20 +56,21 @@ class _MyAppState extends State<MyApp> {
       future: loading,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
+          final error = snapshot.error;
+          final message = switch (error) {
+            ApiException(:final code, :final message)
+                when code != 'MOCK_LOAD_FAILED' =>
+              '$message ($code)',
+            _ => '앱 초기 데이터를 불러오지 못했어요.',
+          };
           return Scaffold(
             body: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('예시 데이터를 불러오지 못했어요.'),
-                  // 원인 확인용 (예민 11/7): 어떤 요청이 왜 실패했는지 작게 보여줌
                   Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      '${snapshot.error}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(message, textAlign: TextAlign.center),
                   ),
                   TextButton(
                     onPressed: () => setState(() {

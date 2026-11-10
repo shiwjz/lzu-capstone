@@ -6,197 +6,196 @@ class RecommendationsScreen extends StatefulWidget {
     required this.app,
     this.group = false,
     this.expanded = false,
+    this.initialConditions,
   });
   final AppState app;
   final bool group, expanded;
+  final SearchConditions? initialConditions;
   @override
   State<RecommendationsScreen> createState() => _RecommendationsScreenState();
 }
 
 class _RecommendationsScreenState extends State<RecommendationsScreen> {
   AppState get app => widget.app;
-  bool get group => widget.group;
-  bool get expanded => widget.expanded;
-  Object? _requestKey;
-  Future<List<Course>>? _request;
-  int _selectedCourseIndex = 0;
+  late SearchConditions conditions =
+      (widget.initialConditions ?? app.conditions).copy();
+  late var request = app.repository.recommendResult(conditions, app.preference);
+  CourseFrame? frame;
+  final kept = <String>{};
+  Set<String> requiredPlaces = {};
+  int selectedIndex = 0;
 
-  Future<List<Course>> recommendations() {
-    final c = app.conditions;
-    final p = app.preference;
-    final key = (
-      app.repository,
-      c.region,
-      c.start,
-      c.people,
-      c.gender,
-      c.ageGroup,
-      c.companionType,
-      c.mood,
-      c.query,
-      c.useSelectedRegion,
-      p.categories.join(','),
-      p.moods.join(','),
-      p.allergies,
-      p.dislikedFood,
-      p.cuisines.join(','),
-      p.cuisineDetails.join(','),
-      p.crowdPreference,
-      group,
-    );
-    if (_requestKey != key) {
-      _requestKey = key;
-      _selectedCourseIndex = 0;
-      _request = app.repository.recommend(c.copy(), p.copy(), group: group);
-    }
-    return _request!;
+  void refresh() {
+    selectedIndex = 0;
+    request = app.repository.recommendResult(conditions, app.preference);
+  }
+
+  Future<void> editConditions(SearchConditions resolved) async {
+    final edited =
+        await openPage<({SearchConditions conditions, CourseFrame? frame})>(
+          context,
+          ConditionsScreen(
+            app: app,
+            initialConditions: resolved,
+            initialFrame: frame,
+          ),
+          '/conditions',
+        );
+    if (!mounted || edited == null) return;
+    setState(() {
+      conditions = edited.conditions;
+      frame = edited.frame;
+      refresh();
+    });
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: app,
-    builder: (_, child) {
-      return FutureBuilder<List<Course>>(
-        future: recommendations(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return AppFrame(
-              app: app,
-              title: '추천 코스',
-              showBottomNavigation: false,
-              child: const Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasError) {
-            final error = snapshot.error;
-            final code = error is ApiException ? error.code : '';
-            final message = switch (code) {
-              'NETWORK_ERROR' => '서버에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도해 주세요.',
-              'CONDITION_MISSING' => '지역을 다시 선택해 주세요.',
-              'NOT_READY' => '아직 준비 중인 기능이에요.',
-              _ => error is ApiException ? error.message : '추천을 불러오지 못했어요.',
-            };
-            return AppFrame(
-              app: app,
-              title: '추천 코스',
-              showBottomNavigation: false,
-              child: Column(
+  Widget build(BuildContext context) => FutureBuilder(
+    future: request,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return AppFrame(
+          app: app,
+          title: '추천 코스',
+          showBottomNavigation: false,
+          child: const Center(child: CircularProgressIndicator()),
+        );
+      }
+      if (snapshot.hasError) {
+        final error = snapshot.error;
+        final code = error is ApiException ? error.code : null;
+        return AppFrame(
+          app: app,
+          title: '추천 코스',
+          showBottomNavigation: false,
+          child: stackItems([
+            label(apiFailureMessage(error)),
+            if (code == 'CONDITION_MISSING')
+              action('검색으로 돌아가기', () => Navigator.maybePop(context))
+            else
+              action('다시 시도', () => setState(refresh)),
+          ]),
+        );
+      }
+
+      final result = snapshot.data!;
+      final courses = result.courses.where((course) {
+        final ids = course.stops.map((stop) => stop.placeId).toSet();
+        return ids.containsAll(requiredPlaces) &&
+            (frame?.matches(ids.map(app.repository.place)) ?? true);
+      }).toList();
+      final selectedCourse = courses.elementAtOrNull(selectedIndex);
+      return MapSheetFrame(
+        app: app,
+        showBottomNavigation: false,
+        title:
+            '추천 ${courses.length}개 · ${visitConditionText(result.conditions)}',
+        sheetTitle: '추천 코스',
+        course: selectedCourse,
+        initialSize: widget.expanded
+            ? RecommendationSheetSize.expanded
+            : RecommendationSheetSize.medium,
+        onConditions: () => editConditions(result.conditions),
+        children: [
+          if (kept.isNotEmpty)
+            panel([
+              label('📌 킵 ${kept.length}곳', bold: true),
+              Wrap(
+                spacing: 6,
                 children: [
-                  Text(message),
-                  if (code != 'NOT_READY')
-                    TextButton(
-                      onPressed: () => openPage(
-                        context,
-                        ConditionsScreen(app: app, group: group),
-                        '/conditions',
-                      ),
-                      child: Text(
-                        code == 'CONDITION_MISSING' ? '지역 다시 선택' : '조건 수정',
-                      ),
-                    ),
-                  if (code != 'CONDITION_MISSING' && code != 'NOT_READY')
-                    TextButton(
-                      onPressed: () => setState(() => _requestKey = null),
-                      child: const Text('다시 시도'),
+                  for (final id in kept)
+                    InputChip(
+                      label: Text(app.repository.place(id).name),
+                      onDeleted: () => setState(() => kept.remove(id)),
                     ),
                 ],
               ),
-            );
-          }
-          final courses = snapshot.data ?? [];
-          final selectedIndex = _selectedCourseIndex < courses.length
-              ? _selectedCourseIndex
-              : 0;
-          final selectedCourse = courses.isEmpty
-              ? null
-              : courses[selectedIndex];
-          return MapSheetFrame(
-            app: app,
-            showBottomNavigation: false,
-            title: courses.isEmpty
-                ? '추천 결과 없음'
-                : '추천 ${courses.length}개 · ${selectedCourse!.title}',
-            course: selectedCourse,
-            initialSize: expanded
-                ? RecommendationSheetSize.expanded
-                : RecommendationSheetSize.collapsed,
-            children: [
-              if (courses.isEmpty) ...[
-                label('조건에 맞는 예시 장소가 없습니다.'),
-                action(
-                  '검색 조건 수정',
-                  () => openPage(
-                    context,
-                    ConditionsScreen(app: app, group: group),
-                    '/conditions',
-                  ),
-                ),
-              ],
-              for (var i = 0; i < courses.length; i++)
-                RankedCourseCard(
-                  rank: i + 1,
-                  title: courses[i].title,
-                  summary: _courseSummary(courses[i]),
-                  reason: courses[i].reason,
-                  keywords: courses[i].keywords,
-                  selected: i == selectedIndex,
-                  onSelected: () => _openCourseDetail(courses[i], i),
-                  onReason: () => _showRecommendationReasonPopup(
-                    context,
-                    app: app,
-                    course: courses[i],
-                    rank: i + 1,
-                    group: group,
-                  ),
-                ),
-              if (courses.isNotEmpty)
-                action(
-                  '조건 수정',
-                  () => openPage(
-                    context,
-                    ConditionsScreen(app: app, group: group),
-                    '/conditions',
-                  ),
-                  secondary: true,
-                ),
-            ],
-          );
-        },
+              action('이 장소로 다시 찾기', () {
+                setState(() {
+                  requiredPlaces = {...kept};
+                  refresh();
+                });
+              }),
+            ]),
+          if (requiredPlaces.isNotEmpty)
+            TextButton(
+              onPressed: () => setState(() {
+                requiredPlaces = {};
+                selectedIndex = 0;
+              }),
+              child: const Text('킵 필터 해제'),
+            ),
+          if (courses.isEmpty)
+            label(
+              requiredPlaces.isNotEmpty
+                  ? '킵한 장소를 모두 포함하는 코스가 없어요.'
+                  : '선택한 조건에 맞는 코스가 없어요.',
+            ),
+          for (final (index, course) in courses.indexed)
+            RankedCourseCard(
+              rank: index + 1,
+              title: course.title,
+              summary: coursePlaceNames(app, course),
+              route: courseRoute(app, course),
+              reason: course.reason,
+              keywords: course.keywords,
+              selected: index == selectedIndex,
+              onSelected: () {
+                setState(() => selectedIndex = index);
+                openPage(
+                  context,
+                  CourseDetailScreen(app: app, initial: course),
+                  '/course/${course.id}',
+                );
+              },
+              onMap: () => setState(() => selectedIndex = index),
+              onReason: () => _showRecommendationReasonPopup(
+                context,
+                app: app,
+                course: course,
+                rank: index + 1,
+                group: widget.group,
+              ),
+            ),
+          if (selectedCourse != null) ...[
+            label('선택한 코스의 장소', bold: true),
+            for (final stop in selectedCourse.stops)
+              PlaceCardView(
+                app: app,
+                place: app.repository.place(stop.placeId),
+                visit: stop.arrival,
+                kept: kept.contains(stop.placeId),
+                onKeep: () => setState(() {
+                  if (!kept.remove(stop.placeId)) kept.add(stop.placeId);
+                }),
+                onTap: () => openCourseStop(context, app, stop),
+              ),
+          ],
+        ],
       );
     },
   );
+}
 
-  Future<void> _openCourseDetail(Course course, int index) async {
-    await openPage(
-      context,
-      CourseDetailScreen(app: app, initial: course),
-      '/course/${course.id}',
-    );
-    if (!mounted) return;
-    setState(() => _selectedCourseIndex = index);
-  }
+String coursePlaceNames(AppState app, Course course) => course.stops
+    .take(3)
+    .map((stop) => stop.name ?? app.repository.place(stop.placeId).name)
+    .join(' · ');
 
-  String _courseSummary(Course course) {
-    final congestion = course.stops
-        .map(
-          (stop) => app.repository.congestion(stop.placeId, stop.arrival).value,
-        )
-        .toList();
-    final average = congestion.isEmpty
-        ? 0
-        : congestion.reduce((a, b) => a + b) / congestion.length;
-    final congestionText = average < 40
-        ? '한산'
-        : average < 70
-        ? '보통'
-        : '혼잡';
-    final hours = course.totalMinutes ~/ 60;
-    final minutes = course.totalMinutes % 60;
-    final duration = hours == 0
-        ? '약 $minutes분'
-        : '약 $hours시간${minutes == 0 ? '' : ' $minutes분'}';
-    return '$duration · ${course.distanceKm.toStringAsFixed(1)}km · 평균 $congestionText ${average.round()}%';
-  }
+List<String> courseRoute(AppState app, Course course) => course.stops
+    .map((stop) => app.repository.place(stop.placeId).category)
+    .toList();
+
+void openCourseStop(BuildContext context, AppState app, CourseStop stop) {
+  openPage(
+    context,
+    PlaceDetailScreen(
+      app: app,
+      place: app.repository.place(stop.placeId),
+      arrival: stop.arrival,
+    ),
+    '/place/${stop.placeId}',
+  );
 }
 
 void _showRecommendationScoreInfo(BuildContext context) {
@@ -350,19 +349,14 @@ class CourseDetailScreen extends StatelessWidget {
           initial;
       return MapSheetFrame(
         app: app,
-        title: '코스 상세 · ${course.stops.length}개 장소',
+        title: course.title,
+        sheetTitle: '코스 상세 · ${course.stops.length}개 장소',
         course: course,
         children: [
+          RouteTags(categories: courseRoute(app, course)),
           for (final (index, stop) in course.stops.indexed) ...[
             InkWell(
-              onTap: () => openPage(
-                context,
-                PlaceDetailScreen(
-                  app: app,
-                  place: app.repository.place(stop.placeId),
-                ),
-                '/place/${stop.placeId}',
-              ),
+              onTap: () => openCourseStop(context, app, stop),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -392,11 +386,13 @@ class CourseDetailScreen extends StatelessWidget {
                         ),
                       ], gap: 8),
                     ),
-                    CongestionBadge(
-                      level: level(
-                        app.repository.congestion(stop.placeId, stop.arrival),
-                      ),
-                    ),
+                    if (placeCongestion(
+                          app,
+                          app.repository.place(stop.placeId),
+                          stop.arrival,
+                        )
+                        case final crowd?)
+                      CongestionBadge(level: crowd),
                   ],
                 ),
               ),
@@ -404,10 +400,15 @@ class CourseDetailScreen extends StatelessWidget {
             if (stop.travelMinutesToNext > 0)
               CourseTravelDivider(label: '도보 ${stop.travelMinutesToNext}분'),
           ],
-          CourseSummaryCard(
-            summary: summary(course),
-            detail: '방문 시간에 따라 예상 지역 혼잡도가 달라집니다.',
-          ),
+          CourseSummaryCard(summary: summary(course), detail: '직선 거리 기준'),
+          if (course.stops.isNotEmpty)
+            action(
+              '카카오맵 길찾기',
+              () => openDirections(context, [
+                for (final stop in course.stops)
+                  app.repository.place(stop.placeId),
+              ]),
+            ),
           Row(
             children: [
               Expanded(
@@ -683,14 +684,17 @@ class _CourseEditorScreenState extends State<CourseEditorScreen> {
         itemBuilder: (_, index) {
           final stop = draft.stops[index];
           final p = widget.app.repository.place(stop.placeId);
+          final crowd = placeCongestion(widget.app, p, stop.arrival);
           return Column(
             key: ValueKey(stop.id),
             children: [
               CourseStopTile(
                 order: index + 1,
                 title: p.name,
-                visitLabel:
-                    '${clockText(stop.arrival)} 방문 · ${level(widget.app.repository.congestion(p.id, stop.arrival)).label}',
+                visitLabel: [
+                  '${clockText(stop.arrival)} 방문',
+                  if (crowd != null) crowd.label,
+                ].join(' · '),
                 stayMinutes: stop.stayMinutes,
                 onStayPressed: () => stay(stop),
                 onDelete: () =>
@@ -755,16 +759,16 @@ class _SavedCoursesScreenState extends State<SavedCoursesScreen> {
       child: stackItems([
         OdigaCategoryFilter(
           selected: region,
-          categories: const ['전체', '성수', '홍대'],
+          categories: const ['전체', ...supportedCongestionRegions],
           onChanged: (v) => setState(() => region = v),
         ),
         for (final c in courses)
           stackItems([
             CourseCard(
               title: c.title,
-              route: c.stops
-                  .map((s) => widget.app.repository.place(s.placeId).category)
-                  .join(' → '),
+              route: courseRoute(widget.app, c).join(' → '),
+              places: coursePlaceNames(widget.app, c),
+              keywords: c.keywords,
               summary: summary(c),
               reason: '저장한 코스 · 상세보기 ›',
               congestion: '방문 시간별 지역 혼잡도 확인',

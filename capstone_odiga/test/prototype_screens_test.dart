@@ -56,7 +56,7 @@ void main() {
     final course = app.savedCourses.first;
     for (final screen in <Widget>[
       HomeScreen(app: app),
-      ConditionsScreen(app: app),
+      ConditionsScreen(app: app, initialConditions: app.conditions),
       PlaceDetailScreen(app: app, place: app.repository.places.first),
       RecommendationsScreen(app: app, expanded: true),
       CourseDetailScreen(app: app, initial: course),

@@ -86,15 +86,23 @@ void main() {
     },
   );
 
-  test('detail is fixed for any ID and retains all-day congestion', () async {
-    final a = await api.getPlace('some-id', date: '2026-10-16');
-    final b = await api.getPlace('other-id');
-    expect(a.toJson(), b.toJson());
-    expect(a.openingHours, isNull);
-    expect(a.congestionByHour.basis, 'ALL_DAY');
-    expect(a.congestionByHour.hours.length, 15);
-    expect(a.tags.first.mentions, isA<int>());
-  });
+  test(
+    'detail returns 15 hours and switches day type for a known place',
+    () async {
+      final weekday = await api.getPlace('780757764', date: '2026-10-16');
+      final weekend = await api.getPlace('780757764', date: '2026-10-17');
+      expect(weekday.openingHours, isNull);
+      expect(weekday.congestionByHour.basis, 'ALL_DAY');
+      expect(weekday.congestionByHour.hours.length, 15);
+      expect(weekday.congestionByHour.dayType, 'WEEKDAY');
+      expect(weekend.congestionByHour.dayType, 'WEEKEND');
+      expect(
+        weekday.congestionByHour.hours.first.percentile,
+        isNot(weekend.congestionByHour.hours.first.percentile),
+      );
+      expect(weekday.tags.first.mentions, isA<int>());
+    },
+  );
 
   test(
     'update sends the full ordered list and returns fixed warnings',
@@ -192,6 +200,9 @@ void main() {
     );
     expect(injected.lastSearch!.query, '홍대');
     expect(injected.lastSearch!.region, isNull);
+    expect(injected.lastSearch!.conditions, isNull);
+    expect(injected.lastSearch!.date, isNull);
+    expect(injected.lastSearch!.startTime, isNull);
     final draft = app.savedCourses.first;
     final result = await app.repository.updateCourse(draft);
     expect(

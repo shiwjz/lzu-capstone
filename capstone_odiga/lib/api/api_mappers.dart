@@ -37,11 +37,14 @@ class ApiMappers {
       tags: [
         for (final tag in json['tags'] as List? ?? []) tag['tag'] as String,
       ],
-      openingHours: json['openingHours'] as String? ?? '정보 없음',
+      openingHours: json['openingHours'] as String? ?? '영업시간 정보 없음',
       imageAsset: category == '음식점' ? 'assets/ba01c.png' : 'assets/756cc.png',
       rating: null,
       description:
           json['reason'] as String? ?? json['address'] as String? ?? '',
+      address: (json['roadAddress'] as String?)?.trim().isNotEmpty == true
+          ? json['roadAddress'] as String
+          : json['address'] as String?,
       cuisine: json['cuisine'] as String?,
       cuisineDetail: json['cuisineDetail'] as String?,
     );
@@ -70,6 +73,7 @@ class ApiMappers {
         CourseStop(
           id: '${json['courseId']}-stop-$i',
           placeId: stop['placeId'],
+          name: stop['name'],
           order: stop['order'],
           arrival: arrival,
           stayMinutes: stop['stayMinutes'],

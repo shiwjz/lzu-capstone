@@ -125,7 +125,7 @@ class PlaceDetailDto extends PlaceDto {
   String? get kakaoCategory => json['kakaoCategory'];
   String? get openingHours => json['openingHours'];
   HourlyCongestionDto get congestionByHour =>
-      HourlyCongestionDto.fromJson(json['congestionByHour']);
+      HourlyCongestionDto.fromJson(json['congestionByHour'] ?? {'hours': []});
 }
 
 class StopDto extends PlaceDto {
