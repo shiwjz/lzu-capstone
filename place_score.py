@@ -75,10 +75,12 @@ def request_score(atmospheres, place_tags, cuisine_details=None, place_cuisine=N
 
 def target_score(cell, cluster, region_avg, gender, age_group):
     """타깃 특성: 칸의 타깃 집단 비율 ÷ 지역 평균 비율 → 0~1
-    - cell: 이 칸의 성·연령 {"female_ratio": 0.6, "age_20s": 0.3, ...}
+    - cell: 이 칸의 성·연령 {"female_ratio": 0.6, "age_20s": 0.3, "f_20s": 0.18, ...}
     - cluster: 같은 유형(cell_cluster) 칸들의 평균 성·연령 (없으면 None → 칸 값만 사용)
     - region_avg: 지역 평균 성·연령
     - gender: "F" / "M" / None,  age_group: "10s" ~ "60s" / None
+    - 성별·연령이 둘 다 있고 칸에 성별 × 연령 비율(f_20s 등)이 있으면 그 값을 바로 사용 (LG 데이터)
+      없으면 성별 배수 × 연령 배수로 추정 (가짜 데이터용)
     """
     if cell is None or (gender is None and age_group is None):
         return NEUTRAL
@@ -89,13 +91,17 @@ def target_score(cell, cluster, region_avg, gender, age_group):
             v = (1 - CLUSTER_WEIGHT) * v + CLUSTER_WEIGHT * cluster[col]
         return v
 
-    index = 1.0
-    if gender is not None:
-        f, f_avg = share("female_ratio"), region_avg["female_ratio"]
-        index *= (f / f_avg) if gender == "F" else ((1 - f) / (1 - f_avg))
-    if age_group is not None:
-        col = f"age_{age_group}"
-        index *= share(col) / region_avg[col]
+    joint_col = f"{gender.lower()}_{age_group}" if gender and age_group else None
+    if joint_col and joint_col in cell:
+        index = share(joint_col) / region_avg[joint_col]
+    else:
+        index = 1.0
+        if gender is not None:
+            f, f_avg = share("female_ratio"), region_avg["female_ratio"]
+            index *= (f / f_avg) if gender == "F" else ((1 - f) / (1 - f_avg))
+        if age_group is not None:
+            col = f"age_{age_group}"
+            index *= share(col) / region_avg[col]
     return index / (1 + index)
 
 
@@ -126,8 +132,7 @@ def load_target_data(ga_path="cell_gender_age_fake.csv", cluster_path="cell_clus
     사용 예: cluster = cluster_avg.get(cell_cluster.get(cell_id))
     """
     ga = pd.read_csv(ga_path).merge(pd.read_csv(cluster_path), on="cell_id", how="left")
-    cols = ["female_ratio", "age_10s", "age_20s", "age_30s", "age_40s", "age_50s", "age_60s"]
-    cells = ga.set_index("cell_id")[cols].to_dict("index")
+    cols = [c for c in ga.columns if c not in ("cell_id", "region", "cluster")]   # 성·연령 컬럼 전부 (LG면 f_20s 등 포함)    cells = ga.set_index("cell_id")[cols].to_dict("index")
     cell_cluster = ga.set_index("cell_id")["cluster"].to_dict()
     cluster_avg = ga.groupby("cluster")[cols].mean().to_dict("index")
     region_avg = ga.groupby("region")[cols].mean().to_dict("index")
