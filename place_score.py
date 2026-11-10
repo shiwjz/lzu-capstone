@@ -132,7 +132,8 @@ def load_target_data(ga_path="cell_gender_age_fake.csv", cluster_path="cell_clus
     사용 예: cluster = cluster_avg.get(cell_cluster.get(cell_id))
     """
     ga = pd.read_csv(ga_path).merge(pd.read_csv(cluster_path), on="cell_id", how="left")
-    cols = [c for c in ga.columns if c not in ("cell_id", "region", "cluster")]   # 성·연령 컬럼 전부 (LG면 f_20s 등 포함)    cells = ga.set_index("cell_id")[cols].to_dict("index")
+    cols = [c for c in ga.columns if c not in ("cell_id", "region", "cluster")]   # 성·연령 컬럼 전부 (LG면 f_20s 등 포함)
+    cells = ga.set_index("cell_id")[cols].to_dict("index")
     cell_cluster = ga.set_index("cell_id")["cluster"].to_dict()
     cluster_avg = ga.groupby("cluster")[cols].mean().to_dict("index")
     region_avg = ga.groupby("region")[cols].mean().to_dict("index")

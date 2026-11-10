@@ -58,6 +58,7 @@ DAYS = {'WEEKDAY': 5, 'WEEKEND': 2}
 DOW = {'월': 0, '화': 1, '수': 2, '목': 3, '금': 4, '토': 5, '일': 6,
        'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5, 'SUN': 6}
 DOW_NAME = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+JOINT_COLS = [f'{s}_{a}s' for s in ('f', 'm') for a in range(10, 70, 10)]   # 성별 × 연령 (f_10s ~ m_60s, 11/11)
 
 
 # ---------------- 읽기 ----------------
@@ -224,6 +225,10 @@ def gender_age(secd, how):
         at = adult['v'].sum()
         for a in range(10, 70, 10):
             row[f'age_{a}s'] = round(adult.loc[adult['age'] == a, 'v'].sum() / at, 3) if at > 0 else 0
+        for a in range(10, 70, 10):                       # 성별 × 연령 (윤경 make_gender_age_lg.py랑 같은 이름)
+            for sx, is_f in (('f', True), ('m', False)):
+                v = adult.loc[(adult['age'] == a) & (adult['female'] == is_f), 'v'].sum()
+                row[f'{sx}_{a}s'] = round(v / at, 4) if at > 0 else 0
         out.append(row)
     return pd.DataFrame(out), sorted(str(v) for v in sex.unique())
 
@@ -251,6 +256,7 @@ def write_server_files(out, cong, ga, cells, log):
     cl_path = own if os.path.exists(own) else os.path.join(ROOT, 'cell_cluster.csv')
     cluster = pd.read_csv(cl_path).set_index('cell_id')['cluster'].to_dict()
     cols = ['female_ratio', 'age_10s', 'age_20s', 'age_30s', 'age_40s', 'age_50s', 'age_60s']
+    cols += [c for c in JOINT_COLS if c in ga.columns]   # 성별 × 연령 있으면 같이 (서버가 열 이름으로 읽음, 11/11)
     with open(os.path.join(out, 'cell_profile_lg.tsv'), 'w', encoding='utf-8', newline='\n') as f:
         f.write('cellId\tregion\tcluster\t' + '\t'.join(cols) + '\n')
         for r in ga.sort_values('cell_id').itertuples():
@@ -421,7 +427,7 @@ def main():
     else:
         ga, sex_codes = gender_age(t['SECD'], args.value)
         ga = ga.merge(cells[['cell_id', 'region']], on='cell_id')
-        ga = ga[['cell_id', 'region', 'female_ratio'] + [f'age_{a}s' for a in range(10, 70, 10)]]
+        ga = ga[['cell_id', 'region', 'female_ratio'] + [f'age_{a}s' for a in range(10, 70, 10)] + JOINT_COLS]
         ga.to_csv(ga_path, index=False, encoding='utf-8-sig')
         log.append(f'성·연령: 칸 {len(ga)}개, 성별 코드 {sex_codes} (1·2면 1 = 남, 2 = 여로 봄 → 맞는지 확인)')
 

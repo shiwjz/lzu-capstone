@@ -69,7 +69,7 @@ public class PlaceScoreModel implements PlaceScorerFactory {
 
             PlaceStore.CellProfile cell = store.cellProfile(p.placeId());
             Map<String, Double> cluster = cell == null ? null : store.clusterAverage(cell.cluster());
-            double target = targetScore(cell == null ? null : cell::value, cluster,
+            double target = targetScore(cell == null ? null : cell::valueOrNull, cluster,
                     store.regionAverage(p.region()), c.gender(), c.ageGroup());
 
             PlaceStore.Congestion cong = store.congestion(p.placeId(), c.dayType(), hour, PlaceStore.Basis.SAME_TIME);
@@ -116,19 +116,27 @@ public class PlaceScoreModel implements PlaceScorerFactory {
         return requestScore(atmospheres, placeTags, null, null, null);
     }
 
-    /** 칸 값 꺼내기 ("female_ratio", "age_20s" …) */
+    /** 칸 값 꺼내기 ("female_ratio", "age_20s", LG면 "f_20s" …), 없는 열이면 null */
     interface Shares {
-        double get(String column);
+        Double get(String column);
     }
 
     /**
-     * 타깃 특성: (칸 비율 ÷ 지역 평균 비율)을 성별·연령 곱해서 배수 → 배수 ÷ (1 + 배수)
+     * 타깃 특성: (칸 비율 ÷ 지역 평균 비율) → 배수 ÷ (1 + 배수) (윤경 place_score.py target_score 그대로)
      * - 성별·연령 둘 다 없거나 칸 정보 없으면 0.5
      * - 같은 유형 평균 있으면 칸 비율과 반반 섞음
+     * - 11주차: 성별·연령 둘 다 있고 칸에 성별 × 연령 비율(f_20s 등, LG 데이터)이 있으면 그 값을 바로 씀,
+     *   없으면 예전처럼 성별 배수 × 연령 배수 (가짜 데이터)
      */
     static double targetScore(Shares cell, Map<String, Double> cluster, Map<String, Double> regionAvg,
                               String gender, String ageGroup) {
         if (cell == null || regionAvg == null || (gender == null && ageGroup == null)) return NEUTRAL;
+        String joint = gender != null && ageGroup != null ? gender.toLowerCase() + "_" + ageGroup : null;
+        if (joint != null && cell.get(joint) != null && regionAvg.containsKey(joint)
+                && (cluster == null || cluster.containsKey(joint))) {
+            double index = share(cell, cluster, joint) / regionAvg.get(joint);
+            return index / (1 + index);
+        }
         double index = 1.0;
         if (gender != null) {
             double f = share(cell, cluster, "female_ratio");
