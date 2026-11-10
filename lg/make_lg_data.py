@@ -1,10 +1,11 @@
 """
 LG 유동인구 3개 파일 → 우리 서비스용 파일 (11/5) - 김예민 (전처리 담당 @이윤경이 실행)
+(11/12 이윤경: 요일별 혼잡도 추가 → floating_pop_dow_lg.csv, cell_congestion_dow_lg.csv)
 
 받은 파일 (월별 2025-01~12, 칸 = CELL_ID)
 - FST  : 칸 × 시간대(TMZN)                 → 시간대 모양
 - SECD : 칸 × 성별(SEX_DIVS_CD) × 연령대    → 성·연령 (타깃 점수)
-- THRD : 칸 × 요일(DYBY_NM)                 → 주중/주말 비율
+- THRD : 칸 × 요일(DYBY_NM)                 → 주중/주말 비율, 요일 비율
 ※ 필요한 '주중/주말 × 시간대' 표는 없음 → 아래 방법으로 추정
 
 주중/주말 × 시간대 추정 (반복 비례 조정, IPF)
@@ -15,9 +16,15 @@ LG 유동인구 3개 파일 → 우리 서비스용 파일 (11/5) - 김예민 (�
 3. 결과: LG 숫자는 안 어기고, '주말 저녁에 몰림' 같은 모양은 서울시에서 빌려옴
    (보고서 한계: "주중·주말별 시간대 모양은 서울시 생활인구(행정동)에서 가져와 LG 합계에 맞춰 추정")
 
+요일별 × 시간대 (11/12 추가)
+- 그 요일의 시간대 값 = (평일 또는 주말) 시간대 모양 × (그 요일 하루 합 ÷ 같은 종류 요일들 하루 합 평균)
+  예) 금요일 = 평일 모양 × (금요일 하루 합 ÷ 월~금 하루 합 평균) → LG THRD 요일 비율을 그대로 따름
+
 만드는 파일 (전부 --out 폴더에만, 깃허브·AI에 올리지 않기)
 - floating_pop_lg.csv      : cell_id, day_type, hour, stay_pop, walk_pop  (윤경 make_congestion.py·cluster_cells.py 입력 모양 그대로)
 - cell_congestion_lg.csv   : cell_congestion.csv랑 같은 열 (3×3 평균 → 백분위 → 등급, 윤경 방식 그대로)
+- floating_pop_dow_lg.csv  : cell_id, dow(MON~SUN), hour, stay_pop, walk_pop  (11/12 추가)
+- cell_congestion_dow_lg.csv : cell_congestion_lg.csv랑 같은 열인데 day_type 대신 dow (11/12 추가)
 - cell_gender_age_lg.csv   : cell_gender_age_fake.csv랑 같은 열
 - check_lg.txt             : 확인용 요약 (칸 몇 개 맞았는지, 합계 오차, 등급 분포 - 칸별 숫자 없음)
 - congestion_lg.tsv, cell_profile_lg.tsv : 서버가 읽는 모양 (resources/data/congestion.tsv·cell_profile.tsv랑 같음)
@@ -50,6 +57,7 @@ DAY_TYPES = ('WEEKDAY', 'WEEKEND')
 DAYS = {'WEEKDAY': 5, 'WEEKEND': 2}
 DOW = {'월': 0, '화': 1, '수': 2, '목': 3, '금': 4, '토': 5, '일': 6,
        'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5, 'SUN': 6}
+DOW_NAME = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 
 
 # ---------------- 읽기 ----------------
@@ -166,31 +174,32 @@ def ipf(seed, hour_margin, day_ratio, iters=200, tol=1e-9):
     return x, err
 
 
-def congestion_table(base, cells):
-    """윤경 make_congestion.py 4~5단계 그대로: 3×3 평균 → 백분위 → 등급"""
+def congestion_table(base, cells, day_col='day_type'):
+    """윤경 make_congestion.py 4~5단계 그대로: 3×3 평균 → 백분위 → 등급
+    - day_col: 'day_type'(주중/주말) 또는 'dow'(요일)"""
     xy = base['cell_id'].str.split('_', expand=True).astype(int)
     base = base.assign(ix=xy[0], iy=xy[1])
     parts = []
     for dx in (-1, 0, 1):
         for dy in (-1, 0, 1):
-            nb = base[['ix', 'iy', 'day_type', 'hour', 'cell_value']].copy()
+            nb = base[['ix', 'iy', day_col, 'hour', 'cell_value']].copy()
             nb['ix'] -= dx
             nb['iy'] -= dy
             parts.append(nb)
-    smooth = (pd.concat(parts).groupby(['ix', 'iy', 'day_type', 'hour'])['cell_value'].mean()
+    smooth = (pd.concat(parts).groupby(['ix', 'iy', day_col, 'hour'])['cell_value'].mean()
               .rename('smooth_value').reset_index())
-    cong = (base.merge(smooth, on=['ix', 'iy', 'day_type', 'hour'], how='left')
+    cong = (base.merge(smooth, on=['ix', 'iy', day_col, 'hour'], how='left')
             .merge(cells[['cell_id', 'region']], on='cell_id'))
 
     def to_level(pct):
         return pd.cut(pct, [0, 30, 70, 100], labels=['QUIET', 'NORMAL', 'BUSY'], include_lowest=True)
-    cong['pct_same_time'] = (cong.groupby(['region', 'day_type', 'hour'])['smooth_value'].rank(pct=True) * 100).round(1)
+    cong['pct_same_time'] = (cong.groupby(['region', day_col, 'hour'])['smooth_value'].rank(pct=True) * 100).round(1)
     cong['level_same_time'] = to_level(cong['pct_same_time'])
     cong['pct_all_day'] = (cong.groupby('region')['smooth_value'].rank(pct=True) * 100).round(1)
     cong['level_all_day'] = to_level(cong['pct_all_day'])
     cong['cell_value'] = cong['cell_value'].round(1)
     cong['smooth_value'] = cong['smooth_value'].round(1)
-    return cong[['cell_id', 'region', 'day_type', 'hour', 'cell_value', 'smooth_value',
+    return cong[['cell_id', 'region', day_col, 'hour', 'cell_value', 'smooth_value',
                  'pct_same_time', 'level_same_time', 'pct_all_day', 'level_all_day']]
 
 
@@ -216,7 +225,7 @@ def gender_age(secd, how):
         for a in range(10, 70, 10):
             row[f'age_{a}s'] = round(adult.loc[adult['age'] == a, 'v'].sum() / at, 3) if at > 0 else 0
         out.append(row)
-    return pd.DataFrame(out), sorted(sex.unique().tolist())
+    return pd.DataFrame(out), sorted(str(v) for v in sex.unique())
 
 
 def write_server_files(out, cong, ga, cells, log):
@@ -316,9 +325,11 @@ def main():
             thrd[c] = thrd[c] / n
     thrd['day_type'] = np.where(thrd['dow'] >= 5, 'WEEKEND', 'WEEKDAY')
     # 같은 칸·달·요일이 여러 줄이면(9·10월 행정동 나뉜 칸) 먼저 더하고 → 요일끼리 평균 → 달끼리 평균
-    day_m = (thrd.groupby(['cell_id', 'P_YYYYMM', 'dow', 'day_type'])[['STAY_POPL_CNT', 'WALK_POPL_CNT']].sum()
-             .groupby(['cell_id', 'P_YYYYMM', 'day_type']).mean()
+    by_dow_month = thrd.groupby(['cell_id', 'P_YYYYMM', 'dow', 'day_type'])[['STAY_POPL_CNT', 'WALK_POPL_CNT']].sum()
+    day_m = (by_dow_month.groupby(['cell_id', 'P_YYYYMM', 'day_type']).mean()
              .groupby(['cell_id', 'day_type']).mean())
+    # 요일별 하루 평균 (11/12 추가): 칸 × 요일, 달끼리 평균
+    dow_m = by_dow_month.groupby(['cell_id', 'dow']).mean()
 
     # 월 합계인지 하루 평균인지 확인용: FST 24시간 합 vs THRD 7요일 합 (원래 값 기준)
     f_raw = t['FST'].groupby(['cell_id', 'P_YYYYMM'])['STAY_POPL_CNT'].sum()
@@ -331,7 +342,7 @@ def main():
     sp = seoul.pivot_table(index=['dong_code', 'hour'], columns='day_type', values='avg_pop')
     dong_of = cell_dong.set_index('cell_id')['dong_code'].to_dict()
 
-    rows, errs, no_seed = [], [], 0
+    rows, dow_rows, errs, no_seed = [], [], [], 0
     for cid in sorted(set(hour_m.index.get_level_values(0)) & set(day_m.index.get_level_values(0))):
         dong = dong_of.get(cid)
         if dong in sp.index.get_level_values(0):
@@ -354,18 +365,53 @@ def main():
         for i, dt in enumerate(DAY_TYPES):
             for h in range(24):
                 rows.append((cid, dt, h, est['stay_pop'][i, h], est['walk_pop'][i, h]))
+
+        # 요일별 (11/12 추가): 그 요일 = (평일 또는 주말) 시간대 모양 × (그 요일 하루 합 ÷ 같은 종류 요일들 평균)
+        dow_scale = {}
+        for col, name in (('STAY_POPL_CNT', 'stay_pop'), ('WALK_POPL_CNT', 'walk_pop')):
+            dv = dow_m.loc[cid][col].reindex(range(7)) if cid in dow_m.index.get_level_values(0) else pd.Series(np.nan, index=range(7))
+            for d in range(7):
+                group = range(5) if d < 5 else range(5, 7)
+                gmean = dv.reindex(group).mean()
+                dow_scale[(name, d)] = dv[d] / gmean if gmean and gmean > 0 and not np.isnan(dv[d]) else 1.0
+        for d in range(7):
+            i = 0 if d < 5 else 1
+            for h in range(24):
+                dow_rows.append((cid, DOW_NAME[d], h,
+                                 est['stay_pop'][i, h] * dow_scale[('stay_pop', d)],
+                                 est['walk_pop'][i, h] * dow_scale[('walk_pop', d)]))
+
     pop = pd.DataFrame(rows, columns=['cell_id', 'day_type', 'hour', 'stay_pop', 'walk_pop'])
     pop[['stay_pop', 'walk_pop']] = pop[['stay_pop', 'walk_pop']].round(2)
     pop.to_csv(os.path.join(args.out, 'floating_pop_lg.csv'), index=False, encoding='utf-8-sig')
     log.append(f'추정 칸 {pop["cell_id"].nunique()}개, 서울시 모양 없어서 주중=주말 모양으로 한 칸 {no_seed}개, '
                f'합계 최대 오차 {max(errs) if errs else 0:.1e}')
 
+    pop_dow = pd.DataFrame(dow_rows, columns=['cell_id', 'dow', 'hour', 'stay_pop', 'walk_pop'])
+    pop_dow[['stay_pop', 'walk_pop']] = pop_dow[['stay_pop', 'walk_pop']].round(2)
+    pop_dow.to_csv(os.path.join(args.out, 'floating_pop_dow_lg.csv'), index=False, encoding='utf-8-sig')
+    # 확인: 요일별 평균(월~금, 토·일)이 주중/주말 값이랑 같은지 (요일 비율이 평균 1이라 같아야 함)
+    chk = pop_dow.assign(day_type=np.where(pop_dow['dow'].isin(['SAT', 'SUN']), 'WEEKEND', 'WEEKDAY'))
+    chk = chk.groupby(['cell_id', 'day_type', 'hour'])['stay_pop'].mean()
+    base_dt = pop.set_index(['cell_id', 'day_type', 'hour'])['stay_pop']
+    gap = ((chk - base_dt).abs() / base_dt.replace(0, np.nan)).max()
+    log.append(f'요일별: 칸 {pop_dow["cell_id"].nunique()}개 × 7요일 × 24시간 = {len(pop_dow):,}행, '
+               f'요일 평균 vs 주중/주말 최대 차이 {gap:.1e} (0에 가까우면 정상)')
+
     # 4) 혼잡도
-    base = pop.assign(cell_value=value_of(pop.rename(columns={'stay_pop': 'STAY_POPL_CNT', 'walk_pop': 'WALK_POPL_CNT'}),
-                                          args.value))[['cell_id', 'day_type', 'hour', 'cell_value']]
-    cong = congestion_table(base, cells)
+    def to_base(p, day_col):
+        v = value_of(p.rename(columns={'stay_pop': 'STAY_POPL_CNT', 'walk_pop': 'WALK_POPL_CNT'}), args.value)
+        return p.assign(cell_value=v)[['cell_id', day_col, 'hour', 'cell_value']]
+
+    cong = congestion_table(to_base(pop, 'day_type'), cells)
     cong.to_csv(os.path.join(args.out, 'cell_congestion_lg.csv'), index=False, encoding='utf-8-sig')
     log.append(f'혼잡도 ({args.value}): {len(cong):,}행, 등급 분포 {cong["level_same_time"].value_counts().to_dict()}')
+
+    cong_dow = congestion_table(to_base(pop_dow, 'dow'), cells, day_col='dow')
+    cong_dow['dow'] = pd.Categorical(cong_dow['dow'], DOW_NAME, ordered=True)
+    cong_dow = cong_dow.sort_values(['cell_id', 'dow', 'hour'])
+    cong_dow.to_csv(os.path.join(args.out, 'cell_congestion_dow_lg.csv'), index=False, encoding='utf-8-sig')
+    log.append(f'요일별 혼잡도: {len(cong_dow):,}행, 등급 분포 {cong_dow["level_same_time"].value_counts().to_dict()}')
 
     # 5) 성·연령: 윤경 make_gender_age_lg.py 결과(같은 폴더 cell_gender_age_lg.csv)가 있으면 그걸 씀 (덮어쓰지 않음)
     ga_path = os.path.join(args.out, 'cell_gender_age_lg.csv')
