@@ -1,6 +1,8 @@
 package com.capstone.backend.search;
 
+import com.capstone.backend.course.CourseShape;
 import com.capstone.backend.course.Cuisine;
+import com.capstone.backend.course.PlayDetail;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.context.annotation.Primary;
@@ -25,6 +27,9 @@ import java.util.Set;
  * - @Primary: 서버가 RuleConditionExtractor 대신 이걸 씀
  * - 키가 없거나 Gemini가 실패하면 RuleConditionExtractor로 예비 처리 (extractedBy = RULE)
  * - API 키는 환경변수 GEMINI_API_KEY (깃허브에 올리지 않기)
+ * - v0.7 (11주차): 코스 틀 courseType, 뺄 종류 excludedCategories, 넣을 종류 includedCategories,
+ *   놀거리 세부 playDetails 추가 (코드는 course/CourseShape·PlayDetail 그대로)
+ * - 지역을 놓치면(null) 규칙 기반으로 한 번 더 찾음 (평가: 규칙 지역 정확도 100%)
  * - v0.5: 음식 취향 cuisines(큰 종류) / cuisineDetails(세부) 추가, 코드는 course/Cuisine 그대로 씀
  */
 @Component
@@ -111,15 +116,22 @@ public class GeminiConditionExtractor implements ConditionExtractor {
     /** Gemini가 "지금 사람 많아요"(503)라고 하면 1초 쉬고 한 번만 더 시도 */
     private SearchConditions callGeminiWithRetry(String query, LocalDateTime now) {
         try {
-            return callGemini(query, now);
+            return fillRegionFromRule(callGemini(query, now), query, now);
         } catch (org.springframework.web.client.HttpServerErrorException e) {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
             }
-            return callGemini(query, now);
+            return fillRegionFromRule(callGemini(query, now), query, now);
         }
+    }
+
+    /** Gemini가 지역을 놓치면(null) 규칙 기반으로 한 번 더 찾아봄 ("애기랑 갈만한 성수 브런치"에서 성수를 놓친 적 있음) */
+    private SearchConditions fillRegionFromRule(SearchConditions c, String query, LocalDateTime now) {
+        if (c.region() != null) return c;
+        String region = rule.extract(query, now).region();
+        return region == null ? c : c.withRegion(region);
     }
 
     @SuppressWarnings("unchecked")
@@ -204,7 +216,11 @@ public class GeminiConditionExtractor implements ConditionExtractor {
                   "companionType": 동행 코드 또는 null,
                   "excludedFoods": [빼고 싶은 음식 단어],
                   "cuisines": [음식 큰 종류 코드],
-                  "cuisineDetails": [음식 세부 이름]
+                  "cuisineDetails": [음식 세부 이름],
+                  "courseType": 코스 틀 코드 또는 null,
+                  "excludedCategories": [뺄 종류 코드],
+                  "includedCategories": [꼭 넣을 종류 코드],
+                  "playDetails": [놀거리 세부 이름]
                 }
 
                 [코드표] 반드시 이 값만 써
@@ -212,8 +228,11 @@ public class GeminiConditionExtractor implements ConditionExtractor {
                   다른 지역(이태원, 잠실 등)이거나 지역 말이 없으면 null
                 - categories: FOOD(밥·식당·맛집·술집), CAFE(카페·커피), SNACK(빵·베이커리·디저트 가게·간식),
                   ACTIVITY(방탈출·보드게임·노래방·오락실·만화카페), CULTURE(전시·미술관·공연),
-                  EXPERIENCE(공방·원데이클래스), SHOPPING(쇼핑·소품샵·편집샵), NATURE(공원·산책), TOUR(관광 명소)
+                  EXPERIENCE(공방·원데이클래스), SHOPPING(쇼핑·소품샵·편집샵·팝업스토어), NATURE(공원·산책), TOUR(관광 명소)
+                  "브런치 카페"는 CAFE만, "팝업스토어"는 SHOPPING
                 - atmospheres: %s 중에서만. 비슷한 말은 이 이름으로 바꿔
+                  분위기를 나타내는 말이 문장에 직접 있을 때만 넣어. "데이트", "기념일", "연인"이라는 이유만으로
+                  "감성적인"을 넣지 마 (분위기 말이 없으면 [])
                   (예: "조용한 곳" → "조용한", "핫한 곳" → "활기찬", "분위기 좋은"·"인스타 감성" → "감성적인",
                   "싼 곳" → "가성비좋은", "넓은 곳"·"오래 있기 편한" → "넓고편한", "루프탑"·"야경"·"테라스" → "뷰좋은")
                   "여자친구랑", "회식", "혼밥", "아이랑"은 분위기가 아니라 companionType·partySize로만 표시
@@ -239,8 +258,27 @@ public class GeminiConditionExtractor implements ConditionExtractor {
                 - partySize: "둘이" → 2, "혼자" → 1, "친구랑"(나+친구) → 2, "4명" → 4
                 - startTime: "3시" → "15:00"(1~8시는 오후로), "저녁" → "18:00", "점심" → "12:00"
                 - excludedFoods: "매운 거 말고" → ["매운"], "고기 빼고" → ["고기"]
+
+                [코스 모양]
+                - courseType: 코스 전체의 목적이 분명할 때만, 애매하면 null (null이면 서버가 시간·문장 보고 자동으로 정함)
+                  DRINK(술): "술 한잔", "한잔하자", "1차·2차", "술 마시자", "술집 투어"처럼 술이 목적
+                  CULTURE(문화): 전시·공연 보는 게 목적 / WALK(산책): 산책·공원이 목적 / SHOPPING(쇼핑): 쇼핑·소품샵·팝업 구경이 목적
+                  BASIC(기본): "밥 먹고 카페"처럼 평범한 식사·카페 코스라고 직접 말할 때
+                  (예: "홍대에서 술 한잔 하고 2차까지" → DRINK, "성수 팝업 구경하고 싶어" → SHOPPING,
+                   "토요일 성수에서 놀자" → null)
+                - excludedCategories: 빼달라는 종류. %s 중에서만
+                  "카페 말고", "카페는 빼고", "카페 안 갈래" → ["CAFE"] / "밥은 먹고 왔어" → ["FOOD"] /
+                  "술은 빼고" → ["BAR"] / "보드게임카페는 빼고" → ["ACTIVITY"] (카페가 아니라 놀거리)
+                - includedCategories: 꼭 넣어 달라는 종류. 같은 코드표
+                  "노래방도 가고 싶어", "꼭 방탈출" → ["ACTIVITY"] / "카페도 넣어줘" → ["CAFE"] /
+                  "술집도 가자", "2차는 술집" → ["BAR"]
+                - 음식 종류를 빼는 말("일식 말고")은 excludedCategories가 아니라 excludedFoods에
+                - playDetails: 놀거리를 콕 집어 말했을 때 이 이름 중에서만: %s
+                  ("보드게임하면서 놀고 싶어" → ["보드게임"], "코노 가자" → ["노래방"], "타로 보고 싶어" → ["사주·타로"])
+                  빼달라는 놀거리("방탈출은 빼고")는 넣지 마
                 """.formatted(now.withNano(0), calendar, String.join(", ", ATMOSPHERES),
-                String.join(", ", SITUATIONS), String.join(", ", DETAILS));
+                String.join(", ", SITUATIONS), String.join(", ", DETAILS),
+                String.join(", ", CourseShape.EDIT_CODES), String.join(", ", PlayDetail.SENTENCE_WORDS.keySet()));
     }
 
     // =========================================================
@@ -299,7 +337,12 @@ public class GeminiConditionExtractor implements ConditionExtractor {
                 stringList(j.get("excludedFoods")),
                 "GEMINI",
                 keepSaidCuisines(pickList(j.get("cuisines"), CUISINES), query),
-                pickList(j.get("cuisineDetails"), Set.copyOf(DETAILS)));
+                pickList(j.get("cuisineDetails"), Set.copyOf(DETAILS)))
+                .withShape(
+                        pick(j.get("courseType"), Set.copyOf(CourseShape.COURSE_TYPES)),
+                        pickList(j.get("excludedCategories"), Set.copyOf(CourseShape.EDIT_CODES)),
+                        pickList(j.get("includedCategories"), Set.copyOf(CourseShape.EDIT_CODES)))
+                .withPlayDetails(pickList(j.get("playDetails"), PlayDetail.SENTENCE_WORDS.keySet()));
     }
 
     private static String pick(Object value, Set<String> allowed) {
