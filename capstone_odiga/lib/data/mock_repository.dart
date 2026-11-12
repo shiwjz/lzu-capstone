@@ -270,14 +270,18 @@ class MockRepository {
     return (await recommendResult(conditions, preference)).courses;
   }
 
-  Future<({SearchConditions conditions, List<Course> courses})> recommendResult(
+  Future<({SearchConditions conditions, List<Course> courses, String? notice})>
+  recommendResult(
     SearchConditions conditions,
-    UserPreference preference,
-  ) async {
+    UserPreference preference, {
+    List<String> keepPlaceIds = const [],
+  }) async {
     final explicit = conditions.useSelectedRegion;
     final response = await api.search(
       SearchRequestDto(
-        query: conditions.query,
+        query: conditions.query.trim(),
+        courseType: conditions.courseType?.code,
+        keepPlaceIds: keepPlaceIds,
         date: explicit ? formatDate(conditions.start) : null,
         startTime: explicit ? formatTime(conditions.start) : null,
         region: explicit ? RegionCode.parse(conditions.region).code : null,
@@ -290,6 +294,11 @@ class MockRepository {
                     : 'WEEKDAY',
                 'startTime': formatTime(conditions.start),
                 'partySize': conditions.people,
+                if (conditions.courseType case final type?)
+                  'courseType': type.code,
+                'playDetails': conditions.playDetails,
+                'excludedCategories': conditions.excludedCategories,
+                'includedCategories': conditions.includedCategories,
                 'categories': _categoryCodes(preference.categories),
                 'atmospheres':
                     {
@@ -341,8 +350,16 @@ class MockRepository {
         'SOLO' => '혼자',
         _ => '친구',
       }
-      ..mood = resolved.atmospheres.firstOrNull ?? '';
-    return (conditions: applied, courses: courses);
+      ..mood = resolved.atmospheres.firstOrNull ?? ''
+      ..courseType =
+          CourseType.values
+              .where((type) => type.code == resolved.courseType)
+              .firstOrNull ??
+          conditions.courseType
+      ..playDetails = resolved.playDetails
+      ..excludedCategories = resolved.excludedCategories
+      ..includedCategories = resolved.includedCategories;
+    return (conditions: applied, courses: courses, notice: response.notice);
   }
 
   List<Course> _rememberSearch(SearchResultDto response) {
@@ -389,6 +406,15 @@ class MockRepository {
     }
     return course;
   }
+
+  Future<CongestionGridDto> loadCongestionGrid(
+    String region,
+    DateTime? visit,
+  ) => api.getCongestionGrid(
+    RegionCode.parse(region).code,
+    date: visit == null ? null : formatDate(visit),
+    hour: visit?.hour,
+  );
 
   bool get usesSampleData => api is MockOdigaApi;
 

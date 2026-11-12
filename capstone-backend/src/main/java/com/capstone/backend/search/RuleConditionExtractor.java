@@ -2,9 +2,12 @@ package com.capstone.backend.search;
 
 import org.springframework.stereotype.Component;
 
+import java.time.DateTimeException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.MonthDay;
+import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -114,6 +117,11 @@ public class RuleConditionExtractor implements ConditionExtractor {
     private static final Pattern HOUR = Pattern.compile("(새벽|아침|오전|점심|오후|저녁|밤)?\\s*(\\d{1,2})\\s*시(?!간)\\s*(반|(\\d{1,2})\\s*분)?");
     private static final Map<String, String> PERIOD_DEFAULT = ordered(
             "아침", "09:00", "오전", "10:00", "점심", "12:00", "오후", "14:00", "저녁", "18:00", "밤", "20:00");
+    private static final Pattern ISO_DATE = Pattern.compile("(?<!\\d)\\d{4}-\\d{2}-\\d{2}(?!\\d)");
+    private static final Pattern CALENDAR_DATE = Pattern.compile(
+            "(?<!\\d)(?:(\\d{4})\\s*년\\s*)?(\\d{1,2})\\s*월\\s*(\\d{1,2})\\s*일");
+    private static final Pattern DAY_OF_MONTH = Pattern.compile(
+            "(?<!\\d)([1-9]|[12]\\d|3[01])\\s*일(?!\\s*(?:후|뒤|전|동안|간|째|차))");
     private static final Pattern PEOPLE = Pattern.compile("(\\d{1,2})\\s*(?:명|인)");
     private static final Map<String, Integer> PEOPLE_WORDS = ordered(
             "혼자", 1, "둘이", 2, "두 명", 2, "두명", 2, "셋이", 3, "세 명", 3, "세명", 3,
@@ -160,7 +168,38 @@ public class RuleConditionExtractor implements ConditionExtractor {
         return d == DayOfWeek.SATURDAY || d == DayOfWeek.SUNDAY ? "WEEKEND" : "WEEKDAY";
     }
 
+    static LocalDate explicitDate(String query, LocalDate today) {
+        Matcher iso = ISO_DATE.matcher(query);
+        Matcher calendar = CALENDAR_DATE.matcher(query);
+        try {
+            if (iso.find()) return LocalDate.parse(iso.group());
+            if (calendar.find()) {
+                String year = calendar.group(1);
+                int month = Integer.parseInt(calendar.group(2));
+                int day = Integer.parseInt(calendar.group(3));
+                if (year != null) return LocalDate.of(Integer.parseInt(year), month, day);
+                MonthDay monthDay = MonthDay.of(month, day);
+                int candidateYear = today.getYear();
+                while (!monthDay.isValidYear(candidateYear) || monthDay.atYear(candidateYear).isBefore(today)) {
+                    candidateYear++;
+                }
+                return monthDay.atYear(candidateYear);
+            }
+            Matcher dayOfMonth = DAY_OF_MONTH.matcher(query);
+            if (!dayOfMonth.find()) return null;
+            int day = Integer.parseInt(dayOfMonth.group(1));
+            YearMonth month = YearMonth.from(today);
+            if (day < today.getDayOfMonth()) month = month.plusMonths(1);
+            while (!month.isValidDay(day)) month = month.plusMonths(1);
+            return month.atDay(day);
+        } catch (DateTimeException e) {
+            return null;
+        }
+    }
+
     private static LocalDate date(String q, LocalDate today) {
+        LocalDate explicit = explicitDate(q, today);
+        if (explicit != null) return explicit;
         if (q.contains("모레")) return today.plusDays(2);
         if (q.contains("내일")) return today.plusDays(1);
         if (q.contains("오늘")) return today;

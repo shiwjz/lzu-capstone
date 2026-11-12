@@ -111,6 +111,33 @@ class HttpOdigaApi implements OdigaApi {
       );
 
   @override
+  Future<PlacePhotosDto> getPlacePhotos(String placeId) async =>
+      PlacePhotosDto.fromJson(
+        await _send(
+          'GET',
+          '/api/places/${_id(placeId)}/photos',
+          query: {'max': '1'},
+        ),
+      );
+
+  @override
+  Future<CongestionGridDto> getCongestionGrid(
+    String region, {
+    String? date,
+    int? hour,
+  }) async => CongestionGridDto.fromJson(
+    await _send(
+      'GET',
+      '/api/congestion/grid',
+      query: {
+        'region': region,
+        'date': ?date,
+        if (hour != null) 'hour': '$hour',
+      },
+    ),
+  );
+
+  @override
   Future<CourseDto> updateCourse(
     String courseId,
     CourseUpdateRequestDto request,

@@ -14,9 +14,12 @@ class SearchRequestDto {
     this.startTime,
     this.region,
     this.conditions,
+    this.courseType,
+    this.keepPlaceIds = const [],
   });
   final String query;
-  final String? date, startTime, region;
+  final String? date, startTime, region, courseType;
+  final List<String> keepPlaceIds;
 
   /// Explicit filters from the editable conditions screen (API spec v0.5).
   final Json? conditions;
@@ -26,6 +29,8 @@ class SearchRequestDto {
     if (startTime != null) 'startTime': startTime,
     if (region != null) 'region': region,
     if (conditions != null) 'conditions': conditions,
+    if (courseType != null) 'courseType': courseType,
+    if (keepPlaceIds.isNotEmpty) 'keepPlaceIds': keepPlaceIds,
   };
 }
 
@@ -44,6 +49,12 @@ class ConditionsDto extends ApiDto {
       List<String>.from(json['cuisineDetails'] ?? []);
   String? get crowdPreference => json['crowdPreference'];
   String? get extractedBy => json['extractedBy'];
+  String? get courseType => json['courseType'];
+  List<String> get playDetails => List<String>.from(json['playDetails'] ?? []);
+  List<String> get excludedCategories =>
+      List<String>.from(json['excludedCategories'] ?? []);
+  List<String> get includedCategories =>
+      List<String>.from(json['includedCategories'] ?? []);
 }
 
 class SearchResultDto extends ApiDto {
@@ -126,6 +137,39 @@ class PlaceDetailDto extends PlaceDto {
   String? get openingHours => json['openingHours'];
   HourlyCongestionDto get congestionByHour =>
       HourlyCongestionDto.fromJson(json['congestionByHour'] ?? {'hours': []});
+}
+
+class PlacePhotoDto extends ApiDto {
+  PlacePhotoDto.fromJson(super.json);
+  String get url => json['url'];
+  String? get authorName => json['authorName'];
+  String? get authorUri => json['authorUri'];
+  String? get googleMapsUri => json['googleMapsUri'];
+}
+
+class PlacePhotosDto extends ApiDto {
+  PlacePhotosDto.fromJson(super.json);
+  bool get available => json['available'] == true;
+  List<PlacePhotoDto> get photos => [
+    for (final photo in json['photos'] as List? ?? [])
+      PlacePhotoDto.fromJson(photo),
+  ];
+}
+
+class CongestionGridDto extends ApiDto {
+  CongestionGridDto.fromJson(super.json);
+  double get cellSizeMeters => (json['cellSizeMeters'] as num).toDouble();
+  List<CongestionCellDto> get cells => [
+    for (final cell in json['cells'] as List? ?? [])
+      CongestionCellDto.fromJson(cell),
+  ];
+}
+
+class CongestionCellDto extends ApiDto {
+  CongestionCellDto.fromJson(super.json);
+  double get lat => (json['lat'] as num).toDouble();
+  double get lng => (json['lng'] as num).toDouble();
+  String get level => json['level'];
 }
 
 class StopDto extends PlaceDto {

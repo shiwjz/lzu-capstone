@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../api/api_models.dart';
 import '../models/domain.dart';
 import '../state/app_state.dart';
 import 'odiga_components.dart';
@@ -19,6 +22,7 @@ class PrototypeMap extends StatefulWidget {
     this.places,
     this.homeCategories,
     this.region = '성수',
+    this.radarVisit,
     this.home = false,
     this.homeSearch,
     this.homeInfo,
@@ -28,6 +32,7 @@ class PrototypeMap extends StatefulWidget {
   final List<Place>? places;
   final Set<String>? homeCategories;
   final String region;
+  final DateTime? radarVisit;
   final bool home;
   final Widget? homeSearch;
   final VoidCallback? homeInfo;
@@ -41,6 +46,19 @@ class _PrototypeMapState extends State<PrototypeMap> {
   final controller = MapController();
   LatLng? currentLocation;
   bool locating = false;
+  String? homeRadarRegion;
+  bool showResultRadar = true;
+  final grids = <(String, DateTime?), Future<CongestionGridDto>>{};
+
+  void selectHomeRadar(String region) {
+    setState(() {
+      homeRadarRegion = _regionCenters.containsKey(region) ? region : null;
+      grids.clear();
+    });
+    if (homeRadarRegion case final selected?) {
+      controller.move(_regionCenters[selected]!, 15);
+    }
+  }
 
   @override
   void dispose() {
@@ -117,17 +135,27 @@ class _PrototypeMapState extends State<PrototypeMap> {
     }).toList();
   }
 
-  CongestionBand? _band(Place place, CourseStop stop) {
-    if (!supportedCongestionRegions.contains(place.region)) return null;
-    return stop.congestionBand ??
-        widget.app.repository.congestionOrNull(place.id, stop.arrival)?.band;
+  Polygon gridPolygon(CongestionCellDto cell, double sizeMeters) {
+    final lat = sizeMeters / 2 / 111320;
+    final lng = lat / math.cos(cell.lat * math.pi / 180);
+    final color = switch (cell.level) {
+      'QUIET' => const Color(0xFF3FAE79),
+      'NORMAL' => const Color(0xFFF0A933),
+      'BUSY' => const Color(0xFFE45C5C),
+      _ => Colors.transparent,
+    };
+    return Polygon(
+      points: [
+        LatLng(cell.lat - lat, cell.lng - lng),
+        LatLng(cell.lat - lat, cell.lng + lng),
+        LatLng(cell.lat + lat, cell.lng + lng),
+        LatLng(cell.lat + lat, cell.lng - lng),
+      ],
+      color: color.withValues(alpha: color == Colors.transparent ? 0 : .44),
+      borderColor: color,
+      borderStrokeWidth: .5,
+    );
   }
-
-  Color _bandColor(CongestionBand band) => switch (band) {
-    CongestionBand.quiet => const Color(0xFF3FAE79),
-    CongestionBand.moderate => const Color(0xFFF0A933),
-    CongestionBand.busy => const Color(0xFFE45C5C),
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -151,19 +179,20 @@ class _PrototypeMapState extends State<PrototypeMap> {
               pattern: const StrokePattern.dotted(),
             ),
           ];
-    final circles = <CircleMarker>[
-      if (course != null)
-        for (final (i, stop) in course.stops.indexed)
-          if (_band(items[i], stop) case final band?)
-            CircleMarker(
-              point: points[i],
-              radius: 95,
-              useRadiusInMeter: true,
-              color: _bandColor(band).withValues(alpha: .18),
-              borderColor: _bandColor(band).withValues(alpha: .38),
-              borderStrokeWidth: 1,
-            ),
-    ];
+    final visit = widget.radarVisit;
+    final region = widget.home
+        ? homeRadarRegion
+        : (visit != null &&
+                  showResultRadar &&
+                  supportedCongestionRegions.contains(widget.region)
+              ? widget.region
+              : null);
+    final grid = region == null
+        ? null
+        : grids.putIfAbsent((
+            region,
+            visit,
+          ), () => widget.app.repository.loadCongestionGrid(region, visit));
     return LayoutBuilder(
       builder: (context, box) => Stack(
         children: [
@@ -191,7 +220,23 @@ class _PrototypeMapState extends State<PrototypeMap> {
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'Odiga',
                 ),
-                if (circles.isNotEmpty) CircleLayer(circles: circles),
+                if (grid != null)
+                  FutureBuilder(
+                    future: grid,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState != ConnectionState.done) {
+                        return const SizedBox.shrink();
+                      }
+                      final data = snapshot.data;
+                      if (data == null) return const SizedBox.shrink();
+                      return PolygonLayer(
+                        polygons: [
+                          for (final cell in data.cells)
+                            gridPolygon(cell, data.cellSizeMeters),
+                        ],
+                      );
+                    },
+                  ),
                 if (polylines.isNotEmpty) PolylineLayer(polylines: polylines),
                 MarkerLayer(
                   markers: [
@@ -257,6 +302,23 @@ class _PrototypeMapState extends State<PrototypeMap> {
                           )
                         : const Icon(Icons.my_location),
                   ),
+                  Material(
+                    color: OdigaTokens.lavender,
+                    shape: const CircleBorder(),
+                    child: PopupMenuButton<String>(
+                      tooltip: '혼잡 레이더',
+                      icon: const Icon(Icons.grid_on),
+                      onSelected: selectHomeRadar,
+                      itemBuilder: (context) => [
+                        for (final region in supportedCongestionRegions)
+                          PopupMenuItem(
+                            value: region,
+                            child: Text('$region 혼잡도'),
+                          ),
+                        const PopupMenuItem(value: '', child: Text('레이더 끄기')),
+                      ],
+                    ),
+                  ),
                   if (widget.homeInfo case final onInfo?)
                     IconButton.filledTonal(
                       tooltip: '추천 점수 계산 기준',
@@ -264,6 +326,48 @@ class _PrototypeMapState extends State<PrototypeMap> {
                       icon: const Icon(Icons.info_outline),
                     ),
                 ],
+              ),
+            ),
+          if (visit != null && !widget.home)
+            Positioned(
+              top: 6,
+              right: 8,
+              child: IconButton.filledTonal(
+                tooltip: showResultRadar ? '혼잡 레이더 끄기' : '혼잡 레이더 켜기',
+                onPressed: () => setState(() {
+                  showResultRadar = !showResultRadar;
+                  if (!showResultRadar) grids.clear();
+                }),
+                icon: Icon(showResultRadar ? Icons.grid_on : Icons.grid_off),
+              ),
+            ),
+          if (grid != null)
+            Positioned(
+              top: widget.home ? MediaQuery.paddingOf(context).top + 78 : 8,
+              left: 12,
+              child: FutureBuilder(
+                future: grid,
+                builder: (context, snapshot) {
+                  final text = switch (snapshot) {
+                    AsyncSnapshot(connectionState: ConnectionState.waiting) =>
+                      '혼잡도 불러오는 중',
+                    AsyncSnapshot(hasError: true) => '혼잡도를 불러오지 못했어요',
+                    AsyncSnapshot(hasData: false) => '표시할 혼잡도 없음',
+                    _ when snapshot.data!.cells.isEmpty => '표시할 혼잡도 없음',
+                    _ => '$region 혼잡도  ·  한산 / 보통 / 붐빔',
+                  };
+                  return Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      child: Text(text, style: const TextStyle(fontSize: 10)),
+                    ),
+                  );
+                },
               ),
             ),
           if (polylines.isNotEmpty)

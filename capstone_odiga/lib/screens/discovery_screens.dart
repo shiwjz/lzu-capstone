@@ -28,8 +28,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void search() {
-    final text = query.text.trim();
-    if (text.isEmpty) {
+    final text = query.text;
+    if (text.trim().isEmpty) {
       toast(context, searchInputMessage);
       return;
     }
@@ -170,50 +170,20 @@ class _HomeCategorySettingsDialogState
   );
 }
 
-enum CourseFrame {
-  mealCafePlay('식사 → 카페 → 놀거리', ['식사', '카페', '놀거리']),
-  cafePlayMeal('카페 → 놀거리 → 식사', ['카페', '놀거리', '식사']),
-  mealCafe('식사 → 카페', ['식사', '카페']),
-  cafePlay('카페 → 놀거리', ['카페', '놀거리']),
-  mealPlay('식사 → 놀거리', ['식사', '놀거리']);
-
-  const CourseFrame(this.label, this.slots);
-  final String label;
-  final List<String> slots;
-
-  bool matches(Iterable<Place> places) {
-    var matched = 0;
-    for (final place in places) {
-      final slot = switch (place.category) {
-        '음식점' => '식사',
-        '카페' => '카페',
-        _ => '놀거리',
-      };
-      if (slot != slots[matched]) continue;
-      matched++;
-      if (matched == slots.length) return true;
-    }
-    return false;
-  }
-}
-
 class ConditionsScreen extends StatefulWidget {
   const ConditionsScreen({
     super.key,
     required this.app,
     required this.initialConditions,
-    this.initialFrame,
   });
   final AppState app;
   final SearchConditions initialConditions;
-  final CourseFrame? initialFrame;
   @override
   State<ConditionsScreen> createState() => _ConditionsScreenState();
 }
 
 class _ConditionsScreenState extends State<ConditionsScreen> {
   late final draft = widget.initialConditions.copy();
-  late CourseFrame? frame = widget.initialFrame;
   late final query = TextEditingController(text: draft.query);
   @override
   void dispose() {
@@ -225,8 +195,12 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
     final date = await showDatePicker(
       context: context,
       initialDate: draft.start,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
+      firstDate: draft.start.isBefore(DateTime(2020))
+          ? draft.start
+          : DateTime(2020),
+      lastDate: draft.start.isAfter(DateTime(2035))
+          ? draft.start
+          : DateTime(2035),
     );
     if (date == null || !mounted) return;
     final time = await showTimePicker(
@@ -245,6 +219,27 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
     );
   }
 
+  void showCourseTypes() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('코스 종류 안내'),
+        content: SingleChildScrollView(
+          child: stackItems([
+            for (final type in CourseType.values)
+              label('${type.label}코스 · ${type.description}'),
+          ]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('닫기'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => AppFrame(
     app: widget.app,
@@ -253,19 +248,28 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
     subtitle: '추천 조건을 수정할 수 있어요',
     child: stackItems([
       OdigaSearchField(controller: query, hint: '성수에서 조용한 카페 갔다가 저녁 먹을래'),
+      label('검색 문장을 바꾸면 날짜와 인원 등 조건을 다시 읽어요.', size: 11),
       panel([
-        label('코스 틀', bold: true),
-        label('이 순서로 방문하는 코스만 보여줘요.', size: 11),
+        Row(
+          children: [
+            Expanded(child: label('코스 종류', bold: true)),
+            IconButton(
+              tooltip: '코스 종류 안내',
+              onPressed: showCourseTypes,
+              icon: const Icon(Icons.info_outline),
+            ),
+          ],
+        ),
         Wrap(
           spacing: 6,
           runSpacing: 6,
           children: [
-            for (final option in CourseFrame.values)
-              OdigaTag(
-                label: option.label,
-                selected: frame == option,
+            for (final option in CourseType.values)
+              ChoiceChip(
+                label: Text('${option.label}코스'),
+                selected: draft.courseType == option,
                 onSelected: (selected) => setState(() {
-                  frame = selected ? option : null;
+                  draft.courseType = selected ? option : null;
                 }),
               ),
           ],
@@ -295,7 +299,7 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
           initialValue: draft.people,
           decoration: const InputDecoration(labelText: '동행 인원'),
           items: List.generate(
-            12,
+            20,
             (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}명')),
           ),
           onChanged: (v) => setState(() => draft.people = v!),
@@ -314,16 +318,49 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
               )
               .toList(),
         ),
+        if (draft.playDetails.isNotEmpty) ...[
+          label('놀거리 세부 조건', bold: true),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final detail in draft.playDetails) Chip(label: Text(detail)),
+            ],
+          ),
+        ],
+        if (draft.excludedCategories.isNotEmpty) ...[
+          label('제외 조건', bold: true),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final code in draft.excludedCategories)
+                Chip(label: Text('${excludedCategoryLabel(code)} 빼기')),
+            ],
+          ),
+        ],
         label('지원 지역은 성수·홍대·강남이에요.', size: 11, color: OdigaTokens.muted),
       ]),
       action('수정 조건으로 바로 추천', () {
-        draft.query = query.text.trim();
-        draft.useSelectedRegion = true;
-        Navigator.pop(context, (conditions: draft, frame: frame));
+        draft.useSelectedRegion = draft.query.trim() == query.text.trim();
+        draft.query = query.text;
+        Navigator.pop(context, draft);
       }),
     ]),
   );
 }
+
+String excludedCategoryLabel(String code) => switch (code) {
+  'FOOD' => '식사',
+  'BAR' => '술집',
+  'ACTIVITY' => '놀거리',
+  _ =>
+    CategoryCode.values
+            .where((category) => category.code == code)
+            .firstOrNull
+            ?.label ??
+        code,
+};
 
 class NearbyScreen extends StatefulWidget {
   const NearbyScreen({super.key, required this.app, required this.initial});
@@ -398,6 +435,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   late final visit = widget.arrival ?? widget.app.conditions.start;
   late int selectedDay = visit.weekday;
   late var detail = loadDay(visit);
+  late final photos = widget.app.repository.api.getPlacePhotos(widget.place.id);
   final graphs = <bool, Future<({Place place, Map<int, Congestion> hours})>>{};
 
   Future<({Place place, Map<int, Congestion> hours})> loadDay(DateTime day) =>
@@ -455,6 +493,18 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                 size: 13,
               ),
               label(p.openingHours, size: 11, color: OdigaTokens.muted),
+              FutureBuilder(
+                future: photos,
+                builder: (context, snapshot) {
+                  final response = snapshot.data;
+                  final photo = response?.available == true
+                      ? response!.photos.firstOrNull
+                      : null;
+                  return photo == null
+                      ? const SizedBox.shrink()
+                      : _PlacePhoto(photo: photo);
+                },
+              ),
               if (supportedCongestionRegions.contains(p.region))
                 panel([
                   label('주변 혼잡도', size: 18, bold: true),
@@ -527,7 +577,8 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     },
                   ),
                 ]),
-              action('카카오맵 길찾기', () => openDirections(context, [p])),
+              if (_showKakaoDirections)
+                action('카카오맵 길찾기', () => openDirections(context, [p])),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -590,6 +641,58 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
       );
     },
   );
+}
+
+class _PlacePhoto extends StatelessWidget {
+  const _PlacePhoto({required this.photo});
+  final PlacePhotoDto photo;
+
+  @override
+  Widget build(BuildContext context) {
+    final uri = Uri.tryParse(photo.url);
+    if (uri?.scheme != 'https' || uri!.host.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final author = photo.authorName;
+    final profile = Uri.tryParse(photo.authorUri ?? '');
+    final source = Uri.tryParse(photo.googleMapsUri ?? '');
+    return Image.network(
+      photo.url,
+      width: double.infinity,
+      height: 180,
+      fit: BoxFit.cover,
+      webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      frameBuilder: (context, image, frame, synchronous) {
+        if (frame == null && !synchronous) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(borderRadius: BorderRadius.circular(12), child: image),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              children: [
+                if (author != null && author.isNotEmpty)
+                  InkWell(
+                    onTap: profile?.scheme == 'https'
+                        ? () => launchUrl(profile!)
+                        : null,
+                    child: label(author, size: 11, color: OdigaTokens.muted),
+                  ),
+                label('사진 제공: Google', size: 11, color: OdigaTokens.muted),
+                if (source?.scheme == 'https')
+                  InkWell(
+                    onTap: () => launchUrl(source!),
+                    child: label('Google Maps에서 보기', size: 11),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _HourlyCongestionChart extends StatefulWidget {

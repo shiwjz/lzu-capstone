@@ -25,6 +25,18 @@ class RuleConditionExtractorTest {
     }
 
     @Test
+    void calendarDateAndNumericPartySize() {
+        SearchConditions conditions = x("홍대 11월 21일 오후 7시 7명");
+        assertEquals("2026-11-21", conditions.date());
+        assertEquals(7, conditions.partySize().intValue());
+        assertEquals("2027-01-02", x("홍대 1월 2일").date());
+        assertEquals("2027-02-03", x("홍대 2027년 2월 3일").date());
+        assertEquals("2026-10-24", x("홍대 2026-10-24").date());
+        assertEquals("2026-10-21", x("홍대 21일에 7명").date());
+        assertEquals("2026-11-10", x("홍대 10일에 7명").date());
+    }
+
+    @Test
     @DisplayName("성수 주말 조용한 (가짜 JSON 시나리오 1)")
     void seongsu() {
         SearchConditions c = x("토요일 오후 3시에 성수에서 친구랑 조용한 카페 가고 저녁도 먹고 싶어");

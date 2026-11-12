@@ -159,6 +159,12 @@ public class SearchService {
                     : c.withPreferences(my.region(), my.atmospheres(), my.allergies());
         }
 
+        // 문장에 직접 쓴 날짜는 추출기가 누락하거나 다르게 해석해도 보존.
+        if (req.conditions() == null && req.date() == null) {
+            LocalDate explicitDate = RuleConditionExtractor.explicitDate(req.query(), now.toLocalDate());
+            if (explicitDate != null) c = c.withDate(explicitDate.toString(), null);
+        }
+
         // 선택기 값 우선
         if (req.region() != null) c = c.withRegion(req.region());
         if (req.date() != null) c = c.withDate(req.date(), null);

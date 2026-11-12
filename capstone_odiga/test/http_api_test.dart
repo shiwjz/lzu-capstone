@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:capstone_odiga/api/http_odiga_api.dart';
 import 'package:capstone_odiga/api/odiga_api.dart';
 import 'package:capstone_odiga/state/app_state.dart';
+import 'package:capstone_odiga/models/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -104,6 +105,97 @@ void main() {
             .having((e) => e.message, 'message', contains('초기 검색')),
       ),
     );
+  });
+
+  test('서버 검색에 코스 종류와 킵을 보내고 추출 조건을 화면 모델에 반영', () async {
+    final client = api((req) async {
+      if (req.url.path == '/api/users/me/preferences') {
+        return _ok('preferences');
+      }
+      final response = jsonDecode(_mock('search_hongdae_weekend_lively'));
+      final conditions = response['data']['conditions'] as Map<String, dynamic>;
+      conditions.addAll({
+        'date': '2026-11-21',
+        'partySize': 17,
+        'courseType': 'CULTURE',
+        'playDetails': ['보드게임'],
+        'excludedCategories': ['CAFE'],
+      });
+      return http.Response.bytes(utf8.encode(jsonEncode(response)), 200);
+    });
+    final app = await AppState.load(api: client);
+    addTearDown(app.dispose);
+    final result = await app.repository.recommendResult(
+      SearchConditions(
+        query: '홍대 11월 21일 17명',
+        useSelectedRegion: false,
+        courseType: CourseType.culture,
+      ),
+      UserPreference(),
+      keepPlaceIds: ['one', 'two'],
+    );
+    expect(jsonDecode(sent.last.body), {
+      'query': '홍대 11월 21일 17명',
+      'courseType': 'CULTURE',
+      'keepPlaceIds': ['one', 'two'],
+    });
+    expect(result.conditions.people, 17);
+    expect(result.conditions.start, DateTime(2026, 11, 21, 19));
+    expect(result.conditions.playDetails, ['보드게임']);
+    expect(result.conditions.excludedCategories, ['CAFE']);
+    await app.repository.recommendResult(
+      result.conditions.copy()..useSelectedRegion = true,
+      UserPreference(),
+    );
+    final explicit = jsonDecode(sent.last.body)['conditions'];
+    expect(explicit['playDetails'], ['보드게임']);
+    expect(explicit['excludedCategories'], ['CAFE']);
+    expect(explicit['partySize'], 17);
+  });
+
+  test('장소 사진 1장과 지정한 시간의 혼잡도 격자를 요청', () async {
+    final client = api(
+      (req) async => http.Response.bytes(
+        utf8.encode(
+          jsonEncode({
+            'success': true,
+            'data': req.url.path.endsWith('/photos')
+                ? {
+                    'available': true,
+                    'photos': [
+                      {'url': 'https://example.com/photo', 'authorName': '작성자'},
+                    ],
+                  }
+                : {
+                    'cellSizeMeters': 50,
+                    'cells': [
+                      {'lat': 37.55, 'lng': 126.92, 'level': 'BUSY'},
+                    ],
+                  },
+          }),
+        ),
+        200,
+      ),
+    );
+    final photos = await client.getPlacePhotos('921699059');
+    expect(sent.last.url.path, '/api/places/921699059/photos');
+    expect(sent.last.url.queryParameters, {'max': '1'});
+    expect(photos.available, isTrue);
+    expect(photos.photos.single.authorName, '작성자');
+
+    final grid = await client.getCongestionGrid(
+      'HONGDAE',
+      date: '2026-11-21',
+      hour: 19,
+    );
+    expect(sent.last.url.path, '/api/congestion/grid');
+    expect(sent.last.url.queryParameters, {
+      'region': 'HONGDAE',
+      'date': '2026-11-21',
+      'hour': '19',
+    });
+    expect(grid.cellSizeMeters, 50);
+    expect(grid.cells.single.level, 'BUSY');
   });
 
   test('장소 상세·코스 수정·공유 주소', () async {

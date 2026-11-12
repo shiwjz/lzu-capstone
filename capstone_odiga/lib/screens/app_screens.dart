@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 
 import '../models/domain.dart';
+import '../api/api_codes.dart';
 import '../api/odiga_api.dart';
 import '../state/app_state.dart';
 import '../widgets/odiga_widgets.dart';
@@ -46,6 +47,8 @@ CongestionLevel? placeCongestion(AppState app, Place place, DateTime visit) {
   final value = app.repository.congestionOrNull(place.id, visit);
   return value == null ? null : level(value);
 }
+
+const _showKakaoDirections = false;
 
 Future<void> openDirections(BuildContext context, List<Place> stops) async {
   final destination = stops.last;
@@ -347,6 +350,7 @@ class MapSheetFrame extends StatefulWidget {
     required this.title,
     required this.children,
     this.course,
+    this.radarConditions,
     this.sheetTitle,
     this.onConditions,
     this.places,
@@ -360,6 +364,7 @@ class MapSheetFrame extends StatefulWidget {
   final VoidCallback? onConditions;
   final List<Widget> children;
   final Course? course;
+  final SearchConditions? radarConditions;
   final List<Place>? places;
   final RecommendationSheetSize initialSize;
   final ValueChanged<Place>? onPin;
@@ -380,10 +385,12 @@ class _MapSheetFrameState extends State<MapSheetFrame> {
         final maxSheetHeight = (box.maxHeight - 200).clamp(100.0, 610.0);
         final sheetHeight = BottomSheetSurface.heightFor(size)
             .clamp(0.0, maxSheetHeight);
+        final hasConditions = widget.onConditions != null;
+        final headerHeight = hasConditions ? 52.0 : 40.0;
         return Stack(
           children: [
             Positioned(
-              top: 56,
+              top: headerHeight + 16,
               left: 0,
               right: 0,
               bottom: sheetHeight - 12,
@@ -391,7 +398,13 @@ class _MapSheetFrameState extends State<MapSheetFrame> {
                 app: widget.app,
                 course: widget.course,
                 places: widget.places,
-                region: widget.course?.region ?? widget.app.conditions.region,
+                region:
+                    widget.radarConditions?.region ??
+                    widget.course?.region ??
+                    widget.app.conditions.region,
+                radarVisit:
+                    widget.radarConditions?.start ??
+                    widget.course?.stops.firstOrNull?.arrival,
                 onPlace: (place) {
                   final stop = widget.course?.stops
                       .where((stop) => stop.placeId == place.id)
@@ -418,7 +431,7 @@ class _MapSheetFrameState extends State<MapSheetFrame> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
                 child: SizedBox(
-                  height: 40,
+                  height: headerHeight,
                   child: Row(
                     children: [
                       IconButton(
@@ -427,14 +440,18 @@ class _MapSheetFrameState extends State<MapSheetFrame> {
                         icon: const Icon(Icons.chevron_left, size: 20),
                       ),
                       Expanded(
-                        child: Text(
-                          widget.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: OdigaTokens.text(13),
+                        child: Tooltip(
+                          message: widget.title,
+                          excludeFromSemantics: true,
+                          child: Text(
+                            widget.title,
+                            maxLines: hasConditions ? 2 : 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: OdigaTokens.text(13),
+                          ),
                         ),
                       ),
-                      if (widget.onConditions != null)
+                      if (hasConditions)
                         TextButton(
                           onPressed: widget.onConditions,
                           child: const Text('조건'),

@@ -132,6 +132,17 @@ class MockOdigaApi implements OdigaApi {
   }
 
   @override
+  Future<PlacePhotosDto> getPlacePhotos(String placeId) async =>
+      PlacePhotosDto.fromJson({'available': false, 'photos': []});
+
+  @override
+  Future<CongestionGridDto> getCongestionGrid(
+    String region, {
+    String? date,
+    int? hour,
+  }) async => CongestionGridDto.fromJson({'cellSizeMeters': 50, 'cells': []});
+
+  @override
   Future<CourseDto> updateCourse(
     String courseId,
     CourseUpdateRequestDto request,

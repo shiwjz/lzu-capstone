@@ -46,15 +46,17 @@ void main() {
     await tester.pumpWidget(MyApp(loadState: () async => app!));
     await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);
-    await tester.enterText(find.byType(TextField), '홍대에서 친구 3명이랑 저녁');
+    const query = '홍대에서 친구 3명이랑 저녁 먹고 조용한 카페 가고 싶어!';
+    await tester.enterText(find.byType(TextField), query);
     await tester.tap(find.byTooltip('추천 검색'));
     await tester.pumpAndSettle();
     expect(find.byType(ConditionsScreen), findsNothing);
-    expect(find.text('추천 3개 · 토요일 19시 홍대'), findsOneWidget);
+    expect(find.text(query), findsOneWidget);
+    expect(find.text('추천 코스 3개'), findsOneWidget);
     await tester.tap(find.text('조건'));
     await tester.pumpAndSettle();
     expect(find.byType(ConditionsScreen), findsOneWidget);
-    expect(find.text('코스 틀'), findsOneWidget);
+    expect(find.text('코스 종류'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('수정 조건으로 바로 추천'),
       120,
@@ -67,6 +69,7 @@ void main() {
     await tester.tap(find.text('수정 조건으로 바로 추천'));
     await tester.pumpAndSettle();
     expect(find.byType(RecommendationsScreen), findsOneWidget);
+    expect(find.text(query), findsOneWidget);
     expect(find.byType(OdigaBottomNavigation), findsNothing);
     final firstCard = tester.widget<RankedCourseCard>(
       find.byType(RankedCourseCard).first,
@@ -114,13 +117,13 @@ void main() {
       await tester.tap(keep);
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
-        find.text('이 장소로 다시 찾기'),
+        find.text('이 장소로 다른 코스 찾기'),
         -160,
         scrollable: sheet,
       );
-      await tester.tap(find.text('이 장소로 다시 찾기'));
+      await tester.tap(find.text('이 장소로 다른 코스 찾기'));
       await tester.pumpAndSettle();
-      expect(find.byType(RankedCourseCard), findsWidgets);
+      expect(find.text('추천 코스 3개'), findsOneWidget);
 
       await tester.scrollUntilVisible(placeCard, 160, scrollable: sheet);
       await tester.pumpAndSettle();
@@ -135,7 +138,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('도착 예정 · 19:00'), findsOneWidget);
       expect(find.text(place.address!), findsOneWidget);
-      expect(find.text('카카오맵 길찾기'), findsOneWidget);
+      expect(find.text('카카오맵 길찾기'), findsNothing);
       await tester.tap(find.byTooltip('뒤로'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
@@ -152,6 +155,7 @@ void main() {
         scrollable: sheet,
       );
       await tester.pumpAndSettle();
+      expect(find.text('카카오맵 길찾기'), findsNothing);
       await tester.tap(find.text('코스 저장'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('저장 코스'));

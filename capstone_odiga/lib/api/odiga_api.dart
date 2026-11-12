@@ -14,6 +14,12 @@ abstract interface class OdigaApi {
   void clearSession();
   Future<SearchResultDto> search(SearchRequestDto request);
   Future<PlaceDetailDto> getPlace(String placeId, {String? date});
+  Future<PlacePhotosDto> getPlacePhotos(String placeId);
+  Future<CongestionGridDto> getCongestionGrid(
+    String region, {
+    String? date,
+    int? hour,
+  });
   Future<CourseDto> updateCourse(
     String courseId,
     CourseUpdateRequestDto request,

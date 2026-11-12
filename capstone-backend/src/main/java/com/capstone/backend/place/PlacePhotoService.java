@@ -88,6 +88,9 @@ public class PlacePhotoService {
                         m.put("height", ph.get("heightPx"));
                         m.put("authorName", author.get("displayName"));
                         m.put("authorUri", author.get("uri"));
+                        if (ph.get("googleMapsUri") != null) {
+                            m.put("googleMapsUri", ph.get("googleMapsUri"));
+                        }
                         photos.add(m);
                     }
                     if (photos.isEmpty()) notice = "사진이 없어요.";

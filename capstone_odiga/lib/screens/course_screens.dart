@@ -20,31 +20,34 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   late SearchConditions conditions =
       (widget.initialConditions ?? app.conditions).copy();
   late var request = app.repository.recommendResult(conditions, app.preference);
-  CourseFrame? frame;
+  List<String> serverKeeps = [];
   final kept = <String>{};
   Set<String> requiredPlaces = {};
   int selectedIndex = 0;
 
   void refresh() {
     selectedIndex = 0;
-    request = app.repository.recommendResult(conditions, app.preference);
+    request = app.repository.recommendResult(
+      conditions,
+      app.preference,
+      keepPlaceIds: serverKeeps,
+    );
   }
 
   Future<void> editConditions(SearchConditions resolved) async {
-    final edited =
-        await openPage<({SearchConditions conditions, CourseFrame? frame})>(
-          context,
-          ConditionsScreen(
-            app: app,
-            initialConditions: resolved,
-            initialFrame: frame,
-          ),
-          '/conditions',
-        );
+    final edited = await openPage<SearchConditions>(
+      context,
+      ConditionsScreen(app: app, initialConditions: resolved),
+      '/conditions',
+    );
     if (!mounted || edited == null) return;
     setState(() {
-      conditions = edited.conditions;
-      frame = edited.frame;
+      conditions = edited;
+      if (!edited.useSelectedRegion || edited.region != resolved.region) {
+        kept.clear();
+        requiredPlaces = {};
+        serverKeeps = [];
+      }
       refresh();
     });
   }
@@ -74,6 +77,15 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               action('검색으로 돌아가기', () => Navigator.maybePop(context))
             else
               action('다시 시도', () => setState(refresh)),
+            if (serverKeeps.isNotEmpty)
+              action(
+                '킵 조건 없이 다시 찾기',
+                () => setState(() {
+                  serverKeeps = [];
+                  refresh();
+                }),
+                secondary: true,
+              ),
           ]),
         );
       }
@@ -81,17 +93,18 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       final result = snapshot.data!;
       final courses = result.courses.where((course) {
         final ids = course.stops.map((stop) => stop.placeId).toSet();
-        return ids.containsAll(requiredPlaces) &&
-            (frame?.matches(ids.map(app.repository.place)) ?? true);
+        return ids.containsAll(requiredPlaces);
       }).toList();
       final selectedCourse = courses.elementAtOrNull(selectedIndex);
       return MapSheetFrame(
         app: app,
         showBottomNavigation: false,
-        title:
-            '추천 ${courses.length}개 · ${visitConditionText(result.conditions)}',
-        sheetTitle: '추천 코스',
+        title: conditions.query.trim().isEmpty
+            ? visitConditionText(result.conditions)
+            : conditions.query,
+        sheetTitle: '추천 코스 ${courses.length}개',
         course: selectedCourse,
+        radarConditions: result.conditions,
         initialSize: widget.expanded
             ? RecommendationSheetSize.expanded
             : RecommendationSheetSize.medium,
@@ -110,13 +123,28 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                     ),
                 ],
               ),
-              action('이 장소로 다시 찾기', () {
+              action('이 장소로 다른 코스 찾기', () {
                 setState(() {
-                  requiredPlaces = {...kept};
+                  serverKeeps = kept.toList();
+                  requiredPlaces = {};
                   refresh();
                 });
               }),
+              action('킵한 장소가 포함된 결과만 보기', () {
+                setState(() {
+                  requiredPlaces = {...kept};
+                  selectedIndex = 0;
+                });
+              }, secondary: true),
             ]),
+          if (serverKeeps.isNotEmpty)
+            TextButton(
+              onPressed: () => setState(() {
+                serverKeeps = [];
+                refresh();
+              }),
+              child: const Text('킵 조건 없이 다시 찾기'),
+            ),
           if (requiredPlaces.isNotEmpty)
             TextButton(
               onPressed: () => setState(() {
@@ -129,7 +157,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             label(
               requiredPlaces.isNotEmpty
                   ? '킵한 장소를 모두 포함하는 코스가 없어요.'
-                  : '선택한 조건에 맞는 코스가 없어요.',
+                  : result.notice ?? '선택한 조건에 맞는 코스가 없어요.',
             ),
           for (final (index, course) in courses.indexed)
             RankedCourseCard(
@@ -166,7 +194,12 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                 visit: stop.arrival,
                 kept: kept.contains(stop.placeId),
                 onKeep: () => setState(() {
-                  if (!kept.remove(stop.placeId)) kept.add(stop.placeId);
+                  if (kept.remove(stop.placeId)) return;
+                  if (kept.length == 2) {
+                    toast(context, '장소는 최대 2곳까지 킵할 수 있어요.');
+                    return;
+                  }
+                  kept.add(stop.placeId);
                 }),
                 onTap: () => openCourseStop(context, app, stop),
               ),
@@ -401,7 +434,7 @@ class CourseDetailScreen extends StatelessWidget {
               CourseTravelDivider(label: '도보 ${stop.travelMinutesToNext}분'),
           ],
           CourseSummaryCard(summary: summary(course), detail: '직선 거리 기준'),
-          if (course.stops.isNotEmpty)
+          if (_showKakaoDirections && course.stops.isNotEmpty)
             action(
               '카카오맵 길찾기',
               () => openDirections(context, [

@@ -154,6 +154,17 @@ class Course {
   };
 }
 
+enum CourseType {
+  basic('BASIC', '기본', '식사·카페·놀거리를 둘러봐요.'),
+  drink('DRINK', '술', '식사나 놀거리와 술집을 묶어요.'),
+  culture('CULTURE', '문화', '전시·공연을 보고 카페와 식사를 즐겨요.'),
+  walk('WALK', '산책', '공원이나 자연을 걷고 카페와 식사를 즐겨요.'),
+  shopping('SHOPPING', '쇼핑', '쇼핑을 하고 카페와 식사를 즐겨요.');
+
+  const CourseType(this.code, this.label, this.description);
+  final String code, label, description;
+}
+
 class SearchConditions {
   SearchConditions({
     this.query = '',
@@ -165,11 +176,17 @@ class SearchConditions {
     this.companionType = '친구',
     this.mood = '',
     this.useSelectedRegion = true,
+    this.courseType,
+    this.playDetails = const [],
+    this.excludedCategories = const [],
+    this.includedCategories = const [],
   }) : start = start ?? DateTime(2026, 10, 17, 12);
   String query, region, gender, ageGroup, companionType, mood;
   DateTime start;
   int people;
   bool useSelectedRegion;
+  CourseType? courseType;
+  List<String> playDetails, excludedCategories, includedCategories;
   SearchConditions copy() => SearchConditions(
     query: query,
     region: region,
@@ -180,6 +197,10 @@ class SearchConditions {
     companionType: companionType,
     mood: mood,
     useSelectedRegion: useSelectedRegion,
+    courseType: courseType,
+    playDetails: playDetails,
+    excludedCategories: excludedCategories,
+    includedCategories: includedCategories,
   );
 }
 
