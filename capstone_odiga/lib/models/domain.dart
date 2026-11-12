@@ -155,14 +155,15 @@ class Course {
 }
 
 enum CourseType {
-  basic('BASIC', '기본', '식사·카페·놀거리를 둘러봐요.'),
-  drink('DRINK', '술', '식사나 놀거리와 술집을 묶어요.'),
-  culture('CULTURE', '문화', '전시·공연을 보고 카페와 식사를 즐겨요.'),
-  walk('WALK', '산책', '공원이나 자연을 걷고 카페와 식사를 즐겨요.'),
-  shopping('SHOPPING', '쇼핑', '쇼핑을 하고 카페와 식사를 즐겨요.');
+  basic('BASIC', '기본', ['식사 → 카페 → 놀거리', '카페 → 놀거리 → 식사']),
+  drink('DRINK', '술', ['식사 → 술집', '식사 → 술집 → 술집', '놀거리 → 식사 → 술집']),
+  culture('CULTURE', '문화', ['전시·공연 → 카페 → 식사']),
+  walk('WALK', '산책', ['공원·자연 → 카페 → 식사']),
+  shopping('SHOPPING', '쇼핑', ['쇼핑 → 카페 → 식사']);
 
-  const CourseType(this.code, this.label, this.description);
-  final String code, label, description;
+  const CourseType(this.code, this.label, this.routes);
+  final String code, label;
+  final List<String> routes;
 }
 
 class SearchConditions {

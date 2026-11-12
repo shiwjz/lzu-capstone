@@ -227,7 +227,18 @@ class _ConditionsScreenState extends State<ConditionsScreen> {
         content: SingleChildScrollView(
           child: stackItems([
             for (final type in CourseType.values)
-              label('${type.label}코스 · ${type.description}'),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  label('${type.label}코스:', bold: true),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: stackItems([
+                      for (final route in type.routes) label(route),
+                    ], gap: 4),
+                  ),
+                ],
+              ),
           ]),
         ),
         actions: [

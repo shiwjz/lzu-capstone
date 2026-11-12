@@ -57,6 +57,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ConditionsScreen), findsOneWidget);
     expect(find.text('코스 종류'), findsOneWidget);
+    await tester.tap(find.byTooltip('코스 종류 안내'));
+    await tester.pumpAndSettle();
+    expect(find.text('술코스:'), findsOneWidget);
+    expect(find.text('놀거리 → 식사 → 술집'), findsOneWidget);
+    expect(find.text('전시·공연 → 카페 → 식사'), findsOneWidget);
+    await tester.tap(find.text('닫기'));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('수정 조건으로 바로 추천'),
       120,
