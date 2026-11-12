@@ -16,9 +16,13 @@ public final class CourseText {
     }
 
     // 카카오 카테고리 이름 → 제목에 쓸 이름
-    private static final Map<String, String> PLAY_LABEL = Map.of(
-            "미술,공예", "공방", "화랑", "전시", "보드카페", "보드게임",
-            "방탈출카페", "방탈출", "만화방", "만화카페");
+    private static final Map<String, String> PLAY_LABEL = Map.ofEntries(
+            Map.entry("미술,공예", "공방"), Map.entry("화랑", "전시"), Map.entry("보드카페", "보드게임"),
+            Map.entry("방탈출카페", "방탈출"), Map.entry("만화방", "만화카페"),
+            // 쇼핑: 카카오 분류 그대로 쓰면 "인테리어장식판매 코스"처럼 어색해서 사람이 쓰는 말로 (예민 11/13)
+            Map.entry("인테리어장식판매", "소품샵"), Map.entry("디자인문구", "소품샵"), Map.entry("생활용품점", "소품샵"),
+            Map.entry("문구,사무용품", "문구점"), Map.entry("의류판매", "옷 구경"), Map.entry("패션잡화점", "편집숍"),
+            Map.entry("공연장,연극극장", "공연"), Map.entry("전시관", "전시"), Map.entry("미술관", "전시"));
 
     // 카카오 술집 종류 → 경로 이름
     private static final Map<String, String> BAR_LABEL = Map.of(
