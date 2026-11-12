@@ -70,6 +70,11 @@ public class PlaceStore {
         public double value(String column) {
             return column.equals("female_ratio") ? femaleRatio : ages.getOrDefault(column, 0.0);
         }
+
+        /** 없는 열이면 null (성별×연령 f_20s 같은 건 LG 파일에만 있음) */
+        public Double valueOrNull(String column) {
+            return column.equals("female_ratio") ? Double.valueOf(femaleRatio) : ages.get(column);
+        }
     }
 
     static final List<String> PROFILE_COLUMNS = List.of("female_ratio", "age_10s", "age_20s", "age_30s",
@@ -88,6 +93,7 @@ public class PlaceStore {
     private final Map<Integer, Map<String, Double>> clusterAvg = new HashMap<>();   // 유형별 평균 비율
     private final Map<String, Map<String, Double>> regionAvg = new HashMap<>();     // 지역별 평균 비율
     private final List<Cell> cells = new ArrayList<>();
+    private final List<String> allProfileColumns = new ArrayList<>();      // 성·연령 파일에 있는 열 전부
     private final Map<String, String[]> dowCongestion = new HashMap<>();   // 요일별 (11주차, 셀|MON → 하루 전체 비교 24칸)
     private String dowSource = null;
 
@@ -117,8 +123,14 @@ public class PlaceStore {
                 dataDir.isBlank() ? "/data/" + congestionFile : FILE + Path.of(dataDir, "congestion_lg.tsv"),
                 dataDir.isBlank() ? "/data/cell_profile.tsv" : FILE + Path.of(dataDir, "cell_profile_lg.tsv"),
                 dataDir.isBlank() ? congestionFile : "congestion_lg.tsv (외부 폴더)");
-        if (!dataDir.isBlank() && Files.exists(Path.of(dataDir, "congestion_dow_lg.tsv"))) {
-            loadDow(FILE + Path.of(dataDir, "congestion_dow_lg.tsv"), "congestion_dow_lg.tsv (외부 폴더)");
+        // LG 요일별: make_lg_data.py가 만든 cell_congestion_dow_lg.csv 그대로 (또는 서버 모양 congestion_dow_lg.tsv)
+        if (!dataDir.isBlank()) {
+            for (String name : List.of("cell_congestion_dow_lg.csv", "congestion_dow_lg.tsv")) {
+                if (Files.exists(Path.of(dataDir, name))) {
+                    loadDow(FILE + Path.of(dataDir, name), name + " (외부 폴더)");
+                    break;
+                }
+            }
         }
     }
 
@@ -147,9 +159,13 @@ public class PlaceStore {
             congestion.put(r[0] + "|" + r[1], new String[][]{r[2].split(" "), r[3].split(" ")});
         }
         loadProfiles(profilePath);
-        // 요일별 혼잡도 (윤경 서울시 버전이 jar 안에 있으면), 없으면 평일·주말 값으로 대신
-        if (PlaceStore.class.getResource("/data/congestion_dow.tsv") != null) {
-            loadDow("/data/congestion_dow.tsv", "congestion_dow.tsv");
+        // 요일별 혼잡도: 혼잡도 파일이랑 짝인 것만 (congestion_seoul.tsv → congestion_dow_seoul.tsv, 윤경 서울시 버전)
+        // 가짜 혼잡도(congestion.tsv)엔 짝이 없어서 평일·주말 값으로 대신
+        if (!congestionPath.startsWith(FILE)) {
+            String dowPath = congestionPath.replace("/congestion", "/congestion_dow");
+            if (PlaceStore.class.getResource(dowPath) != null) {
+                loadDow(dowPath, dowPath.substring(dowPath.lastIndexOf('/') + 1));
+            }
         }
         // 셀 좌표는 LG 데이터가 아니라 격자 정보라 항상 jar 안 파일 (없으면 레이더만 빈 목록)
         if (PlaceStore.class.getResource("/data/cells.tsv") != null) {
@@ -160,15 +176,44 @@ public class PlaceStore {
     }
 
     /**
-     * 요일별 혼잡도 파일 읽기 (11주차): cellId \t dow(MON~SUN) \t allDay(h0..h23, congestion.tsv랑 같은 Q47·N60·B85 모양)
+     * 요일별 혼잡도 파일 읽기 (11주차) - 두 모양 다 읽음
+     * - .tsv: cellId \t dow(MON~SUN) \t allDay(h0..h23, congestion.tsv랑 같은 Q47·N60·B85 모양) ← lg/make_dow_tsv.py
+     * - .csv: 윤경 cell_congestion_dow_*.csv 그대로 (cell_id, dow, hour, pct_all_day, level_all_day 열을 이름으로 찾음)
      * - 만드는 법(윤경): 요일별 = 평일/주말 시간대 모양 × 그 요일 비율 → 하루 전체 비교 백분위 → 등급
      */
     private void loadDow(String path, String source) {
         dowCongestion.clear();
-        for (String[] r : readTsv(path, 3)) {
-            dowCongestion.put(r[0] + "|" + r[1], r[2].split(" "));
+        if (path.endsWith(".csv")) {
+            List<String[]> rows = readTable(path, ",");
+            Map<String, Integer> col = header(rows.get(0));
+            for (String name : List.of("cell_id", "dow", "hour", "pct_all_day", "level_all_day")) {
+                if (!col.containsKey(name)) throw new IllegalStateException(path + "에 " + name + " 열이 없음");
+            }
+            for (String[] r : rows.subList(1, rows.size())) {
+                String key = r[col.get("cell_id")] + "|" + r[col.get("dow")].trim().toUpperCase();
+                String[] row = dowCongestion.computeIfAbsent(key, k -> {
+                    String[] empty = new String[24];
+                    Arrays.fill(empty, "-");
+                    return empty;
+                });
+                String level = r[col.get("level_all_day")].trim();
+                if (level.isEmpty()) continue;
+                int h = Integer.parseInt(r[col.get("hour")].trim());
+                long pct = Math.round(Double.parseDouble(r[col.get("pct_all_day")].trim()));
+                row[h] = level.charAt(0) + String.valueOf(pct);
+            }
+        } else {
+            for (String[] r : readTsv(path, 3)) {
+                dowCongestion.put(r[0] + "|" + r[1], r[2].split(" "));
+            }
         }
         dowSource = source;
+    }
+
+    private static Map<String, Integer> header(String[] head) {
+        Map<String, Integer> m = new HashMap<>();
+        for (int i = 0; i < head.length; i++) m.put(head[i].replace("\uFEFF", "").trim(), i);
+        return m;
     }
 
     /** 요일별 파일이 있으면 파일 이름, 없으면 null (→ 평일·주말 값으로 대신) */
@@ -200,16 +245,43 @@ public class PlaceStore {
     }
 
     /** 셀 성·연령 + 유형·지역 평균 (윤경 load_target_data랑 같은 계산: 단순 평균) */
+    /**
+     * 성·연령 파일 읽기: 열을 이름으로 찾음 (11주차)
+     * - 꼭 있어야 하는 열: cellId, region, cluster, female_ratio, age_10s~age_60s
+     * - 그 뒤에 더 있는 숫자 열(LG 성별×연령 f_10s~m_60s 등)도 전부 읽어서 타깃 점수에 씀
+     */
     private void loadProfiles(String path) {
         Map<Integer, List<CellProfile>> byCluster = new HashMap<>();
         Map<String, List<CellProfile>> byRegion = new HashMap<>();
-        for (String[] r : readTsv(path, 3 + PROFILE_COLUMNS.size())) {
-            Map<String, Double> ages = new LinkedHashMap<>();
-            for (int i = 1; i < PROFILE_COLUMNS.size(); i++) {
-                ages.put(PROFILE_COLUMNS.get(i), Double.parseDouble(r[3 + i]));
+        List<String[]> table = readTable(path, "\t");
+        Map<String, Integer> col = header(table.get(0));
+        for (String name : List.of("cellId", "region", "cluster")) {
+            if (!col.containsKey(name)) throw new IllegalStateException(path + "에 " + name + " 열이 없음");
+        }
+        for (String name : PROFILE_COLUMNS) {
+            if (!col.containsKey(name)) throw new IllegalStateException(path + "에 " + name + " 열이 없음");
+        }
+        List<String> extra = new ArrayList<>(PROFILE_COLUMNS.subList(1, PROFILE_COLUMNS.size()));
+        for (String[] h : List.<String[]>of(table.get(0))) {
+            for (String name : h) {
+                String n = name.replace("\uFEFF", "").trim();
+                if (!n.isEmpty() && !extra.contains(n) && !List.of("cellId", "region", "cluster", "female_ratio").contains(n)) {
+                    extra.add(n);
+                }
             }
-            Integer cluster = r[2].isEmpty() ? null : Integer.valueOf(r[2]);
-            CellProfile cp = new CellProfile(r[0], r[1], cluster, Double.parseDouble(r[3]), Map.copyOf(ages));
+        }
+        allProfileColumns.add("female_ratio");
+        allProfileColumns.addAll(extra);
+        for (String[] r : table.subList(1, table.size())) {
+            Map<String, Double> ages = new LinkedHashMap<>();
+            for (String name : extra) {
+                String v = r[col.get(name)];
+                if (v != null && !v.isBlank()) ages.put(name, Double.parseDouble(v));
+            }
+            String cl = r[col.get("cluster")];
+            Integer cluster = cl == null || cl.isEmpty() ? null : Integer.valueOf(cl);
+            CellProfile cp = new CellProfile(r[col.get("cellId")], r[col.get("region")], cluster,
+                    Double.parseDouble(r[col.get("female_ratio")]), Map.copyOf(ages));
             cellProfiles.put(cp.cellId(), cp);
             if (cluster != null) byCluster.computeIfAbsent(cluster, k -> new ArrayList<>()).add(cp);
             byRegion.computeIfAbsent(cp.region(), k -> new ArrayList<>()).add(cp);
@@ -218,12 +290,19 @@ public class PlaceStore {
         byRegion.forEach((k, list) -> regionAvg.put(k, average(list)));
     }
 
-    private static Map<String, Double> average(List<CellProfile> list) {
+    private Map<String, Double> average(List<CellProfile> list) {
         Map<String, Double> avg = new HashMap<>();
-        for (String col : PROFILE_COLUMNS) {
+        for (String col : allProfileColumns) {
             double sum = 0;
-            for (CellProfile cp : list) sum += cp.value(col);
-            avg.put(col, sum / list.size());
+            int n = 0;
+            for (CellProfile cp : list) {
+                Double v = cp.valueOrNull(col);
+                if (v != null) {
+                    sum += v;
+                    n++;
+                }
+            }
+            if (n > 0) avg.put(col, sum / n);
         }
         return Map.copyOf(avg);
     }
@@ -296,6 +375,14 @@ public class PlaceStore {
     }
 
     private static List<String[]> readTsv(String path, int columns) {
+        List<String[]> rows = new ArrayList<>();
+        List<String[]> table = readTable(path, "\t");
+        for (String[] r : table.subList(1, table.size())) rows.add(Arrays.copyOf(r, columns));
+        return rows;
+    }
+
+    /** 헤더 포함 전부 (첫 줄 = 헤더), delimiter = "\t" 또는 "," */
+    private static List<String[]> readTable(String path, String delimiter) {
         InputStream in;
         if (path.startsWith(FILE)) {
             try {
@@ -311,11 +398,10 @@ public class PlaceStore {
         }
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             List<String[]> rows = new ArrayList<>();
-            reader.readLine();   // 헤더
             String line;
             while ((line = reader.readLine()) != null) {
-                if (!line.isBlank()) {
-                    rows.add(Arrays.copyOf(line.split("\t", -1), columns));
+                if (!line.isBlank() || rows.isEmpty()) {
+                    rows.add(line.split(delimiter, -1));
                 }
             }
             return rows;

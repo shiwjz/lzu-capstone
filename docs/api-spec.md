@@ -97,9 +97,18 @@
 ```
 - 요일 탭 7개 (9~23시), `today` = 검색 날짜 요일 → 처음 선택할 탭
 - `source`: `DOW` = 요일별 파일 있음 / `DAY_TYPE` = 아직 없어서 월~금은 평일, 토·일은 주말 값으로 대신
-- 요일별 파일 (@이윤경): `capstone-backend/src/main/resources/data/congestion_dow.tsv` (서울시 버전, 렌더용) 또는 `ODIGA_DATA_DIR/congestion_dow_lg.tsv` (LG, 노트북만)
-  - 모양: `cellId \t dow(MON~SUN) \t allDay(h0..h23)`, 24칸은 congestion.tsv랑 같은 `Q20 N55 B88` (등급 첫 글자 + 하루 전체 비교 백분위)
-  - 만드는 법: 요일별 = 평일/주말 시간대 모양 × 그 요일 비율 → 같은 칸·요일 안에서 시간대끼리 백분위 → 등급
+- 요일별 파일 (11/11 연결, @이윤경 만든 거)
+  - **LG (노트북만):** `ODIGA_DATA_DIR/cell_congestion_dow_lg.csv` = `lg/make_lg_data.py` 결과 **그대로** 읽음 (`cell_id, dow, hour, pct_all_day, level_all_day` 열을 이름으로 찾음)
+  - **서울시:** `resources/data/congestion_dow_seoul.tsv` (공개 데이터, `python lg/make_dow_tsv.py cell_congestion_dow_seoul.csv …`로 변환) → `ODIGA_CONGESTION_FILE=congestion_seoul.tsv`로 켰을 때만 짝으로 씀
+  - 가짜 혼잡도(`congestion.tsv`, 기본)엔 짝이 없어서 평일·주말 값 (`source: DAY_TYPE`)
+  - 요일별 파일이 있으면 장소 상세 `congestionByHour`도 그 날짜 요일 값 (`basis: ALL_DAY_DOW`) → 앱 요일 탭 그대로 동작
+  - 만드는 법: 요일별 = 평일/주말 시간대 모양 × 그 요일 비율 → 백분위 → 등급
+
+### 7-1. 타깃 점수 성별 × 연령 (11/11, 윤경 `place_score.py` 그대로)
+
+- `cell_profile_lg.tsv`에 `f_10s ~ f_60s, m_10s ~ m_60s` 12열이 있으면 서버가 **열 이름으로** 읽음 (순서·개수 상관없음, 꼭 있어야 하는 건 `cellId, region, cluster, female_ratio, age_10s~age_60s`)
+- 성별·연령 둘 다 있고 그 칸에 `f_20s` 같은 값이 있으면 그 값 ÷ 지역 평균, 없으면 예전처럼 성별 배수 × 연령 배수 (가짜 데이터)
+- `lg/make_lg_data.py`가 `cell_profile_lg.tsv`에 12열을 같이 써줌 (윤경 `cell_gender_age_lg.csv`에 있으면 그거, 없으면 SECD에서 계산)
 
 ### 8. 검색 응답에 추가
 

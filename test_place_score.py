@@ -4,6 +4,10 @@ from place_score import request_score, target_score, congestion_fit, place_score
 AVG = {"female_ratio": 0.5, "age_20s": 0.25, "age_30s": 0.25}       # 지역 평균
 CELL = {"female_ratio": 0.6, "age_20s": 0.5, "age_30s": 0.2}        # 이 칸
 CLUSTER = {"female_ratio": 0.4, "age_20s": 0.3, "age_30s": 0.3}     # 같은 유형 칸들의 평균
+# LG 데이터처럼 성별 × 연령 비율이 있는 경우
+AVG_J = dict(AVG, f_20s=0.15)
+CELL_J = dict(CELL, f_20s=0.3)
+CLUSTER_J = dict(CLUSTER, f_20s=0.1)
 # 반반 섞으면 → 여성 0.5, 20대 0.4, 30대 0.25
 
 def check(no, got, expected):
@@ -38,6 +42,10 @@ results = [
     check(15, request_score([], {}, ["라멘"], "JAPANESE", "초밥·롤"), 0.2),       # 같은 큰 종류, 다른 세부
     check(16, request_score([], {}, ["라멘"], "KOREAN", "국밥"), 0.5),            # 다른 큰 종류 → 계산 안 함 → 중립
     check(17, request_score(["조용함"], {"조용함": 1}, ["라멘"], "JAPANESE", "라멘"),
-          (1 / 3 + 1.0) / 2),                                                     # (분위기 1/3 + 세부 1.0) ÷ 2
+          (1 / 3 + 1.0) / 2),   
+                                                                # 성별 × 연령 비율 직접 사용 (LG 데이터)
+    check(18, target_score(CELL_J, None, AVG_J, "F", "20s"), 2.0 / 3.0),          # 0.3 ÷ 0.15 = 2.0
+    check(19, target_score(CELL_J, CLUSTER_J, AVG_J, "F", "20s"), (0.2 / 0.15) / (1 + 0.2 / 0.15)),  # 반반 섞으면 0.2 → 1.333
+    check(20, target_score(CELL_J, None, AVG_J, None, "20s"), 2.0 / 3.0),         # 연령만 → 기존 방식 (0.5 ÷ 0.25 = 2.0)                                                  # (분위기 1/3 + 세부 1.0) ÷ 2
 ]
 print(f"\n{sum(results)}/{len(results)} 통과")

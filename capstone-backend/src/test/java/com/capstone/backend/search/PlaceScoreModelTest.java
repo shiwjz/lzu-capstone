@@ -46,6 +46,27 @@ class PlaceScoreModelTest {
         near(0.5, PlaceScoreModel.targetScore(CELL_SHARES, CLUSTER, AVG, null, null));
     }
 
+    // LG 데이터처럼 성별 × 연령 비율이 있는 경우 (윤경 test_place_score.py 18~20)
+    private static final Map<String, Double> AVG_J = with(AVG, "f_20s", 0.15);
+    private static final Map<String, Double> CELL_J = with(CELL, "f_20s", 0.3);
+    private static final Map<String, Double> CLUSTER_J = with(CLUSTER, "f_20s", 0.1);
+
+    private static Map<String, Double> with(Map<String, Double> m, String k, double v) {
+        Map<String, Double> out = new java.util.HashMap<>(m);
+        out.put(k, v);
+        return Map.copyOf(out);
+    }
+
+    @Test
+    @DisplayName("18~20 성별×연령 직접: 0.3÷0.15=2 → 2/3, 유형 반반 0.2 → 1.333, 연령만이면 예전 방식")
+    void targetJoint() {
+        near(2.0 / 3.0, PlaceScoreModel.targetScore(CELL_J::get, null, AVG_J, "F", "20s"));
+        near((0.2 / 0.15) / (1 + 0.2 / 0.15), PlaceScoreModel.targetScore(CELL_J::get, CLUSTER_J, AVG_J, "F", "20s"));
+        near(2.0 / 3.0, PlaceScoreModel.targetScore(CELL_J::get, null, AVG_J, null, "20s"));
+        // 성별×연령 열이 없으면 (가짜 데이터) 예전처럼 성별 배수 × 연령 배수 = 위 5~8번이랑 같음
+        near(2.4 / 3.4, PlaceScoreModel.targetScore(CELL_SHARES, null, AVG, "F", "20s"));
+    }
+
     @Test
     @DisplayName("9 혼잡도 적합도: 조용한 곳 원하는데 혼잡 0.1")
     void fit() {
