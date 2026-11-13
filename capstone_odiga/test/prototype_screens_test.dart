@@ -71,10 +71,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
     expect(find.byType(CalendarDatePicker), findsOneWidget);
-    final timeField = find.widgetWithText(TextFormField, '방문 시간');
-    await tester.ensureVisible(timeField);
-    await tester.enterText(timeField, '18:30');
-    FocusManager.instance.primaryFocus?.unfocus();
+    final timeFields = find.byType(DropdownButtonFormField<int>);
+    await Scrollable.ensureVisible(
+      tester.element(timeFields.first),
+      alignment: .5,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(timeFields.first);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('18시').hitTestable(),
+      160,
+      scrollable: find.byWidgetPredicate((widget) => widget is Scrollable).last,
+    );
+    await tester.tap(find.text('18시').hitTestable());
+    await tester.pumpAndSettle();
+    await tester.tap(timeFields.last);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('30분').hitTestable(),
+      160,
+      scrollable: find.byWidgetPredicate((widget) => widget is Scrollable).last,
+    );
+    await tester.tap(find.text('30분').hitTestable());
+    await tester.pumpAndSettle();
     final friend = find.widgetWithText(CheckboxListTile, '예령');
     await tester.ensureVisible(friend);
     await tester.pumpAndSettle();

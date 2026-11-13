@@ -96,24 +96,32 @@ class _CreateGroupScreenState extends State<_CreateGroupScreen> {
   final selected = <String>{};
   var name = '이번 주말 성수 모임';
   late DateTime date = widget.app.conditions.start;
-  late String time = clockText(date);
+  late int hour = widget.app.conditions.start.hour;
+  late int minute = widget.app.conditions.start.minute;
 
-  DateTime? get start {
-    final match = RegExp(r'^([01]?[0-9]|2[0-3]):([0-5][0-9])$')
-        .firstMatch(time.trim());
-    if (match == null) return null;
-    return DateTime(
-      date.year,
-      date.month,
-      date.day,
-      int.parse(match[1]!),
-      int.parse(match[2]!),
-    );
-  }
+  Widget timeField(
+    String unit,
+    int value,
+    int count,
+    ValueChanged<int> select,
+  ) => DropdownButtonFormField<int>(
+    initialValue: value,
+    isExpanded: true,
+    decoration: InputDecoration(labelText: unit),
+    items: List.generate(
+      count,
+      (index) => DropdownMenuItem(
+        value: index,
+        child: Text('${index.toString().padLeft(2, '0')}$unit'),
+      ),
+    ),
+    onChanged: (value) {
+      if (value != null) setState(() => select(value));
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
-    final schedule = start;
     return AppFrame(
       app: widget.app,
       title: '새 모임 만들기',
@@ -132,15 +140,17 @@ class _CreateGroupScreenState extends State<_CreateGroupScreen> {
             lastDate: DateTime(2099, 12, 31),
             onDateChanged: (value) => setState(() => date = value),
           ),
-          TextFormField(
-            initialValue: time,
-            keyboardType: TextInputType.datetime,
-            decoration: InputDecoration(
-              labelText: '방문 시간',
-              hintText: '19:00',
-              errorText: schedule == null ? '24시간 형식으로 입력해 주세요.' : null,
-            ),
-            onChanged: (value) => setState(() => time = value),
+          label('방문 시간', bold: true),
+          Row(
+            children: [
+              Expanded(
+                child: timeField('시', hour, 24, (value) => hour = value),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: timeField('분', minute, 60, (value) => minute = value),
+              ),
+            ],
           ),
         ]),
         panel([
@@ -162,13 +172,13 @@ class _CreateGroupScreenState extends State<_CreateGroupScreen> {
         ]),
         action(
           '모임 만들기',
-          name.isEmpty || selected.isEmpty || schedule == null
+          name.isEmpty || selected.isEmpty
               ? null
               : () {
                   final group = widget.app.createGroup(
                     name,
                     selected,
-                    schedule,
+                    DateTime(date.year, date.month, date.day, hour, minute),
                   );
                   Navigator.pushReplacement(
                     context,
