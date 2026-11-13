@@ -144,14 +144,15 @@ void main() {
   test('saved and shared snapshots do not change with an editor draft', () {
     final app = AppState(repository: repo);
     final original = app.savedCourses.first;
-    app.sendMessage('공유', course: original);
+    final group = app.groups.first;
+    app.sendMessage(group, '공유', course: original);
     final changed = repo.recalculate(
       original.copyWith(stops: [original.stops.first.withStay(70)]),
     );
     app.saveCourse(changed);
     expect(app.savedCourses.length, 1);
     expect(app.savedCourses.first.stops.length, 1);
-    expect(app.messages.last.course!.stops.length, 3);
+    expect(group.messages.last.course!.stops.length, 3);
     expect(
       app.savedPlaceIds.every((id) => repo.places.any((p) => p.id == id)),
       isTrue,

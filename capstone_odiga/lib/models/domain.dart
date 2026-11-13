@@ -239,6 +239,22 @@ class FriendProfile {
   final List<String> tags;
 }
 
+class GroupRoom {
+  GroupRoom({
+    required this.name,
+    required this.start,
+    required Iterable<FriendProfile> friends,
+    Iterable<ChatMessage> messages = const [],
+  }) : friends = List.unmodifiable(friends),
+       messages = List.of(messages);
+
+  final String name;
+  final DateTime start;
+  final List<FriendProfile> friends;
+  final List<ChatMessage> messages;
+  int get size => friends.length + 1;
+}
+
 class ChatMessage {
   ChatMessage({
     required this.author,

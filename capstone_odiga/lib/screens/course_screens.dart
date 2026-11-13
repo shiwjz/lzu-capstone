@@ -565,17 +565,48 @@ class _CourseShareScreenState extends State<CourseShareScreen> {
             if (context.mounted) toast(context, '공유 내용을 복사했습니다.');
           }),
           action('공유 코스 미리 보기', () => openSharedCourse(value), secondary: true),
-          action('예시 모임 채팅에 공유', () async {
-            final course = await widget.app.repository.loadSharedCourse(
-              value.shareCode,
-            );
-            if (!context.mounted) return;
-            widget.app.sendMessage(
-              '함께 가고 싶은 코스예요! ${value.shareUrl}',
-              course: course,
-            );
-            openPage(context, ChatScreen(app: widget.app), '/group/chat');
-          }, secondary: true),
+          action(
+            '모임 채팅에 공유',
+            widget.app.groups.isEmpty
+                ? null
+                : () async {
+                    final group = await showDialog<GroupRoom>(
+                      context: context,
+                      builder: (dialogContext) => SimpleDialog(
+                        title: const Text('공유할 모임 선택'),
+                        children: [
+                          for (final group in widget.app.groups)
+                            SimpleDialogOption(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, group),
+                              child: ListTile(
+                                title: Text(group.name),
+                                subtitle: Text(
+                                  '${dateText(group.start)} ${clockText(group.start)}',
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                    if (!context.mounted || group == null) return;
+                    final course = await widget.app.repository.loadSharedCourse(
+                      value.shareCode,
+                    );
+                    if (!context.mounted) return;
+                    widget.app.sendMessage(
+                      group,
+                      '함께 가고 싶은 코스예요! ${value.shareUrl}',
+                      course: course,
+                    );
+                    openPage(
+                      context,
+                      ChatScreen(app: widget.app, group: group),
+                      '/group/chat',
+                    );
+                  },
+            secondary: true,
+          ),
           label('현재는 예시 공유 응답을 표시합니다.', size: 11, color: OdigaTokens.muted),
         ]),
       );
