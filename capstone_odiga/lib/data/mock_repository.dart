@@ -418,6 +418,35 @@ class MockRepository {
 
   bool get usesSampleData => api is MockOdigaApi;
 
+  final _courseCongestion = <(String, String), Future<Map<int, Congestion>>>{};
+
+  Future<CongestionBand?> loadStopCongestion(CourseStop stop) async {
+    final placeId = stop.placeId;
+    if (!supportedCongestionRegions.contains(place(placeId).region)) {
+      return null;
+    }
+    if (stop.congestionBand case final band?) return band;
+    final key = (placeId, formatDate(stop.arrival));
+    final pending = _courseCongestion.putIfAbsent(
+      key,
+      () => _loadPlaceHours(placeId, key.$2),
+    );
+    try {
+      final hours = await pending;
+      return hours[stop.arrival.hour]?.band;
+    } catch (_) {
+      if (identical(_courseCongestion[key], pending)) {
+        _courseCongestion.remove(key);
+      }
+      rethrow;
+    }
+  }
+
+  Future<Map<int, Congestion>> _loadPlaceHours(String id, String date) async {
+    final dto = await api.getPlace(id, date: date);
+    return _mapPlaceHours(id, dto.congestionByHour);
+  }
+
   Future<({Place place, Map<int, Congestion> hours})> loadPlaceDetails(
     String id,
     DateTime date,
@@ -425,20 +454,24 @@ class MockRepository {
     final dto = await api.getPlace(id, date: formatDate(date));
     final value = ApiMappers.toPlace(dto, dto.region ?? place(id).region);
     _putPlace(value);
-    final hourly = dto.congestionByHour;
-    final hours = <int, Congestion>{};
-    if (supportedCongestionRegions.contains(value.region)) {
-      for (final hour in hourly.hours) {
-        final time = hour.hour;
-        if (time == null) continue;
-        hours[time] = ApiMappers.congestion(
-          value.id,
-          hour.json,
-          ApiMappers.time(hourly.date, '${time.toString().padLeft(2, '0')}:00'),
-        );
-      }
-    }
+    final hours = supportedCongestionRegions.contains(value.region)
+        ? _mapPlaceHours(id, dto.congestionByHour)
+        : <int, Congestion>{};
     return (place: value, hours: hours);
+  }
+
+  Map<int, Congestion> _mapPlaceHours(String id, HourlyCongestionDto hourly) {
+    final hours = <int, Congestion>{};
+    for (final hour in hourly.hours) {
+      final time = hour.hour;
+      if (time == null) continue;
+      hours[time] = ApiMappers.congestion(
+        id,
+        hour.json,
+        ApiMappers.time(hourly.date, '${time.toString().padLeft(2, '0')}:00'),
+      );
+    }
+    return hours;
   }
 
   Future<({Course course, List<WarningDto> warnings})> updateCourse(
@@ -494,6 +527,9 @@ class MockRepository {
           ? distance(place(old.placeId), place(course.stops[i + 1].placeId))
           : 0.0;
       final travel = meters == 0 ? 0 : math.max(1, (meters / 70).ceil());
+      final sameVisitHour =
+          arrival.hour == old.arrival.hour &&
+          formatDate(arrival) == formatDate(old.arrival);
       stops.add(
         CourseStop(
           id: old.id,
@@ -504,8 +540,8 @@ class MockRepository {
           stayMinutes: old.stayMinutes,
           travelMinutesToNext: travel,
           distanceMetersToNext: meters,
-          congestionBand: old.congestionBand,
-          congestionPercentile: old.congestionPercentile,
+          congestionBand: sameVisitHour ? old.congestionBand : null,
+          congestionPercentile: sameVisitHour ? old.congestionPercentile : null,
         ),
       );
       arrival = arrival.add(Duration(minutes: old.stayMinutes + travel));

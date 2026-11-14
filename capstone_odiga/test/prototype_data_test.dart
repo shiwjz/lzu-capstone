@@ -120,6 +120,7 @@ void main() {
       UserPreference(),
     )).first;
     final course = repo.recalculate(sample, start: start);
+    expect(await repo.loadStopCongestion(course.stops[1]), isNull);
     final changed = repo.recalculate(
       course.copyWith(
         stops: [
@@ -140,6 +141,49 @@ void main() {
     expect(reduced.totalMinutes, changed.stops.first.stayMinutes);
     expect(reduced.distanceKm, 0);
   });
+
+  test('course congestion follows the recalculated arrival hour', () async {
+    final sample = repo.initialCourses.first;
+    final original = sample.stops.first;
+    expect(await repo.loadStopCongestion(original), original.congestionBand);
+
+    final start = DateTime(2026, 10, 17, 19, 45);
+    final edited = repo.recalculate(sample, start: start);
+    expect(edited.stops.first.congestionBand, isNull);
+    expect(
+      await repo.loadStopCongestion(edited.stops.first),
+      CongestionBand.busy,
+    );
+  });
+
+  test(
+    'place thumbnails follow category and available place details',
+    () async {
+      final examples = [
+        ('FOOD', '식당', 'KOREAN', null, null, 'food_korean'),
+        ('FOOD', '주점', 'BAR', '이자카야', null, 'bar_izakaya'),
+        ('ACTIVITY', '해피노래연습장', null, null, null, 'play_karaoke'),
+        ('CAFE', '나무', null, '차·음료', null, 'cafe_tea'),
+        ('SNACK', '라임', null, null, '음식점 > 간식 > 아이스크림', 'dessert_icecream'),
+        ('SHOPPING', '마켓', null, null, null, 'shop_etc'),
+      ];
+      for (final (category, name, cuisine, detail, kakao, asset) in examples) {
+        final place = ApiMappers.place({
+          'placeId': 'test-place',
+          'name': name,
+          'category': category,
+          'cuisine': cuisine,
+          'cuisineDetail': detail,
+          'kakaoCategory': kakao,
+          'lat': 37.5,
+          'lng': 127.0,
+        }, 'SEONGSU');
+        final path = 'assets/places/$asset.png';
+        expect(place.imageAsset, path);
+        expect((await rootBundle.load(path)).lengthInBytes, greaterThan(0));
+      }
+    },
+  );
 
   test('saved and shared snapshots do not change with an editor draft', () {
     final app = AppState(repository: repo);

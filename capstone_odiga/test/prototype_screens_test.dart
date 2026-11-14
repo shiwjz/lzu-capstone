@@ -3,12 +3,34 @@ import 'package:capstone_odiga/screens/app_screens.dart';
 import 'package:capstone_odiga/state/app_state.dart';
 import 'package:capstone_odiga/widgets/odiga_widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late MockRepository repository;
   setUpAll(() async => repository = await MockRepository.load());
+
+  testWidgets('course detail shows arrival radar and estimated duration', (
+    tester,
+  ) async {
+    final app = AppState(repository: repository);
+    addTearDown(app.dispose);
+    final course = app.savedCourses.first;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CourseDetailScreen(app: app, initial: course),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('총 ${course.totalMinutes}분 예상'), findsOneWidget);
+    expect(find.byType(CircleLayer), findsNWidgets(course.stops.length));
+
+    await tester.tap(find.byTooltip('혼잡 레이더 끄기'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CircleLayer), findsNothing);
+  });
+
   testWidgets('editor supports stay, delete and recalculated total', (
     tester,
   ) async {

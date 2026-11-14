@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../models/domain.dart';
+
 abstract final class OdigaTokens {
   static const brand = Color(0xFF8064D8);
   static const lavender = Color(0xFFEEE9FB);
@@ -206,7 +208,8 @@ class CourseCategoryMapPin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (background, icon) = switch (category) {
-      '음식점' || '술집' => ('map_pin_restaurant_bg.svg', 'map_pin_restaurant_icon.svg'),
+      '음식점' ||
+      '술집' => ('map_pin_restaurant_bg.svg', 'map_pin_restaurant_icon.svg'),
       '카페' => ('map_pin_cafe_bg.svg', 'map_pin_cafe_icon.svg'),
       _ => ('map_pin_play_bg.svg', 'map_pin_play_icon.svg'),
     };
@@ -349,6 +352,52 @@ class PlaceImage extends StatelessWidget {
   );
 }
 
+class PlaceThumbnail extends StatelessWidget {
+  const PlaceThumbnail({super.key, required this.place, this.size = 92});
+
+  final Place place;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    if (place.imageAsset case final asset?) {
+      return Container(
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(size * .1),
+        decoration: BoxDecoration(
+          color: OdigaTokens.background,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Image.asset(
+          asset,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.low,
+        ),
+      );
+    }
+
+    final (icon, color) = switch (place.category) {
+      '술집' => (Icons.local_bar, const Color(0xFF86536D)),
+      '문화시설' => (Icons.museum_outlined, const Color(0xFF6753A5)),
+      '놀거리' => (Icons.sports_esports_outlined, const Color(0xFF365EAB)),
+      '체험' => (Icons.palette_outlined, const Color(0xFFAE593F)),
+      '쇼핑' => (Icons.shopping_bag_outlined, const Color(0xFF9D4F7C)),
+      '관광' => (Icons.photo_camera_outlined, const Color(0xFF287A74)),
+      _ => (Icons.place_outlined, OdigaTokens.brand),
+    };
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Icon(icon, color: color, size: size * .48),
+    );
+  }
+}
+
 class OdigaCardSurface extends StatelessWidget {
   const OdigaCardSurface({
     super.key,
@@ -383,13 +432,17 @@ class PlaceCard extends StatelessWidget {
     required this.description,
     required this.level,
     this.image = const AssetImage('assets/756cc.png'),
+    this.thumbnail,
+    this.visitLabel,
+    this.visitCongestion,
     this.onTap,
     this.trailing,
   });
   final String title, category, description;
   final double? rating;
   final CongestionLevel? level;
-  final Widget? trailing;
+  final Widget? trailing, thumbnail, visitCongestion;
+  final String? visitLabel;
   final ImageProvider image;
   final VoidCallback? onTap;
   @override
@@ -400,7 +453,7 @@ class PlaceCard extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 138),
         child: Row(
           children: [
-            PlaceImage(image: image),
+            thumbnail ?? PlaceImage(image: image),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -418,6 +471,11 @@ class PlaceCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   _text(description, 11, color: OdigaTokens.muted),
+                  if (visitLabel case final time?) ...[
+                    const SizedBox(height: 8),
+                    _text(time, 11, color: OdigaTokens.brand),
+                  ],
+                  ?visitCongestion,
                   if (level case final crowd?) ...[
                     const SizedBox(height: 8),
                     CongestionBadge(level: crowd),
@@ -482,7 +540,8 @@ class CourseCard extends StatelessWidget {
             const SizedBox(height: 8),
             if (places != null) _text(places!, 13, color: OdigaTokens.muted),
             RouteTags(categories: route.split(' → ')),
-            if (keywords.isNotEmpty)
+            if (keywords.isNotEmpty) ...[
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 6,
                 runSpacing: 4,
@@ -491,6 +550,7 @@ class CourseCard extends StatelessWidget {
                     OdigaTag(label: keyword, selected: true),
                 ],
               ),
+            ],
             const SizedBox(height: 8),
             _text(summary, 11, color: OdigaTokens.muted),
             const SizedBox(height: 8),

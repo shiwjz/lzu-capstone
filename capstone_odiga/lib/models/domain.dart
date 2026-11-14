@@ -24,7 +24,8 @@ class Place {
   final double latitude, longitude;
   final List<String> tags;
   // UI-only mock fields; these are not an agreed backend response contract.
-  final String imageAsset, description;
+  final String? imageAsset;
+  final String description;
   final String? address, cuisine, cuisineDetail;
   final double? rating;
   Map<String, Object> toJson() => {
@@ -130,8 +131,10 @@ class Course {
   final Map<String, double> score;
   final List<String> keywords;
   final List<CourseStop> stops;
-  int get totalMinutes =>
-      stops.fold(0, (sum, s) => sum + s.stayMinutes + s.travelMinutesToNext);
+  int get stayMinutes => stops.fold(0, (sum, stop) => sum + stop.stayMinutes);
+  int get walkMinutes =>
+      stops.fold(0, (sum, stop) => sum + stop.travelMinutesToNext);
+  int get totalMinutes => stayMinutes + walkMinutes;
   double get distanceKm =>
       stops.fold(0.0, (sum, s) => sum + s.distanceMetersToNext) / 1000;
   Course copyWith({List<CourseStop>? stops, String? title, String? id}) =>

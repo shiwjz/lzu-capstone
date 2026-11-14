@@ -293,6 +293,7 @@ class PlaceCardView extends StatelessWidget {
     required this.place,
     required this.onTap,
     this.visit,
+    this.courseStop,
     this.kept = false,
     this.onKeep,
     this.showCongestion = true,
@@ -301,6 +302,7 @@ class PlaceCardView extends StatelessWidget {
   final Place place;
   final VoidCallback onTap;
   final DateTime? visit;
+  final CourseStop? courseStop;
   final bool kept, showCongestion;
   final VoidCallback? onKeep;
   @override
@@ -326,8 +328,14 @@ class PlaceCardView extends StatelessWidget {
     ].join(' · '),
     rating: place.rating,
     description: place.description,
-    level: showCongestion
+    level: showCongestion && courseStop == null
         ? placeCongestion(app, place, visit ?? app.conditions.start)
+        : null,
+    visitLabel: courseStop == null
+        ? null
+        : '${clockText(courseStop!.arrival)} 도착 예정',
+    visitCongestion: showCongestion && courseStop != null
+        ? _StopCongestionBadge(app: app, stop: courseStop!)
         : null,
     trailing: onKeep == null
         ? null
@@ -338,7 +346,7 @@ class PlaceCardView extends StatelessWidget {
             icon: const Icon(Icons.push_pin_outlined),
             selectedIcon: const Icon(Icons.push_pin, color: OdigaTokens.brand),
           ),
-    image: AssetImage(place.imageAsset),
+    thumbnail: PlaceThumbnail(place: place),
     onTap: onTap,
   );
 }

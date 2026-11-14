@@ -163,7 +163,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             RankedCourseCard(
               rank: index + 1,
               title: course.title,
-              summary: coursePlaceNames(app, course),
+              summary:
+                  '${coursePlaceNames(app, course)}\n${_courseDuration(course)}',
               route: courseRoute(app, course),
               reason: course.reason,
               keywords: course.keywords,
@@ -191,7 +192,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               PlaceCardView(
                 app: app,
                 place: app.repository.place(stop.placeId),
-                visit: stop.arrival,
+                courseStop: stop,
                 kept: kept.contains(stop.placeId),
                 onKeep: () => setState(() {
                   if (kept.remove(stop.placeId)) return;
@@ -214,6 +215,52 @@ String coursePlaceNames(AppState app, Course course) => course.stops
     .take(3)
     .map((stop) => stop.name ?? app.repository.place(stop.placeId).name)
     .join(' · ');
+
+String _courseDuration(Course course) => '총 ${course.totalMinutes}분 예상';
+
+String _courseTimeBreakdown(Course course) =>
+    '도보 약 ${course.walkMinutes}분 · 체류 ${course.stayMinutes}분';
+
+class _StopCongestionBadge extends StatefulWidget {
+  const _StopCongestionBadge({required this.app, required this.stop});
+
+  final AppState app;
+  final CourseStop stop;
+
+  @override
+  State<_StopCongestionBadge> createState() => _StopCongestionBadgeState();
+}
+
+class _StopCongestionBadgeState extends State<_StopCongestionBadge> {
+  late var congestion = widget.app.repository.loadStopCongestion(widget.stop);
+
+  @override
+  void didUpdateWidget(_StopCongestionBadge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.app != widget.app ||
+        oldWidget.stop.placeId != widget.stop.placeId ||
+        oldWidget.stop.arrival != widget.stop.arrival ||
+        oldWidget.stop.congestionBand != widget.stop.congestionBand) {
+      congestion = widget.app.repository.loadStopCongestion(widget.stop);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder(
+    future: congestion,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return label('혼잡도 확인 중', size: 11, color: OdigaTokens.muted);
+      }
+      return switch (snapshot.data) {
+        final band? => CongestionBadge(
+          level: CongestionLevel.values[band.index],
+        ),
+        null => label('혼잡도 정보 없음', size: 11, color: OdigaTokens.muted),
+      };
+    },
+  );
+}
 
 List<String> courseRoute(AppState app, Course course) => course.stops
     .map((stop) => app.repository.place(stop.placeId).category)
@@ -386,6 +433,11 @@ class CourseDetailScreen extends StatelessWidget {
         sheetTitle: '코스 상세 · ${course.stops.length}개 장소',
         course: course,
         children: [
+          CourseSummaryCard(
+            summary: _courseDuration(course),
+            detail:
+                '${_courseTimeBreakdown(course)}\n직선 거리 ${course.distanceKm.toStringAsFixed(1)}km',
+          ),
           RouteTags(categories: courseRoute(app, course)),
           for (final (index, stop) in course.stops.indexed) ...[
             InkWell(
@@ -398,12 +450,9 @@ class CourseDetailScreen extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    PlaceImage(
-                      image: AssetImage(
-                        app.repository.place(stop.placeId).imageAsset,
-                      ),
-                      width: 36,
-                      height: 36,
+                    PlaceThumbnail(
+                      place: app.repository.place(stop.placeId),
+                      size: 36,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -413,27 +462,20 @@ class CourseDetailScreen extends StatelessWidget {
                           bold: true,
                         ),
                         label(
-                          '${clockText(stop.arrival)} 방문 · ${stop.stayMinutes}분 체류',
+                          '${clockText(stop.arrival)} 도착 예정 · ${stop.stayMinutes}분 체류',
                           size: 11,
                           color: OdigaTokens.muted,
                         ),
+                        _StopCongestionBadge(app: app, stop: stop),
                       ], gap: 8),
                     ),
-                    if (placeCongestion(
-                          app,
-                          app.repository.place(stop.placeId),
-                          stop.arrival,
-                        )
-                        case final crowd?)
-                      CongestionBadge(level: crowd),
                   ],
                 ),
               ),
             ),
             if (stop.travelMinutesToNext > 0)
-              CourseTravelDivider(label: '도보 ${stop.travelMinutesToNext}분'),
+              CourseTravelDivider(label: '도보 약 ${stop.travelMinutesToNext}분'),
           ],
-          CourseSummaryCard(summary: summary(course), detail: '직선 거리 기준'),
           if (_showKakaoDirections && course.stops.isNotEmpty)
             action(
               '카카오맵 길찾기',
@@ -726,8 +768,8 @@ class _CourseEditorScreenState extends State<CourseEditorScreen> {
     initialSize: RecommendationSheetSize.expanded,
     children: [
       CourseSummaryCard(
-        summary: summary(draft),
-        detail: '변경하면 도착 시각·혼잡도 자동 재계산',
+        summary: _courseDuration(draft),
+        detail: _courseTimeBreakdown(draft),
       ),
       if (draft.totalMinutes > 210)
         label(
@@ -748,17 +790,17 @@ class _CourseEditorScreenState extends State<CourseEditorScreen> {
         itemBuilder: (_, index) {
           final stop = draft.stops[index];
           final p = widget.app.repository.place(stop.placeId);
-          final crowd = placeCongestion(widget.app, p, stop.arrival);
           return Column(
             key: ValueKey(stop.id),
             children: [
               CourseStopTile(
                 order: index + 1,
                 title: p.name,
-                visitLabel: [
-                  '${clockText(stop.arrival)} 방문',
-                  if (crowd != null) crowd.label,
-                ].join(' · '),
+                visitLabel: '${clockText(stop.arrival)} 도착 예정',
+                visitCongestion: _StopCongestionBadge(
+                  app: widget.app,
+                  stop: stop,
+                ),
                 stayMinutes: stop.stayMinutes,
                 onStayPressed: () => stay(stop),
                 onDelete: () =>
@@ -785,7 +827,7 @@ class _CourseEditorScreenState extends State<CourseEditorScreen> {
                 ),
               ),
               if (stop.travelMinutesToNext > 0)
-                CourseTravelDivider(label: '도보 ${stop.travelMinutesToNext}분'),
+                CourseTravelDivider(label: '도보 약 ${stop.travelMinutesToNext}분'),
             ],
           );
         },

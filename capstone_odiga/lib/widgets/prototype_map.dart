@@ -46,19 +46,8 @@ class _PrototypeMapState extends State<PrototypeMap> {
   final controller = MapController();
   LatLng? currentLocation;
   bool locating = false;
-  String? homeRadarRegion;
   bool showResultRadar = true;
   final grids = <(String, DateTime?), Future<CongestionGridDto>>{};
-
-  void selectHomeRadar(String region) {
-    setState(() {
-      homeRadarRegion = _regionCenters.containsKey(region) ? region : null;
-      grids.clear();
-    });
-    if (homeRadarRegion case final selected?) {
-      controller.move(_regionCenters[selected]!, 15);
-    }
-  }
 
   @override
   void dispose() {
@@ -131,7 +120,10 @@ class _PrototypeMapState extends State<PrototypeMap> {
           ? place.region == widget.region
           : distance(location, LatLng(place.latitude, place.longitude)) <= 2000;
       return nearby &&
-          (widget.homeCategories?.contains(place.category == '술집' ? '음식점' : place.category) ?? true);
+          (widget.homeCategories?.contains(
+                place.category == '술집' ? '음식점' : place.category,
+              ) ??
+              true);
     }).toList();
   }
 
@@ -157,6 +149,26 @@ class _PrototypeMapState extends State<PrototypeMap> {
     );
   }
 
+  List<CircleMarker> stopRadar(LatLng point, CongestionBand band) {
+    final level = CongestionLevel.values[band.index];
+    return [
+      CircleMarker(
+        point: point,
+        radius: 28,
+        color: level.color.withValues(alpha: .18),
+        borderColor: level.color,
+        borderStrokeWidth: 2,
+      ),
+      CircleMarker(
+        point: point,
+        radius: 20,
+        color: level.color.withValues(alpha: .14),
+        borderColor: level.color.withValues(alpha: .65),
+        borderStrokeWidth: 1,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final course = widget.course;
@@ -180,13 +192,17 @@ class _PrototypeMapState extends State<PrototypeMap> {
             ),
           ];
     final visit = widget.radarVisit;
-    final region = widget.home
-        ? homeRadarRegion
-        : (visit != null &&
-                  showResultRadar &&
-                  supportedCongestionRegions.contains(widget.region)
-              ? widget.region
-              : null);
+    final hasCourseRadar =
+        course != null &&
+        items.any((place) => supportedCongestionRegions.contains(place.region));
+    final region =
+        !widget.home &&
+            course == null &&
+            visit != null &&
+            showResultRadar &&
+            supportedCongestionRegions.contains(widget.region)
+        ? widget.region
+        : null;
     final grid = region == null
         ? null
         : grids.putIfAbsent((
@@ -238,6 +254,19 @@ class _PrototypeMapState extends State<PrototypeMap> {
                     },
                   ),
                 if (polylines.isNotEmpty) PolylineLayer(polylines: polylines),
+                if (hasCourseRadar && showResultRadar)
+                  for (final (i, stop) in course.stops.indexed)
+                    _CourseRadarLayer(
+                      key: ValueKey((
+                        stop.id,
+                        stop.placeId,
+                        stop.arrival,
+                        stop.congestionBand,
+                      )),
+                      load: () =>
+                          widget.app.repository.loadStopCongestion(stop),
+                      circles: (band) => stopRadar(points[i], band),
+                    ),
                 MarkerLayer(
                   markers: [
                     for (final (i, place) in items.indexed)
@@ -302,23 +331,6 @@ class _PrototypeMapState extends State<PrototypeMap> {
                           )
                         : const Icon(Icons.my_location),
                   ),
-                  Material(
-                    color: OdigaTokens.lavender,
-                    shape: const CircleBorder(),
-                    child: PopupMenuButton<String>(
-                      tooltip: '혼잡 레이더',
-                      icon: const Icon(Icons.grid_on),
-                      onSelected: selectHomeRadar,
-                      itemBuilder: (context) => [
-                        for (final region in supportedCongestionRegions)
-                          PopupMenuItem(
-                            value: region,
-                            child: Text('$region 혼잡도'),
-                          ),
-                        const PopupMenuItem(value: '', child: Text('레이더 끄기')),
-                      ],
-                    ),
-                  ),
                   if (widget.homeInfo case final onInfo?)
                     IconButton.filledTonal(
                       tooltip: '추천 점수 계산 기준',
@@ -328,7 +340,8 @@ class _PrototypeMapState extends State<PrototypeMap> {
                 ],
               ),
             ),
-          if (visit != null && !widget.home)
+          if (!widget.home &&
+              (hasCourseRadar || (course == null && visit != null)))
             Positioned(
               top: 6,
               right: 8,
@@ -338,12 +351,47 @@ class _PrototypeMapState extends State<PrototypeMap> {
                   showResultRadar = !showResultRadar;
                   if (!showResultRadar) grids.clear();
                 }),
-                icon: Icon(showResultRadar ? Icons.grid_on : Icons.grid_off),
+                icon: Icon(
+                  hasCourseRadar
+                      ? Icons.radar
+                      : (showResultRadar ? Icons.grid_on : Icons.grid_off),
+                ),
+              ),
+            ),
+          if (hasCourseRadar && showResultRadar)
+            Positioned(
+              top: 8,
+              left: 12,
+              right: 62,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 5,
+                    ),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 2,
+                      children: [
+                        const Text('도착 시각 혼잡도', style: TextStyle(fontSize: 10)),
+                        for (final level in CongestionLevel.values)
+                          Text(
+                            level.label,
+                            style: TextStyle(fontSize: 10, color: level.color),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           if (grid != null)
             Positioned(
-              top: widget.home ? MediaQuery.paddingOf(context).top + 78 : 8,
+              top: 8,
               left: 12,
               child: FutureBuilder(
                 future: grid,
@@ -379,7 +427,7 @@ class _PrototypeMapState extends State<PrototypeMap> {
                 borderRadius: BorderRadius.circular(12),
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  child: Text('직선 거리 기준', style: TextStyle(fontSize: 10)),
+                  child: Text('장소 간 직선 연결', style: TextStyle(fontSize: 10)),
                 ),
               ),
             ),
@@ -387,4 +435,31 @@ class _PrototypeMapState extends State<PrototypeMap> {
       ),
     );
   }
+}
+
+class _CourseRadarLayer extends StatefulWidget {
+  const _CourseRadarLayer({
+    super.key,
+    required this.load,
+    required this.circles,
+  });
+
+  final Future<CongestionBand?> Function() load;
+  final List<CircleMarker> Function(CongestionBand) circles;
+
+  @override
+  State<_CourseRadarLayer> createState() => _CourseRadarLayerState();
+}
+
+class _CourseRadarLayerState extends State<_CourseRadarLayer> {
+  late final congestion = widget.load();
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder(
+    future: congestion,
+    builder: (context, snapshot) => switch (snapshot.data) {
+      final band? => CircleLayer(circles: widget.circles(band)),
+      null => const SizedBox.shrink(),
+    },
+  );
 }

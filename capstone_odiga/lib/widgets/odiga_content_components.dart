@@ -179,13 +179,14 @@ class CourseStopTile extends StatelessWidget {
     this.onStayPressed,
     this.onDelete,
     this.reorderHandle,
+    this.visitCongestion,
   }) : assert(order > 0),
        assert(stayMinutes > 0);
 
   final int order, stayMinutes;
   final String title, visitLabel;
   final VoidCallback? onStayPressed, onDelete;
-  final Widget? reorderHandle;
+  final Widget? reorderHandle, visitCongestion;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -221,6 +222,7 @@ class CourseStopTile extends StatelessWidget {
                 visitLabel,
                 style: OdigaTokens.text(11, color: OdigaTokens.muted),
               ),
+              ?visitCongestion,
             ],
           ),
         ),
@@ -464,7 +466,10 @@ class RecommendationReasonPopup extends StatelessWidget {
                       label: '종합 점수·일정',
                       value: conditionMatch,
                     ),
-                    _RecommendationPopupRow(label: '서버 추천 이유', value: congestion),
+                    _RecommendationPopupRow(
+                      label: '서버 추천 이유',
+                      value: congestion,
+                    ),
                     _RecommendationPopupRow(label: '이동거리', value: distance),
                     _RecommendationPopupRow(label: '체류시간', value: stay),
                     _RecommendationPopupRow(

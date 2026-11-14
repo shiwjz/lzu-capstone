@@ -66,6 +66,7 @@ flutter:
   assets:
     - assets/
     - assets/mocks/
+    - assets/places/
   fonts:
     - family: Noto Sans KR
       fonts:
