@@ -16,6 +16,17 @@ class AppState extends ChangeNotifier {
       savedPlaceIds.addAll(courses.first.stops.take(2).map((s) => s.placeId));
       conditions.start = courses.first.stops.first.arrival;
     }
+    _groups.add(
+      GroupRoom(
+        name: '이번 주말 성수 모임',
+        start: conditions.start,
+        friends: friends,
+        messages: [
+          ChatMessage(author: '예민', text: '점심 먹고 조용한 카페 가면 어때?'),
+          ChatMessage(author: '정헌', text: '좋아! 서울숲도 걷자'),
+        ],
+      ),
+    );
   }
   static Future<AppState> load({OdigaApi? api}) async =>
       AppState(repository: await MockRepository.load(api: api));
@@ -24,7 +35,6 @@ class AppState extends ChangeNotifier {
   String userName = '윤경';
   String? accountEmail;
   String? accessToken;
-  String groupName = '이번 주말 성수 모임';
   SearchConditions conditions = SearchConditions();
   UserPreference preference = UserPreference();
   final savedPlaceIds = <String>{};
@@ -34,10 +44,9 @@ class AppState extends ChangeNotifier {
     const FriendProfile('friend-2', '예령', '사진 찍기 좋은 곳을 찾아요', ['사진', '산책']),
     const FriendProfile('friend-3', '정헌', '맛있는 한식과 산책', ['한식', '산책']),
   ];
-  final messages = <ChatMessage>[
-    ChatMessage(author: '예민', text: '점심 먹고 조용한 카페 가면 어때?'),
-    ChatMessage(author: '정헌', text: '좋아! 서울숲도 걷자'),
-  ];
+  final _groups = <GroupRoom>[];
+  List<GroupRoom> get groups => List.unmodifiable(_groups);
+
   void selectTab(int value) {
     tab = value;
     notifyListeners();
@@ -133,9 +142,19 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void createGroup(String name) {
-    groupName = name;
+  GroupRoom createGroup(String name, Set<String> friendIds, DateTime start) {
+    final group = GroupRoom(
+      name: name,
+      start: start,
+      friends: friends.where((friend) => friendIds.contains(friend.id)),
+    );
+    _groups.add(group);
     notifyListeners();
+    return group;
+  }
+
+  void deleteGroup(GroupRoom group) {
+    if (_groups.remove(group)) notifyListeners();
   }
 
   void togglePlace(String id) {
@@ -190,9 +209,9 @@ class AppState extends ChangeNotifier {
     return 'DEFAULT';
   }
 
-  void sendMessage(String text, {Course? course}) {
+  void sendMessage(GroupRoom group, String text, {Course? course}) {
     if (text.trim().isEmpty && course == null) return;
-    messages.add(
+    group.messages.add(
       ChatMessage(
         author: userName,
         text: text.trim(),

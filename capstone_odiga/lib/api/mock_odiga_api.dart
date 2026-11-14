@@ -66,7 +66,11 @@ class MockOdigaApi implements OdigaApi {
       RegionCode.hongdae => 'search_hongdae_weekend_lively.json',
       RegionCode.gangnam => 'search_gangnam_weekday_group.json',
     };
-    return SearchResultDto.fromJson(await _read(file));
+    final data = await _read(file);
+    if (request.conditions?['partySize'] case final int people) {
+      data['conditions'] = {...data['conditions'] as Json, 'partySize': people};
+    }
+    return SearchResultDto.fromJson(data);
   }
 
   @override
