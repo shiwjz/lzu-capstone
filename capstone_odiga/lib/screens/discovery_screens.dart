@@ -390,7 +390,7 @@ class _NearbyScreenState extends State<NearbyScreen> {
         .where(
           (p) =>
               p.region == selected.region &&
-              (category == '전체' || p.category == category),
+              (category == '전체' || p.category == category || (category == '음식점' && p.category == '술집')),
         )
         .toList();
     return MapSheetFrame(
@@ -447,11 +447,12 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   late int selectedDay = visit.weekday;
   late var detail = loadDay(visit);
   late final photos = widget.app.repository.api.getPlacePhotos(widget.place.id);
-  final graphs = <bool, Future<({Place place, Map<int, Congestion> hours})>>{};
+  // 요일마다 따로 불러오기 (전에는 평일/주말 2칸만 저장해서 월~금 그래프가 다 같았음 - 예민 11/14)
+  final graphs = <int, Future<({Place place, Map<int, Congestion> hours})>>{};
 
   Future<({Place place, Map<int, Congestion> hours})> loadDay(DateTime day) =>
       graphs.putIfAbsent(
-        day.weekday >= DateTime.saturday,
+        day.weekday,
         () => widget.app.repository.loadPlaceDetails(widget.place.id, day),
       );
 
@@ -474,7 +475,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
               Text(apiFailureMessage(snapshot.error)),
               TextButton(
                 onPressed: () => setState(() {
-                  graphs.remove(visit.weekday >= DateTime.saturday);
+                  graphs.remove(visit.weekday);
                   detail = loadDay(visit);
                 }),
                 child: const Text('다시 시도'),
@@ -503,7 +504,31 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                 p.address?.trim().isNotEmpty == true ? p.address! : '주소 정보 없음',
                 size: 13,
               ),
-              label(p.openingHours, size: 11, color: OdigaTokens.muted),
+              // 영업시간: 구글에서 볼 때만 받아온 방문 요일 영업시간, 없으면 기존 문구 (예민 11/14)
+              FutureBuilder(
+                future: photos,
+                builder: (context, snapshot) {
+                  final week = snapshot.data?.openingHours ?? const <String>[];
+                  final text = week.length == 7
+                      ? '${week[visit.weekday - 1]} · 구글 정보'
+                      : p.openingHours;
+                  final rating = snapshot.data?.rating;
+                  final count = snapshot.data?.ratingCount;
+                  if (rating == null) {
+                    return label(text, size: 11, color: OdigaTokens.muted);
+                  }
+                  final reviews = count == null
+                      ? ''
+                      : ' · 리뷰 ${count.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',')}개';
+                  return stackItems([
+                    label(text, size: 11, color: OdigaTokens.muted),
+                    label(
+                      '구글 평점 ★ ${rating.toStringAsFixed(1)}$reviews',
+                      size: 12,
+                    ),
+                  ], gap: 4);
+                },
+              ),
               FutureBuilder(
                 future: photos,
                 builder: (context, snapshot) {
@@ -569,9 +594,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       if (graph.hasError) {
                         return TextButton(
                           onPressed: () => setState(() {
-                            graphs.remove(
-                              graphDate.weekday >= DateTime.saturday,
-                            );
+                            graphs.remove(graphDate.weekday);
                           }),
                           child: const Text('혼잡도 다시 불러오기'),
                         );
@@ -824,7 +847,7 @@ class _PlacePickerScreenState extends State<PlacePickerScreen> {
           (p) =>
               p.region == widget.region &&
               !widget.existing.contains(p.id) &&
-              (category == '전체' || p.category == category),
+              (category == '전체' || p.category == category || (category == '음식점' && p.category == '술집')),
         )
         .toList();
     return AppFrame(
@@ -872,7 +895,7 @@ class _SavedPlacesScreenState extends State<SavedPlacesScreen> {
           .where(
             (p) =>
                 widget.app.savedPlaceIds.contains(p.id) &&
-                (category == '전체' || p.category == category),
+                (category == '전체' || p.category == category || (category == '음식점' && p.category == '술집')),
           )
           .toList();
       return AppFrame(

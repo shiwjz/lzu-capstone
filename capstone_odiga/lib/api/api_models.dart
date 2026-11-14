@@ -150,6 +150,14 @@ class PlacePhotoDto extends ApiDto {
 class PlacePhotosDto extends ApiDto {
   PlacePhotosDto.fromJson(super.json);
   bool get available => json['available'] == true;
+
+  /// 구글 영업시간 월~일 7줄 (예: "월요일: 오전 9:00~오후 10:00"), 없으면 빈 목록
+  List<String> get openingHours =>
+      List<String>.from(json['openingHours'] as List? ?? const []);
+
+  /// 구글 평점·리뷰 수 (볼 때만, 없으면 null)
+  double? get rating => (json['rating'] as num?)?.toDouble();
+  int? get ratingCount => (json['ratingCount'] as num?)?.toInt();
   List<PlacePhotoDto> get photos => [
     for (final photo in json['photos'] as List? ?? [])
       PlacePhotoDto.fromJson(photo),

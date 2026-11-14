@@ -23,12 +23,14 @@ class ApiMappers {
           'NATURE': '자연/휴식',
         }[json['category']] ??
         json['category'] as String;
+    // 호프·이자카야 같은 술집은 카카오 분류상 음식점이라 "술집"으로 따로 표시 (예민 11/14)
+    final shownCategory = json['bar'] == true ? '술집' : category;
     final id = json['placeId'] as String;
     return Place(
       id: id,
       kakaoPlaceId: id,
       name: json['name'] as String,
-      category: category,
+      category: shownCategory,
       region: region(json['region'] ?? regionCode),
       latitude: (json['lat'] as num).toDouble(),
       longitude: (json['lng'] as num).toDouble(),

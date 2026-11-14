@@ -131,7 +131,7 @@ class _PrototypeMapState extends State<PrototypeMap> {
           ? place.region == widget.region
           : distance(location, LatLng(place.latitude, place.longitude)) <= 2000;
       return nearby &&
-          (widget.homeCategories?.contains(place.category) ?? true);
+          (widget.homeCategories?.contains(place.category == '술집' ? '음식점' : place.category) ?? true);
     }).toList();
   }
 

@@ -60,6 +60,12 @@ public record CourseRequest(
                 playCategories, newOrder, drinking, variants, keepPlaceIds, mustPlayIds);
     }
 
+    /** 틀 순서 후보만 바꾼 요청 (자동 틀일 때 다른 순서 코스도 섞으려고) */
+    public CourseRequest withVariants(List<List<Slot>> newVariants) {
+        return new CourseRequest(region, startMinute, partySize, atmospheres, crowdPreference, allergies,
+                playCategories, List.of(), drinking, newVariants, keepPlaceIds, mustPlayIds);
+    }
+
     public List<String> keeps() {
         return keepPlaceIds == null ? List.of() : keepPlaceIds;
     }

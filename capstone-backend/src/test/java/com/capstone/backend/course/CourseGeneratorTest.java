@@ -375,7 +375,7 @@ class CourseGeneratorTest {
 
         assertEquals("노래방", CourseText.playLabel("가정,생활 > 여가시설 > 노래방"));
         assertEquals("보드게임", CourseText.playLabel("음식점 > 카페 > 테마카페 > 보드카페"));
-        assertEquals("공연장·연극극장", CourseText.playLabel("문화,예술 > 문화시설 > 공연장,연극극장"));
+        assertEquals("공연", CourseText.playLabel("문화,예술 > 문화시설 > 공연장,연극극장"));
     }
 
     @Test
@@ -386,7 +386,7 @@ class CourseGeneratorTest {
 
         CoursePlan best = generator.generate(request(15 * 60), f.places, f.scorer(CongestionLevel.QUIET)).get(0);
 
-        assertEquals("성수 오후 전시관 코스", best.title());
+        assertEquals("성수 오후 전시 코스", best.title());
         // 기본 장소 태그 = 조용함 → 3곳 다 맞음, 혼잡도 전부 한산
         assertTrue(best.reason().startsWith("'조용함' 후기 많은 곳 3곳 · 3곳 중 3곳이 도착 시간에 한산 · 총 도보 "), best.reason());
     }

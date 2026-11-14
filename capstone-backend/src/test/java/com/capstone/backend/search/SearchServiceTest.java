@@ -64,7 +64,7 @@ class SearchServiceTest {
     @DisplayName("11주차: 경로 이름 + 덜 붐비는 출발 시간 (가짜 JSON 성수랑 같음)")
     void routeAndBetterStart() {
         Map<String, Object> data = service().search(new SearchService.SearchRequest("성수", null, null, null, seongsuQuiet()));
-        assertEquals("전시관 → 카페 → 분식", courses(data).get(0).route());
+        assertEquals("전시 → 카페 → 분식", courses(data).get(0).route());
         @SuppressWarnings("unchecked")
         Map<String, Object> better = (Map<String, Object>) data.get("betterStart");
         assertEquals("17:00", better.get("startTime"));
@@ -230,7 +230,7 @@ class SearchServiceTest {
         CoursePlan best = courses(data).get(0);
         assertEquals(List.of("1292703398", "921699059", "1327766448"),
                 best.stops().stream().map(CoursePlan.Stop::placeId).toList());
-        assertEquals("성수 오후 전시관 코스", best.title());
+        assertEquals("성수 오후 전시 코스", best.title());
         assertEquals(173, best.totalMinutes());
         assertEquals(0.86, best.score().total());
         assertEquals(7, courses(data).size());                       // v0.5 최대 10개, 가짜 JSON도 7개 (11/5 예린 태그·음식 확정본 후)
