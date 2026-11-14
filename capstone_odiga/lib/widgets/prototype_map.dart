@@ -269,6 +269,31 @@ class _PrototypeMapState extends State<PrototypeMap> {
                     ),
                 MarkerLayer(
                   markers: [
+                    if (course != null)
+                      for (var i = 0; i + 1 < points.length; i++)
+                        if (course.stops[i].travelMinutesToNext > 0)
+                          Marker(
+                            point: LatLng(
+                              (points[i].latitude + points[i + 1].latitude) / 2,
+                              (points[i].longitude + points[i + 1].longitude) /
+                                  2,
+                            ),
+                            width: 112,
+                            height: 32,
+                            alignment: Alignment.bottomCenter,
+                            child: IgnorePointer(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: _WalkingTimeLabel(
+                                    minutes:
+                                        course.stops[i].travelMinutesToNext,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                     for (final (i, place) in items.indexed)
                       Marker(
                         point: points[i],
@@ -437,6 +462,36 @@ class _PrototypeMapState extends State<PrototypeMap> {
       ),
     );
   }
+}
+
+class _WalkingTimeLabel extends StatelessWidget {
+  const _WalkingTimeLabel({required this.minutes});
+
+  final int minutes;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    elevation: 2,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+      side: const BorderSide(color: OdigaTokens.border),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          '도보 약 $minutes분',
+          style: OdigaTokens.text(
+            11,
+            color: OdigaTokens.ink,
+            weight: FontWeight.w600,
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _CourseRadarLayer extends StatefulWidget {
