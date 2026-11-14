@@ -37,8 +37,12 @@ class PlacePhotoServiceTest {
             Map<String, Object> photo1 = Map.of("name", "places/G1/photos/P1", "widthPx", 1200, "heightPx", 800,
                     "authorAttributions", List.of(Map.of("displayName", "작성자1", "uri", "https://maps.google.com/u1")));
             Map<String, Object> photo2 = Map.of("name", "places/G1/photos/P2", "widthPx", 900, "heightPx", 900);
+            List<String> week = List.of("월요일: 오전 9:00~오후 10:00", "화요일: 오전 9:00~오후 10:00",
+                    "수요일: 오전 9:00~오후 10:00", "목요일: 오전 9:00~오후 10:00", "금요일: 오전 9:00~오후 10:00",
+                    "토요일: 오전 9:00~오후 10:00", "일요일: 휴무일");
             return Map.of("places", List.of(Map.of("id", "G1", "location", Map.of("latitude", lat, "longitude", lng),
-                    "photos", List.of(photo1, photo2))));
+                    "photos", List.of(photo1, photo2), "regularOpeningHours", Map.of("weekdayDescriptions", week),
+                    "rating", 4.4, "userRatingCount", 1004)));
         }
 
         @Override
@@ -70,9 +74,24 @@ class PlacePhotoServiceTest {
         assertEquals("https://lh3.googleusercontent.com/P1", photos.get(0).get("url"));
         assertEquals("작성자1", photos.get(0).get("authorName"));
         assertNull(d.get("notice"));
-        assertEquals(List.of("search places.id,places.location,places.photos",
+        assertEquals(List.of("search places.id,places.location,places.photos,places.regularOpeningHours.weekdayDescriptions,places.rating,places.userRatingCount",
                 "media https://places.googleapis.com/v1/places/G1/photos/P1/media?maxWidthPx=800&skipHttpRedirect=true"), g.calls);
         assertEquals(2, ((List<?>) new PlacePhotoService(STORE, "k", new FakeGoogle(p.lat(), p.lng())).photos(ID, 5).get("photos")).size());
+    }
+
+    @Test
+    @DisplayName("영업시간: 구글 요일별 7줄 그대로, 다른 가게면 안 줌")
+    @SuppressWarnings("unchecked")
+    void openingHours() {
+        PlaceStore.Place p = STORE.find(ID).orElseThrow();
+        Map<String, Object> d = new PlacePhotoService(STORE, "k", new FakeGoogle(p.lat(), p.lng())).photos(ID, 1);
+        List<String> hours = (List<String>) d.get("openingHours");
+        assertEquals(7, hours.size());
+        assertEquals("일요일: 휴무일", hours.get(6));
+        assertEquals(4.4, d.get("rating"));
+        assertEquals(1004, d.get("ratingCount"));
+        assertNull(new PlacePhotoService(STORE, "k", new FakeGoogle(p.lat() + 0.01, p.lng())).photos(ID, 1).get("openingHours"));
+        assertNull(new PlacePhotoService(STORE, "", new FakeGoogle(0, 0)).photos(ID, 1).get("openingHours"));
     }
 
     @Test

@@ -78,6 +78,7 @@ public class PlaceController {
                 m.put("placeId", p.placeId());
                 m.put("name", p.name());
                 m.put("category", p.category());
+        m.put("bar", p.toCoursePlace().isBar());
                 m.put("region", p.region());
                 m.put("address", p.displayAddress());
                 m.put("lat", p.lat());
@@ -132,6 +133,7 @@ public class PlaceController {
         m.put("placeId", p.placeId());
         m.put("name", p.name());
         m.put("category", p.category());
+        m.put("bar", p.toCoursePlace().isBar());
         m.put("region", p.region());
         m.put("address", p.address());
         m.put("roadAddress", p.roadAddress());

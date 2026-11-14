@@ -206,7 +206,7 @@ class CourseCategoryMapPin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (background, icon) = switch (category) {
-      '음식점' => ('map_pin_restaurant_bg.svg', 'map_pin_restaurant_icon.svg'),
+      '음식점' || '술집' => ('map_pin_restaurant_bg.svg', 'map_pin_restaurant_icon.svg'),
       '카페' => ('map_pin_cafe_bg.svg', 'map_pin_cafe_icon.svg'),
       _ => ('map_pin_play_bg.svg', 'map_pin_play_icon.svg'),
     };

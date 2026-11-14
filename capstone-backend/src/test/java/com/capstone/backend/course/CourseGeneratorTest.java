@@ -375,7 +375,7 @@ class CourseGeneratorTest {
 
         assertEquals("노래방", CourseText.playLabel("가정,생활 > 여가시설 > 노래방"));
         assertEquals("보드게임", CourseText.playLabel("음식점 > 카페 > 테마카페 > 보드카페"));
-        assertEquals("공연장·연극극장", CourseText.playLabel("문화,예술 > 문화시설 > 공연장,연극극장"));
+        assertEquals("공연", CourseText.playLabel("문화,예술 > 문화시설 > 공연장,연극극장"));
     }
 
     @Test

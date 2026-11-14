@@ -188,7 +188,20 @@ public class SearchService {
         }
         checkCodes(c);
         List<Slot> order = parseOrder(req.order());
-        List<String> keeps = checkKeeps(req.keepPlaceIds(), c.region());
+        // 문장에 가게 이름이 있으면 그 가게를 킵 (예: "역전할머니맥주 가기" → 역전할머니맥주 서울성수역점) - 예민 11/14
+        // - 직접 킵한 게 있으면 그걸 우선, 술집인데 코스 틀을 안 골랐으면 술 코스로
+        List<String> keepIds = req.keepPlaceIds();
+        String namedId = null;
+        if ((keepIds == null || keepIds.isEmpty()) && req.query() != null && c.region() != null) {
+            namedId = namedPlace(req.query(), c.region(), store.coursePlaces());
+            if (namedId != null) {
+                keepIds = List.of(namedId);
+                String id = namedId;
+                boolean bar = store.coursePlaces().stream().anyMatch(p -> p.placeId().equals(id) && p.isBar());
+                if (bar && c.courseType() == null) c = c.withShape("DRINK", c.excludedCategories(), c.includedCategories());
+            }
+        }
+        List<String> keeps = checkKeeps(keepIds, c.region());
 
         // 놀거리 세부 취향 장소들 (그 지역에 하나도 없으면 제한 안 함)
         List<String> details = c.playDetails();
@@ -318,6 +331,35 @@ public class SearchService {
     }
 
     /** 킵한 장소 검사: 최대 2곳, 있는 장소, 검색 지역이랑 같은 지역 */
+    // 가게 이름 찾을 때 이름 앞부분으로 안 쓰는 말 (지역·흔한 종류 이름)
+    private static final List<String> NAME_STOP = List.of("서울", "성수", "홍대", "강남", "연남", "신촌", "합정", "망원",
+            "코인노래방", "노래연습장", "보드게임카페", "방탈출카페", "이자카야", "포장마차", "브런치카페", "베이커리");
+
+    /**
+     * 문장에 들어 있는 가게 이름 → placeId (그 지역 안에서, 가장 길게 맞은 이름), 없으면 null
+     * - 비교는 띄어쓰기 빼고: 가게 이름 전체(3글자 이상) 또는 이름 첫 단어(4글자 이상, 예: "역전할머니맥주 서울성수역점" → "역전할머니맥주")
+     */
+    static String namedPlace(String query, String region, List<CoursePlace> places) {
+        String q = query.replace(" ", "");
+        String best = null;
+        int bestLen = 0;
+        for (CoursePlace p : places) {
+            if (!p.region().equals(region)) continue;
+            String full = p.name().replace(" ", "");
+            String first = p.name().trim().split("\\s+")[0];
+            List<String> keys = new ArrayList<>();
+            if (full.length() >= 3) keys.add(full);
+            if (first.length() >= 4 && NAME_STOP.stream().noneMatch(first::contains)) keys.add(first);
+            for (String key : keys) {
+                if (key.length() > bestLen && q.contains(key)) {
+                    best = p.placeId();
+                    bestLen = key.length();
+                }
+            }
+        }
+        return best;
+    }
+
     private List<String> checkKeeps(List<String> keepIds, String region) {
         if (keepIds == null || keepIds.isEmpty()) return List.of();
         List<String> ids = keepIds.stream().distinct().toList();
@@ -412,6 +454,7 @@ public class SearchService {
         m.put("placeId", p.placeId());
         m.put("name", p.name());
         m.put("category", p.category());
+        m.put("bar", cp.isBar());   // 술집이면 앱에서 "음식점" 대신 "술집"
         m.put("region", p.region());
         m.put("address", p.displayAddress());
         m.put("lat", p.lat());
