@@ -199,9 +199,22 @@ public class SearchService {
         CourseRequest courseRequest = c.toCourseRequest(order, keeps, mustPlay);
         PlaceScorer scorer = scorers.forConditions(c);
         List<String> cuisines = c.cuisines();
+        // "파스타 먹으러"처럼 세부만 말해도 식사 칸은 그 큰 종류(이탈리안 → 양식) 안에서 고르기 (예민 11/14)
+        // - 전에는 세부가 가점만 있어서 '단체' 같은 분위기 점수가 높은 고깃집이 1등으로 올라옴
+        // - 그 지역에 해당 종류 식당이 3곳 미만이면 지금처럼 가점만
+        if ((cuisines == null || cuisines.isEmpty()) && c.cuisineDetails() != null && !c.cuisineDetails().isEmpty()) {
+            List<String> families = c.cuisineDetails().stream()
+                    .map(Cuisine.DETAIL_FAMILY::get).filter(f -> f != null).distinct().toList();
+            long enough = store.coursePlaces().stream()
+                    .filter(p -> p.region().equals(region) && p.category().equals("FOOD") && !p.isBar()
+                            && families.contains(p.cuisine()))
+                    .count();
+            if (!families.isEmpty() && enough >= 3) cuisines = families;
+        }
+        final List<String> mealCuisines = cuisines;   // 아래 람다에서 쓰려고 (자바는 바뀐 변수를 람다에 못 넣음)
         Boolean drinking = c.drinking();
         List<CoursePlace> places = new ArrayList<>(filterExcludedFoods(store.coursePlaces(), c.excludedFoods()).stream()
-                .filter(p -> Cuisine.wanted(p, cuisines)       // 음식 큰 종류 골랐으면 식사 칸은 그 종류만
+                .filter(p -> Cuisine.wanted(p, mealCuisines)   // 음식 큰 종류 골랐으면 식사 칸은 그 종류만
                         || (Boolean.TRUE.equals(drinking) && p.isBar()))   // 술 코스면 술집은 항상
                 .filter(p -> !(Boolean.FALSE.equals(drinking) && p.isBar()))  // 술 빼달라고 하면 술집 빼기
                 .toList());

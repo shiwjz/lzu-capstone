@@ -447,11 +447,12 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   late int selectedDay = visit.weekday;
   late var detail = loadDay(visit);
   late final photos = widget.app.repository.api.getPlacePhotos(widget.place.id);
-  final graphs = <bool, Future<({Place place, Map<int, Congestion> hours})>>{};
+  // 요일마다 따로 불러오기 (전에는 평일/주말 2칸만 저장해서 월~금 그래프가 다 같았음 - 예민 11/14)
+  final graphs = <int, Future<({Place place, Map<int, Congestion> hours})>>{};
 
   Future<({Place place, Map<int, Congestion> hours})> loadDay(DateTime day) =>
       graphs.putIfAbsent(
-        day.weekday >= DateTime.saturday,
+        day.weekday,
         () => widget.app.repository.loadPlaceDetails(widget.place.id, day),
       );
 
@@ -474,7 +475,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
               Text(apiFailureMessage(snapshot.error)),
               TextButton(
                 onPressed: () => setState(() {
-                  graphs.remove(visit.weekday >= DateTime.saturday);
+                  graphs.remove(visit.weekday);
                   detail = loadDay(visit);
                 }),
                 child: const Text('다시 시도'),
@@ -569,9 +570,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       if (graph.hasError) {
                         return TextButton(
                           onPressed: () => setState(() {
-                            graphs.remove(
-                              graphDate.weekday >= DateTime.saturday,
-                            );
+                            graphs.remove(graphDate.weekday);
                           }),
                           child: const Text('혼잡도 다시 불러오기'),
                         );
