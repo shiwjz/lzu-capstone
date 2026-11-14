@@ -37,6 +37,11 @@ public final class CourseShape {
             "WALK", List.of(List.of(P, C, M)),
             "SHOPPING", List.of(List.of(P, C, M)));
 
+    /** 기본 틀 순서들 (식사 → 카페 → 놀거리, 카페 → 놀거리 → 식사) - 자동 틀일 때 코스 다양하게 섞는 용 */
+    public static List<List<Slot>> basicOrders() {
+        return TYPE_ORDERS.get("BASIC");
+    }
+
     // 틀이 정하는 놀거리 종류 (문화 = 전시·공연, 산책 = 공원·자연, 쇼핑)
     private static final Map<String, String> TYPE_PLAY = Map.of(
             "CULTURE", "CULTURE", "WALK", "NATURE", "SHOPPING", "SHOPPING");

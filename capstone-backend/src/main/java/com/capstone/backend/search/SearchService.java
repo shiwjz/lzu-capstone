@@ -259,6 +259,13 @@ public class SearchService {
         // 코스 (최대 10개) → 저장
         int seq = searchSeq.incrementAndGet();
         List<CoursePlan> generated = generator.generate(courseRequest, places, scorer);
+        generated = mixOrders(generated, courseRequest, places, scorer);
+        String hoursNotice = null;
+        if (!keeps.isEmpty() && photoService != null) {
+            int before = generated.size();
+            generated = dropClosedKeeps(generated, keeps, date);
+            if (generated.size() < before && generated.isEmpty()) hoursNotice = "킵한 가게가 이 시간엔 영업 전이거나 끝났어요 (구글 영업시간 기준). 시간을 바꿔 보세요.";
+        }
         List<String> titles = sentimentTitles(generated, c);
         boolean gemini = false;
         List<CoursePlan> plans = new ArrayList<>();
@@ -283,8 +290,84 @@ public class SearchService {
         data.put("order", order.stream().map(Slot::name).toList());
         data.put("keepPlaceIds", keeps);
         data.put("betterStart", plans.isEmpty() ? null : betterStart(plans.get(0), c));
-        data.put("notice", plans.isEmpty() ? noCourseNotice(courseRequest, c) : null);
+        data.put("notice", plans.isEmpty() ? (hoursNotice != null ? hoursNotice : noCourseNotice(courseRequest, c)) : null);
         return data;
+    }
+
+    // 구글 영업시간 확인용 (킵한 가게만, 없으면 건너뜀 - 테스트에선 null)
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.capstone.backend.place.PlacePhotoService photoService;
+
+    static final int MAX_SAME_ORDER = 4;   // 자동 틀일 때 같은 순서 코스는 10개 중 최대 4개 (모자라면 채움)
+
+    /**
+     * 자동 틀(코스 틀·빼기·추가·직접 순서 없음, 술 코스 아님)이면 기본 틀 다른 순서 코스도 섞기 (예민 11/14)
+     * - 1등은 지금이랑 똑같이 (기존 순서 1등), 나머지는 점수 순 + 같은 순서는 최대 4개 + 장소 안 겹치게
+     */
+    private List<CoursePlan> mixOrders(List<CoursePlan> base, CourseRequest r, List<CoursePlace> places, PlaceScorer scorer) {
+        if (base.isEmpty() || (r.order() != null && !r.order().isEmpty()) || r.variants() != null
+                || Boolean.TRUE.equals(r.drinking())) return base;
+        List<Slot> first = r.slotOrder();
+        List<List<Slot>> extra = CourseShape.basicOrders().stream().filter(o -> !o.equals(first)).toList();
+        if (extra.isEmpty()) return base;
+        List<CoursePlan> more = generator.generate(r.withVariants(extra), places, scorer);
+        if (more.isEmpty()) return base;
+
+        Set<String> free = new HashSet<>(r.keeps());
+        if (r.mustPlayIds() != null) free.addAll(r.mustPlayIds());
+        List<CoursePlan> pool = new ArrayList<>(base.subList(1, base.size()));
+        pool.addAll(more);
+        pool.sort(Comparator.comparingDouble(p -> -p.score().total()));
+
+        List<CoursePlan> chosen = new ArrayList<>(List.of(base.get(0)));
+        Set<String> used = new HashSet<>();
+        Map<List<Slot>, Integer> sameOrder = new HashMap<>();
+        java.util.function.Consumer<CoursePlan> take = p -> {
+            chosen.add(p);
+            p.stops().stream().map(CoursePlan.Stop::placeId).filter(id -> !free.contains(id)).forEach(used::add);
+            sameOrder.merge(p.stops().stream().map(CoursePlan.Stop::slot).toList(), 1, Integer::sum);
+        };
+        chosen.clear();
+        take.accept(base.get(0));
+        for (int pass = 0; pass < 2 && chosen.size() < CourseRules.COURSE_COUNT; pass++) {
+            for (CoursePlan p : pool) {
+                if (chosen.size() >= CourseRules.COURSE_COUNT) break;
+                if (chosen.contains(p)) continue;
+                if (p.stops().stream().map(CoursePlan.Stop::placeId).anyMatch(id -> !free.contains(id) && used.contains(id))) continue;
+                List<Slot> key = p.stops().stream().map(CoursePlan.Stop::slot).toList();
+                if (pass == 0 && sameOrder.getOrDefault(key, 0) >= MAX_SAME_ORDER) continue;
+                take.accept(p);
+            }
+        }
+        List<CoursePlan> out = new ArrayList<>();
+        for (int i = 0; i < chosen.size(); i++) {
+            CoursePlan p = chosen.get(i);
+            out.add(p.withMeta(p.courseId(), i + 1, p.title(), p.reason(), p.keywords(), p.route()));
+        }
+        return out;
+    }
+
+    /** 킵한 가게가 구글 영업시간상 도착 시각에 닫혀 있는 코스 빼기 (영업시간 정보 없으면 그대로) */
+    private List<CoursePlan> dropClosedKeeps(List<CoursePlan> plans, List<String> keeps, LocalDate date) {
+        Map<String, List<int[]>> hours = new HashMap<>();
+        for (String id : keeps) {
+            List<int[]> h = photoService.openPeriods(id);
+            if (h != null) hours.put(id, h);
+        }
+        if (hours.isEmpty()) return plans;
+        int day0 = date.getDayOfWeek().getValue() % 7;    // 월=1 … 일=7 → 구글식 일=0
+        List<CoursePlan> out = new ArrayList<>();
+        for (CoursePlan p : plans) {
+            boolean ok = p.stops().stream().allMatch(s -> {
+                List<int[]> h = hours.get(s.placeId());
+                if (h == null) return true;
+                String[] hm = s.arriveAt().split(":");
+                int minute = Integer.parseInt(hm[0]) * 60 + Integer.parseInt(hm[1]);
+                return com.capstone.backend.place.PlacePhotoService.openAt(h, day0, minute);
+            });
+            if (ok) out.add(p.withMeta(p.courseId(), out.size() + 1, p.title(), p.reason(), p.keywords(), p.route()));
+        }
+        return out;
     }
 
     /** Gemini 감성 제목 (실패하면 null → 규칙 제목) */

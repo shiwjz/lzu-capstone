@@ -135,13 +135,68 @@ public class PlacePhotoService {
     /** 이름 + 주소로 찾고, 우리 좌표에서 300m 안이면 그 가게 */
     @SuppressWarnings("unchecked")
     private Map<String, Object> search(PlaceStore.Place p) {
+        return search(p, FIELD_MASK);
+    }
+
+    /**
+     * 구글 영업시간 구간 (킵한 장소 1~2곳 코스 확인용, 저장 X)
+     * - 결과: {여는 요일, 여는 분, 닫는 요일, 닫는 분} 목록 (요일 0=일 ~ 6=토, 구글 그대로)
+     * - 키 없음·못 찾음·정보 없음·실패면 null
+     */
+    @SuppressWarnings("unchecked")
+    public List<int[]> openPeriods(String placeId) {
+        if (!enabled()) return null;
+        PlaceStore.Place p = store.find(placeId).orElse(null);
+        if (p == null) return null;
+        try {
+            Map<String, Object> place = search(p, "places.id,places.location,places.regularOpeningHours.periods");
+            if (place == null || !(place.get("regularOpeningHours") instanceof Map<?, ?> h)) return null;
+            if (!(h.get("periods") instanceof List<?> periods) || periods.isEmpty()) return null;
+            List<int[]> out = new ArrayList<>();
+            for (Object o : periods) {
+                Map<String, Object> period = (Map<String, Object>) o;
+                Map<String, Object> open = (Map<String, Object>) period.get("open");
+                Map<String, Object> close = (Map<String, Object>) period.get("close");
+                if (open == null) continue;
+                int od = num(open.get("day")), om = num(open.get("hour")) * 60 + num(open.get("minute"));
+                if (close == null) {                       // 닫는 시간 없음 = 24시간
+                    out.add(new int[]{0, 0, 7, 0});
+                    continue;
+                }
+                out.add(new int[]{od, om, num(close.get("day")), num(close.get("hour")) * 60 + num(close.get("minute"))});
+            }
+            return out.isEmpty() ? null : out;
+        } catch (RuntimeException e) {
+            System.out.println("[영업시간 실패] " + placeId + " " + e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /** 그 요일(0=일)·그 분(24시 넘어도 됨)에 열려 있는지 */
+    public static boolean openAt(List<int[]> periods, int sunday0Day, int minute) {
+        int week = 7 * 24 * 60;
+        int t = Math.floorMod(sunday0Day * 1440 + minute, week);
+        for (int[] pr : periods) {
+            int start = pr[0] * 1440 + pr[1];
+            int end = pr[2] * 1440 + pr[3];
+            if (end <= start) end += week;
+            if ((start <= t && t < end) || (start <= t + week && t + week < end)) return true;
+        }
+        return false;
+    }
+
+    private static int num(Object o) {
+        return o instanceof Number n ? n.intValue() : 0;
+    }
+
+    private Map<String, Object> search(PlaceStore.Place p, String fieldMask) {
         Map<String, Object> center = Map.of("latitude", p.lat(), "longitude", p.lng());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("textQuery", p.name() + (p.displayAddress() == null ? "" : " " + p.displayAddress()));
         body.put("languageCode", "ko");
         body.put("maxResultCount", 1);
         body.put("locationBias", Map.of("circle", Map.of("center", center, "radius", 500.0)));
-        Map<String, Object> res = http.post(SEARCH_URL, headers(FIELD_MASK), body);
+        Map<String, Object> res = http.post(SEARCH_URL, headers(fieldMask), body);
         List<Map<String, Object>> places = res == null ? null : (List<Map<String, Object>>) res.get("places");
         if (places == null || places.isEmpty()) return null;
         Map<String, Object> place = places.get(0);

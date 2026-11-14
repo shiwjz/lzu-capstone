@@ -95,6 +95,18 @@ class PlacePhotoServiceTest {
     }
 
     @Test
+    @DisplayName("구글 영업시간 구간: 오후 5시 오픈 가게는 토 15시 닫힘, 토 18시 열림, 자정 넘는 영업도")
+    void openAt() {
+        // 토요일(6) 17:00 ~ 일요일(0) 02:00
+        List<int[]> h = List.of(new int[]{6, 17 * 60, 0, 2 * 60});
+        assertFalse(PlacePhotoService.openAt(h, 6, 15 * 60));
+        assertTrue(PlacePhotoService.openAt(h, 6, 18 * 60));
+        assertTrue(PlacePhotoService.openAt(h, 6, 25 * 60));      // 토요일 기준 새벽 1시 (24시 넘김)
+        assertFalse(PlacePhotoService.openAt(h, 5, 18 * 60));     // 금요일은 안 엶
+        assertTrue(PlacePhotoService.openAt(List.of(new int[]{0, 0, 7, 0}), 3, 4 * 60));   // 24시간
+    }
+
+    @Test
     @DisplayName("구글 결과가 300m 넘게 떨어져 있으면 다른 가게 → 사진 안 줌")
     void farAway() {
         PlaceStore.Place p = STORE.find(ID).orElseThrow();
