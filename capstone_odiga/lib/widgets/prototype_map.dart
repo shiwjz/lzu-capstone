@@ -331,12 +331,14 @@ class _PrototypeMapState extends State<PrototypeMap> {
                           )
                         : const Icon(Icons.my_location),
                   ),
-                  if (widget.homeInfo case final onInfo?)
+                  if (widget.homeInfo case final onInfo?) ...[
+                    const SizedBox(height: 16),
                     IconButton.filledTonal(
                       tooltip: '추천 점수 계산 기준',
                       onPressed: onInfo,
                       icon: const Icon(Icons.info_outline),
                     ),
+                  ],
                 ],
               ),
             ),
